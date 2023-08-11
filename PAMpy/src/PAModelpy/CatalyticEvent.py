@@ -17,7 +17,7 @@ class CatalyticEvent():
         catalysis of a Reaction in a cobra.Model object. It serves as an interface
         between the metabolic reaction and the associated enzyme constraints and variables.
         There are three different scenarios:
-        - Enzyme complex: multiple enzymes together are associated with an EnzymeComplex object TODO
+        - Enzyme complex: multiple enzymes together are associated with an EnzymeComplex object
         - isozymes: multiple enzymes independently associated with a single catalytic event
         - Other: a single enzyme is associated with a single catalytic event
 
