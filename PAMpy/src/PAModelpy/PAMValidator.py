@@ -10,20 +10,19 @@ import numpy as np
 from IPython.display import display
 from IPython import get_ipython
 
-sys.path.append('../../../')
-from Package import configuration
+from .configuration import Config
 
 from typing import Union
 
 class PAMValidator(object):
     RESULT_DIR = os.path.join(os.path.split(os.getcwd())[0], 'Results')
     OUT_FILE = os.path.join(RESULT_DIR, 'flux_rates_vs_glc.xls')
-    GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
-    OXYGEN_UPTAKE_RXNID = configuration.OXYGEN_UPTAKE_RXNID
-    BIOMASS_REACTION = configuration.BIOMASS_REACTION
-    ACETATE_EXCRETION_RXNID = configuration.ACETATE_EXCRETION_RXNID
-    CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
-    PHYS_RXN_IDS = configuration.PHYS_RXN_IDS
+    GLUCOSE_EXCHANGE_RXNID = Config.GLUCOSE_EXCHANGE_RXNID
+    OXYGEN_UPTAKE_RXNID = Config.OXYGEN_UPTAKE_RXNID
+    BIOMASS_REACTION = Config.BIOMASS_REACTION
+    ACETATE_EXCRETION_RXNID = Config.ACETATE_EXCRETION_RXNID
+    CO2_EXHANGE_RXNID = Config.CO2_EXHANGE_RXNID
+    PHYS_RXN_IDS = Config.PHYS_RXN_IDS
     MW_GLC = 180.15588 #g/mol
     MW_ACETATE = 59.04
     MW_CO2 = 44.009
@@ -31,7 +30,14 @@ class PAMValidator(object):
     GRADIENT_STEP = 0.5 #mmol/gdw/h
     GRADIENT_MIN = 0 #mmol/gdw/h
 
-    def __init__(self, model, phys_file):
+    def __init__(self, model, phys_file, configuration=Config):
+        self.GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
+        self.OXYGEN_UPTAKE_RXNID = configuration.OXYGEN_UPTAKE_RXNID
+        self.BIOMASS_REACTION = configuration.BIOMASS_REACTION
+        self.ACETATE_EXCRETION_RXNID = configuration.ACETATE_EXCRETION_RXNID
+        self.CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
+        self.PHYS_RXN_IDS = configuration.PHYS_RXN_IDS
+
         self.model = model
         self.physiology_data = pd.read_excel(phys_file, sheet_name='Fluxes')
         self.yield_data = pd.read_excel(phys_file, sheet_name='Yields')

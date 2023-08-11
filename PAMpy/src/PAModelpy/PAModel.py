@@ -10,15 +10,14 @@ from typing import List, Optional, Union, Dict, Iterable
 #other
 from functools import partial
 import warnings
-import sys
 import pandas as pd
 
 # sys.path.append('../')
-from PAMpy.EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, UnusedEnzymeSector, CustomSector, Sector
-from PAMpy.CatalyticEvent import CatalyticEvent
-from PAMpy.Constraints import Constraint
-from PAMpy.Enzyme import Enzyme, EnzymeVariable
-from Package import configuration
+from .EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, UnusedEnzymeSector, CustomSector, Sector
+from .CatalyticEvent import CatalyticEvent
+from .Constraints import Constraint
+from .Enzyme import Enzyme
+from .configuration import Config
 
 
 class PAModel(Model):
@@ -35,7 +34,7 @@ class PAModel(Model):
                     Total protein concentration (condition dependent) (unit g_p/g_cdw) (default 0.285)
                 senstitivity: bool
                     Boolean value wheter or not a sensitivity analysis should be performed during each simulation.
-                    This sensitivity analysis will indicate to which extend individual constraints contribute to the
+                    This sensitivity analysis will indicate to which extent individual constraints contribute to the
                     objective value.
                 Enzyme sectors: EnzymeSector objects, optional
                     Information about the different enzyme sectors, being:
@@ -47,6 +46,9 @@ class PAModel(Model):
                         Excess enzymes
                     - Custom_enzymes: list
                         custom enzyme sectors
+                configuration: Config object, optional
+                    Information about general configuration of the model including identifier conventions.
+                    Default as defined in the `PAModelpy.configuration` script for the E.coli iML1515 model.
 
                 Attributes
                 ----------
@@ -78,22 +80,29 @@ class PAModel(Model):
                     A DictList where the key is the sector identifier and the value an
                     EnyzmeSector
                 """
-    """Constants"""
-    TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
-    P_TOT_DEFAULT = configuration.P_TOT_DEFAULT #g_protein/g_cdw
-    CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
-    GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
-    BIOMASS_REACTION = configuration.BIOMASS_REACTION
+    TOTAL_PROTEIN_CONSTRAINT_ID = Config.TOTAL_PROTEIN_CONSTRAINT_ID
+    P_TOT_DEFAULT = Config.P_TOT_DEFAULT  # g_protein/g_cdw
+    CO2_EXHANGE_RXNID = Config.CO2_EXHANGE_RXNID
+    GLUCOSE_EXCHANGE_RXNID = Config.GLUCOSE_EXCHANGE_RXNID
+    BIOMASS_REACTION = Config.BIOMASS_REACTION
 
     def __init__(self, id_or_model: Union[str, "Model", None] = None,
                  name: Optional[str] = None,
-                 p_tot: Optional[float] = P_TOT_DEFAULT,
+                 p_tot: Optional[float] = Config.P_TOT_DEFAULT,
                  sensitivity: bool = True,
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
-                 custom_sectors: Union[List, CustomSector] =None):
+                 custom_sectors: Union[List, CustomSector] =None,
+                 configuration = Config):
+        """Constants"""
+        self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
+        self.P_TOT_DEFAULT = configuration.P_TOT_DEFAULT  # g_protein/g_cdw
+        self.CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
+        self.GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
+        self.BIOMASS_REACTION = configuration.BIOMASS_REACTION
 
+        self.configuration = configuration
         """Initialize the Model."""
         if isinstance(id_or_model, str):
             id_or_model = load_model(id_or_model)

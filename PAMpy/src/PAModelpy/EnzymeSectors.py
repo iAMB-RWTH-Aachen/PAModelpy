@@ -1,14 +1,12 @@
 from warnings import warn
 import sys
 
-from PAMpy.Enzyme import Enzyme
-
-sys.path.append('../../../')
-from Package import configuration
+from .Enzyme import Enzyme
+from .configuration import Config
 
 
 class Sector():
-    TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
+    TOTAL_PROTEIN_CONSTRAINT_ID = Config.TOTAL_PROTEIN_CONSTRAINT_ID
     def get_tpc_metabolite(self, model):
         tpc = self.TOTAL_PROTEIN_CONSTRAINT_ID
         try:
@@ -21,7 +19,7 @@ class Sector():
 
 class EnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
-    def __init__(self, id_list, mol_mass):
+    def __init__(self, id_list, mol_mass, configuration = Config):
         self.id_list = id_list #list with reaction ids which are associated with the specific sector
         self.mol_mass = mol_mass #dict with molar masses for each enzyme in the id_list (g/mol)
         self.variables = []
@@ -31,11 +29,13 @@ class EnzymeSector(Sector):
         self.slope = 0
         self.intercept = 0
 
+        self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
+
 
 class ActiveEnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
     #class with all the information on enzymes related to metabolic reactions
-    def __init__(self, rxn2protein: dict):
+    def __init__(self, rxn2protein: dict, configuration:Config =Config):
         """_summary_
 
         Parameters
@@ -53,7 +53,13 @@ class ActiveEnzymeSector(Sector):
                             E2:
                                 {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'genes': [G3, G4],
                                  'complex_with': 'E1'}}
+
+        configuration: Config object, optional
+                    Information about general configuration of the model including identifier conventions.
+                    Default as defined in the `PAModelpy.configuration` script for the E.coli iML1515 model.
         """
+        self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
+
         self.rxn2protein = rxn2protein
         # ID of the sector
         self.id = 'ActiveEnzymeSector'
@@ -200,10 +206,11 @@ class ActiveEnzymeSector(Sector):
 
 class TransEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 4.0590394e05  # default E. coli ribosome molar mass [g/mol]
-    BIOMASS_RXNID = 'BIOMASS_Ec_iML1515_Core_75p37M'
+    BIOMASS_RXNID = Config.BIOMASS_REACTION
     #class with all the information on enzymes related to translation/ribosomes (which is linearly related)
-    def __init__(self, tps_0, tps_mu,id_list= [BIOMASS_RXNID], mol_mass=None):
-        super().__init__(id_list, mol_mass)
+    def __init__(self, tps_0, tps_mu,id_list= [BIOMASS_RXNID], mol_mass=None, configuration = Config):
+        super().__init__(id_list, mol_mass, configuration)
+        BIOMASS_RXNID = configuration.BIOMASS_REACTION
         if self.mol_mass is None:
             self.mol_mass = [self.DEFAULT_MOL_MASS]
         #id_list only contains the model identifier of the biomass formation reaction
@@ -246,8 +253,8 @@ class TransEnzymeSector(EnzymeSector):
 class UnusedEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
     #class with all the information on 'excess' proteins (linear dependent on substrate uptake rate)
-    def __init__(self, ups_0, ups_mu ,id_list, mol_mass=None):
-        super().__init__(id_list, mol_mass)
+    def __init__(self, ups_0, ups_mu ,id_list, mol_mass=None, configuration = Config):
+        super().__init__(id_list, mol_mass, configuration)
         if self.mol_mass is None:
             self.mol_mass = [self.DEFAULT_MOL_MASS]
         # id_list only contains the model identifier of the substrate uptake
@@ -275,8 +282,8 @@ class CustomSector(EnzymeSector):
     DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
 
     #class with all the information on a custom protein allocation secotr (linear dependent on a user defined model variable)
-    def __init__(self, id_list, name,lin_rxn_id, cps_0,cps_s, mol_mass=None):
-        super().__init__(id_list, mol_mass)
+    def __init__(self, id_list, name,lin_rxn_id, cps_0,cps_s, mol_mass=None, configuration=Config):
+        super().__init__(id_list, mol_mass, configuration)
         #id_list containts the name of the reaction on which the custom protein sector is linearly dependent
         self.name = name #name of the protein sector
         self.lin_rxn_id = lin_rxn_id #model identifier of the reaction from which the custom protein sector is linearly dependent

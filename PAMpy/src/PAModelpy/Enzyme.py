@@ -3,7 +3,6 @@
  - EnzymeVariable: Variable related to an enzyme. The value of this variable represent the concentration.
 """
 import cobra.core
-import sys
 import cobra
 from cobra import Reaction
 from cobra.exceptions import OptimizationError
@@ -13,8 +12,7 @@ import sys
 import optlang
 from optlang.symbolics import Zero
 
-sys.path.append('../../../')
-from PAMpy.CatalyticEvent import CatalyticEvent
+from .CatalyticEvent import CatalyticEvent
 from typing import Dict, Union, Optional
 from cobra import DictList
 from warnings import warn
