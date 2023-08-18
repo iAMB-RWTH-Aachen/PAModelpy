@@ -119,8 +119,8 @@ class PAModel(Model):
         self.sector_constraints = {} # a dict with sector constraint id, optlang.Constraint (enzymes) key, value pairs for constraints related to the protein sectors
         self.tpc = 0 # counter of number of CatalyticEvents which contribute to the total protein constraint
         self.sensitivity = sensitivity
-        self.control_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (control coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
-        self.allocation_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (allocation coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
+        self.capacity_allocation_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (capacity allocation coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
+        self.flux_allocation_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (allocation coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
 
 
         #initialize the model
@@ -472,6 +472,10 @@ class PAModel(Model):
             sector.constraints += [self.sector_constraints[sector.id]]
             sector.variables += [var]
 
+        #add sector to sectorlist is it isn't included already
+        if not self.sectors.has_id(sector.id):
+            self.sectors += [sector]
+
 
     def add_catalytic_events(self, catalytic_events: Optional[Iterable]):
         """
@@ -777,18 +781,19 @@ class PAModel(Model):
 
         return m,enz
 
-    def determine_control_coefficients(self):
+    def determine_allocation_coefficients(self):
         obj_value = self.objective.value  # v_z
         mu = self.parse_shadow_prices(self.solver.shadow_prices)
         mu_ub = mu[(mu['direction'] == 'ub')].reset_index()
-        mu_lb = mu[(mu['direction'] == 'lb')].reset_index()
+        mu_lb = mu[(
+                mu['direction'] == 'lb')].reset_index()
         mu_ec_max = mu[(mu['direction'] == 'max')].reset_index()
         mu_ec_min = mu[(mu['direction'] == 'min')].reset_index()
         mu_ec_f = mu[(mu['direction'] == 'f')].reset_index()
         mu_ec_b = mu[(mu['direction'] == 'b')].reset_index()
 
-        self.calculate_control_coefficients(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
-        self.calculate_allocation_coefficients(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+        self.calculate_cac(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
+        self.calculate_fac(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
 
 
     @staticmethod
@@ -813,7 +818,7 @@ class PAModel(Model):
         # df_long[['rxn_id', 'direction']] = df_long['rxn_id'].str.rsplit('_', 1, expand = True).rename(columns=lambda x: 'col{}'.format(x + 1))
         return df_long
 
-    def calculate_control_coefficients(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+    def calculate_cac(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
         """
         Calculates the capacity allocation coefficient for all inequality constraints in the model.
         The sum of all capacity allocation coefficients should equal 1 for growth maximization.
@@ -831,25 +836,20 @@ class PAModel(Model):
         :param mu_ec_b: DataFrame
             Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
 
-        Results will be saved in the self.control_coefficients attribute as a dataframe
+        Results will be saved in the self.capacity_allocation_coefficients attribute as a dataframe
         """
-        self.control_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
-        # add control coefficients for sectors if they are there
+        self.capacity_allocation_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
+        # add capacity allocation coefficients for sectors if they are there
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             for sector in self.sectors:
                 constraint = 'sector'
                 if isinstance(sector, ActiveEnzymeSector):
                     rxn_id = self.TOTAL_PROTEIN_CONSTRAINT_ID
                     enzyme_id = self.TOTAL_PROTEIN_CONSTRAINT_ID
-
-
-                    control_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == self.TOTAL_PROTEIN_CONSTRAINT_ID]['shadow_prices'].iloc[0] / obj_value
-                # else:
-                #     control_coefficient += abs(self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0]) / obj_value
-
-            new_row = [rxn_id, enzyme_id, constraint, control_coefficient]
+                    ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == self.TOTAL_PROTEIN_CONSTRAINT_ID]['shadow_prices'].iloc[0] / obj_value
+            new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             # add new_row to dataframe
-            self.control_coefficients.loc[len(self.control_coefficients)] = new_row
+            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row
 
             #treat sectors separately if there is not a total protein constraint
         else:
@@ -857,11 +857,11 @@ class PAModel(Model):
                 constraint = 'sector'
                 rxn_id = 'R_' + sector.id
                 enzyme_id = sector.id
-                control_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
+                ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
 
-                new_row = [rxn_id, enzyme_id, constraint, control_coefficient]
+                new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
                 # add new_row to dataframe
-                self.control_coefficients.loc[len(self.control_coefficients)] = new_row
+                self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row
 
         for rxn in self.reactions:
             # LB
@@ -870,15 +870,15 @@ class PAModel(Model):
             if 'EX_' in rxn.id or self.constraints[f'{rxn.id}_lb'].ub<0:
                 sign = -1
 
-            control_coefficient_LB = -sign*self.constraints[f'{rxn.id}_lb'].ub * mu_lb[mu_lb['rxn_id'] == rxn.id]['shadow_prices'].iloc[0] / obj_value
+            ca_coefficient_LB = -sign*self.constraints[f'{rxn.id}_lb'].ub * mu_lb[mu_lb['rxn_id'] == rxn.id]['shadow_prices'].iloc[0] / obj_value
             # UB
-            control_coefficient_UB = self.constraints[f'{rxn.id}_ub'].ub * mu_ub[mu_ub['rxn_id'] == rxn.id]['shadow_prices'].iloc[0] / obj_value
+            ca_coefficient_UB = self.constraints[f'{rxn.id}_ub'].ub * mu_ub[mu_ub['rxn_id'] == rxn.id]['shadow_prices'].iloc[0] / obj_value
 
-            new_row_UB = [rxn.id,'', 'UB', control_coefficient_UB]
-            new_row_LB = [rxn.id,'', 'LB', control_coefficient_LB]
+            new_row_UB = [rxn.id,'', 'UB', ca_coefficient_UB]
+            new_row_LB = [rxn.id,'', 'LB', ca_coefficient_LB]
             # add new_row to dataframe
-            self.control_coefficients.loc[len(self.control_coefficients)] = new_row_UB
-            self.control_coefficients.loc[len(self.control_coefficients)] = new_row_LB
+            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row_UB
+            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row_LB
 
         for enzyme in self.enzymes:
             # get reactions associated with this enzyme
@@ -889,19 +889,19 @@ class PAModel(Model):
             mu_ec_min_row = mu_ec_b[mu_ec_b['index'] == f'{enzyme.id}_min']
 
             # max Enzyme constraint
-            control_coefficient_EC_max= self.constraints[f'{enzyme.id}_max'].ub * mu_ec_max_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_max =[reactions, enzyme.id, 'EC_max_f', control_coefficient_EC_max]
+            ca_coefficient_EC_max= self.constraints[f'{enzyme.id}_max'].ub * mu_ec_max_row['shadow_prices'].iloc[0] / obj_value
+            new_enzyme_row_EC_max =[reactions, enzyme.id, 'EC_max_f', ca_coefficient_EC_max]
             # add new_row to dataframe
-            self.control_coefficients.loc[len(self.control_coefficients)] = new_enzyme_row_EC_max
+            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_max
 
             # min Enzyme constraint
-            control_coefficient_EC_min = -self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_min =[reactions, enzyme.id, 'EC_min_f', control_coefficient_EC_min]
+            ca_coefficient_EC_min = -self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
+            new_enzyme_row_EC_min =[reactions, enzyme.id, 'EC_min_f', ca_coefficient_EC_min]
             # add new_row to dataframe
-            self.control_coefficients.loc[len(self.control_coefficients)] = new_enzyme_row_EC_min
+            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_min
 
-    def calculate_allocation_coefficients(self,obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
-        self.allocation_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
+    def calculate_fac(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+        self.flux_allocation_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
         #add allocation coefficients for sectors if they are there
         w_sectors = []
         lin_rxn_id_sector = {}
@@ -911,12 +911,12 @@ class PAModel(Model):
             if not isinstance(sector, ActiveEnzymeSector) and self.TOTAL_PROTEIN_CONSTRAINT_ID not in self.constraints.keys():
                 sector_0 = self.constraints[sector.id].ub
                 sector_primal = self.variables['R_' + sector.id].primal
-                allocation_coefficient = (sector_0-sector_primal) * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] /obj_value
+                fa_coefficient = (sector_0-sector_primal) * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] /obj_value
 
                 w_sectors += [0]
                 lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: None}}
                 # add new_row to dataframe
-                self.allocation_coefficients.loc[len(self.allocation_coefficients)] = ['R_'+sector.id, sector.id, 'sector', allocation_coefficient]
+                self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = ['R_' + sector.id, sector.id, 'sector', fa_coefficient]
             elif not isinstance(sector, ActiveEnzymeSector):
                 w_sectors += [sector.slope]
                 lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: sector.id_list[0]}}
@@ -932,9 +932,9 @@ class PAModel(Model):
             sp_ub = mu_ub[mu_ub['rxn_id'] == rxn.id]['shadow_prices'].iloc[0]
             sp_lb = mu_lb[mu_lb['rxn_id'] == rxn.id]['shadow_prices'].iloc[0]
 
-            rxn_allocation_coefficient = rxn.flux *(sp_ub-sp_lb+sp_E*w_sector)/obj_value
+            rxn_fa_coefficient = rxn.flux *(sp_ub-sp_lb+sp_E*w_sector)/obj_value
             # add new_row to dataframe
-            self.allocation_coefficients.loc[len(self.allocation_coefficients)] = [rxn.id, '', 'rxn', rxn_allocation_coefficient]
+            self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = [rxn.id, '', 'rxn', rxn_fa_coefficient]
 
         #calculate flux allocation coefficient for enzymes
         for enzyme in self.enzymes:
@@ -948,10 +948,10 @@ class PAModel(Model):
             e_rev = self.enzyme_variables.get_by_id(enzyme.id).reverse_variable.primal
 
             #EC: enzyme constraint
-            enzyme_allocation_coefficient = (e_fwd * sp_ec_f - e_rev * sp_ec_b)/obj_value
+            enzyme_fa_coefficient = (e_fwd * sp_ec_f - e_rev * sp_ec_b)/obj_value
             #add new_row to dataframe
-            self.allocation_coefficients.loc[len(self.allocation_coefficients)] = [reactions, enzyme.id, 'enzyme',
-                                                                                           enzyme_allocation_coefficient]
+            self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = [reactions, enzyme.id, 'enzyme',
+                                                                                             enzyme_fa_coefficient]
 
     def change_total_protein_constraint(self, p_tot):
         """
@@ -965,15 +965,15 @@ class PAModel(Model):
         tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
         #correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
         diff = p_tot - self.p_tot
-        tot_prot_constraint.ub += diff
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub += diff
         self.p_tot = p_tot
         self.solver.update()
 
     def change_sector_parameters(self, sector, slope:float, intercept:float, lin_rxn_id:str):
         # input in g/gDW
         print(f'Changing the slope and intercept of the {sector.id}')
-        print(f'Changing slope from {sector.slope} to {slope*1e3}')
-        print(f'Changing intercept from {sector.intercept} to {intercept*1e3}')
+        print(f'Changing slope from {sector.slope} to {slope*1e3} mg/gcdw/h')
+        print(f'Changing intercept from {sector.intercept} to {intercept*1e3} mg/gcdw')
 
         prev_intercept = sector.intercept
         #*1e3 to convert g to mg
@@ -1426,10 +1426,10 @@ class PAModel(Model):
                Notes
                -----
                Only the most commonly used parameters are presented here.  Additional
-               parameters for cobra.solvers may be available and specified with the
+               parameters for cobra.solver may be available and specified with the
                appropriate keyword argument.
                """
         solution = super().optimize(objective_sense,raise_error)
         if self.sensitivity and self.solver.status == 'optimal':
-            self.determine_control_coefficients()
+            self.determine_allocation_coefficients()
         return solution

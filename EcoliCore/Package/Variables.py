@@ -306,7 +306,7 @@ class EnzymeVariable(Reaction):
         if len(reaction_list) == 0:
             return None
 
-        # check whether the input is an PAMpy.Package.Enzyme or string and find the corresponding enzyme if needed
+        # check whether the input is an PAModelpy.Package.Enzyme or string and find the corresponding enzyme if needed
         for i, rxn in enumerate(reaction_list):
             if isinstance(rxn, str):
                 try:
@@ -608,7 +608,7 @@ class CatalyticEvent():
         Parameters
         ----------
         enzyme_list: list
-            A list with PAMpy.Package.Enzyme objects which should be removed. If a list of identifiers (str)
+            A list with PAModelpy.Package.Enzyme objects which should be removed. If a list of identifiers (str)
             is provided, the corresponding enzyme will be obtained from the CatalyticEvent.enzymes attribute
         """
         #check the input
@@ -617,7 +617,7 @@ class CatalyticEvent():
         if len(enzyme_list) == 0:
             return None
 
-        # check wether the input is an PAMpy.Package.Enzyme or string and find the corresponding enzyme if needed
+        # check wether the input is an PAModelpy.Package.Enzyme or string and find the corresponding enzyme if needed
         for i, enz in enumerate(enzyme_list):
             if isinstance(enz, str):
                 try:

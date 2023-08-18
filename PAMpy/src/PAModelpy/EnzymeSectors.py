@@ -282,18 +282,18 @@ class CustomSector(EnzymeSector):
     DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
 
     #class with all the information on a custom protein allocation secotr (linear dependent on a user defined model variable)
-    def __init__(self, id_list, name,lin_rxn_id, cps_0,cps_s, mol_mass=None, configuration=Config):
+    def __init__(self, id_list, name, cps_0,cps_s, mol_mass=None, configuration=Config):
         super().__init__(id_list, mol_mass, configuration)
         #id_list containts the name of the reaction on which the custom protein sector is linearly dependent
         self.name = name #name of the protein sector
-        self.lin_rxn_id = lin_rxn_id #model identifier of the reaction from which the custom protein sector is linearly dependent
+        self.lin_rxn_id = id_list[0] #model identifier of the reaction from which the custom protein sector is linearly dependent
         self.cps_0 = cps_0 #intercept of the linear function describing protein allocation of the custom protein sector
         self.cps_s = cps_s #slope of the linear function describing protein allocation of the custom protein sector
         self.cps_0_coeff = self.cps_0[0] *1e3
         self.id = f'CustomProteinSector_{self.name}'
 
         #*1000 to convert units from g/g_cdw to mg/g_cdw
-        self.slope = self.cps_mu[0]*1e3
+        self.slope = self.cps_s[0]*1e3
         self.intercept = self.cps_0_coeff
 
         # for easy removal

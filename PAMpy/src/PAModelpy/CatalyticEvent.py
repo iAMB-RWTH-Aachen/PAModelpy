@@ -8,7 +8,7 @@ from cobra import DictList
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from optlang.symbolics import Zero
-from typing import Optional, Union, Dict
+from typing import Optional, Dict
 from warnings import warn
 
 class CatalyticEvent():
