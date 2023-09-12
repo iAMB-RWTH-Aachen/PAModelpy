@@ -106,10 +106,11 @@ def build_unused_protein_sector():
 def build_translational_protein_sector():
     return TransEnzymeSector(id_list = ['R1'], tps_mu=[0.01*1e-3], tps_0=[0.01*1e-3], mol_mass= [1])
 
-def print_heatmap(xaxis, matrix):
-    yaxis = list()
-    for i in range(1, n + 1):
-        yaxis += [f'R{i}']
+def print_heatmap(xaxis, matrix, yaxis = None):
+    if yaxis is None:
+        yaxis = list()
+        for i in range(1, n + 1):
+            yaxis += [f'R{i}']
     fig = plotly.express.imshow(matrix, aspect="auto",
                                 x = xaxis, y = yaxis,
                                 labels = dict(x = 'control coefficients', y='maximized reaction'))
@@ -134,7 +135,6 @@ if __name__ == "__main__":
         if 'b' not in rxn.id:
             pamodel.objective = {rxn: 1}
             pamodel.optimize()
-
             Ccac_new = list()
             for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
                 Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()

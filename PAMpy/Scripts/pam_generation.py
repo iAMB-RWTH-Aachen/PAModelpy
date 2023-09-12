@@ -4,25 +4,26 @@ import os
 from typing import Union
 
 # load PAMpy modules
-from PAModelpy import PAModel
+from PAModelpy.PAModel import PAModel
 from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 
 'Function library for making Protein Allocation Models as described in the publication'
 
 
-def set_up_toy_pam():
-    Etot = 0.6*1e-3
+def set_up_toy_pam(sensitivity =True):
+    Etot = 6*1e-3
     model = build_toy_gem()
     active_enzyme = build_active_enzyme_sector()
     unused_enzyme = build_unused_protein_sector()
     translation_enzyme = build_translational_protein_sector()
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
                       translational_sector=translation_enzyme,
-                      unused_sector=unused_enzyme, p_tot=Etot)
+                      unused_sector=unused_enzyme, p_tot=Etot, sensitivity=sensitivity)
+    pamodel.objective = 'R6'
     return pamodel
 
-def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True, translational_enzymes:bool = True, unused_enzymes:bool = True):
+def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True, translational_enzymes:bool = True, unused_enzymes:bool = True, sensitivity =True):
     # Setting the relative paths
     DATA_DIR = os.path.join(os.path.split(os.getcwd())[0], 'Data')
     MODEL_DIR = os.path.join(os.path.split(os.getcwd())[0], 'Models')
@@ -39,7 +40,7 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
     if active_enzymes:
         # load active enzyme sector information
         enzyme_db = pd.read_excel(PAM_DATA_FILE_PATH, sheet_name='ActiveEnzymes')
-
+        enzyme_db = enzyme_db.set_index('rxnID')
         # correct reaction IDS
         for idx in enzyme_db.index.to_list():
             # transprt reactions<
@@ -177,12 +178,12 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
-    pa_model = PAModel(id_or_model=model, p_tot=total_protein, sensitivity = True,
+    pa_model = PAModel(id_or_model=model, p_tot=total_protein, sensitivity=sensitivity,
                        active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector, unused_sector=unused_enzyme_sector)
     return pa_model
 
 def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: bool = True,
-                   translational_enzymes: bool = True, unused_enzymes: bool = True):
+                   translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True):
     # Setting the relative paths
     BASE_DIR = os.path.split(os.getcwd())[0]
     MODEL_DIR = os.path.join(BASE_DIR, 'Models')
@@ -288,7 +289,21 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
-    pamodel = PAModel(id_or_model=model, p_tot=total_protein, sensitivity=True,
+    pamodel = PAModel(id_or_model=model, p_tot=total_protein,
                        active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
-                       unused_sector=unused_protein_sector)
+                       unused_sector=unused_protein_sector, sensitivity=sensitivity)
     return pamodel
+
+def parse_coefficients(pamodel):
+    Ccac = list()
+    Cfac = list()
+
+    for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
+        Ccac+= pamodel.capacity_allocation_coefficients[
+            pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
+
+    for fac in ['rxn', 'enzyme', 'sector']:
+        Cfac += pamodel.flux_allocation_coefficients[
+            pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
+
+    return Ccac, Cfac

@@ -895,7 +895,7 @@ class PAModel(Model):
             self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_max
 
             # min Enzyme constraint
-            ca_coefficient_EC_min = -self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
+            ca_coefficient_EC_min = self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
             new_enzyme_row_EC_min =[reactions, enzyme.id, 'EC_min_f', ca_coefficient_EC_min]
             # add new_row to dataframe
             self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_min

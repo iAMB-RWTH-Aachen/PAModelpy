@@ -120,7 +120,7 @@ class Enzyme():
         Adding catalytic event associated to a reaction to an enzyme
         Parameters
         ----------
-        ce: PAMpy.Variables.CatalyticEvent
+        ce: PAModelpy.Variables.CatalyticEvent
             The catalytic event object to which the enzyme should be added
         kcats: dict
             A list with dicts containing direction, kcat key value pairs
