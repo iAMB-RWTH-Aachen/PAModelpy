@@ -242,6 +242,9 @@ class Enzyme():
                 else:
                     # get kcat values
                     rxn2kcat[rxn_id] = self.rxn2kcat[rxn_id]
+
+        if len(rxn_ids==1):
+            return rxn2kcat[rxn_id]
                     
         return rxn2kcat
 
