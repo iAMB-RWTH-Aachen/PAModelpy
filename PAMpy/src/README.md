@@ -49,6 +49,21 @@ This repository contains not only the source code, but also examples and scripts
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
 
 ## Dependencies
-cobrapy toolbox, Gurobi solver
+Dependencies for the scripts in this repository, not included in the PAModelpy package:
+- `PAModelpy`
+- `plotly`
+- `matplotlib`
+- `scipy`
+- `time`
+- `resource`
+- `PIL`
 
-More dependencies see `pyproject.toml`
+The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
+
+## License
+Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2023)
+
+PAModelpy is free of charge open source software, which can be used and modified for your particular purpose under the [MIT](https://opensource.org/license/mit/)
+or [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) of the users choice.
+
+Please note that according to these licenses, the software is provided 'as is', WITHOUT WARRANTY OF ANY KIND, without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
