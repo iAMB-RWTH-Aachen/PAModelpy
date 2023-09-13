@@ -23,6 +23,23 @@ We have extended this package with the following features:
 
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
+## What can you find where in this repository?
+This repository contains not only the source code, but also examples and scripts which were used in [publication](linktopublication).
+- **Data**
+  - *eGFP_expression_Bienick2014*: measured growth rate and eGFP expression by [Bienick et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0109105)
+  - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
+  - *proteome_data_extract_schmidt2016*: quantitative proteomics data from [Schmidt et al. (2016)](https://www.nature.com/articles/nbt.3418) used to parametrize the *E.coli* core PAM
+  - *Ecoli_phenotypes/Ecoli_phenotypes_py_rev*: experimental physiology measurements to validate the model simulations
+- **Examples**: example notebook on how to build, run and validate a PAM using the PAModelpy package
+- **Figures**: scripts used to create Figure 2-3 and supplementary figures
+- **Models**: models used (iML1515 and core ecoli model)
+- **Results**: results of computational performance analysis
+- **Scripts**: scripts used for gathering results
+  - computational performance analysis: `compare_computational_efficiency_fac.py` and `numeric_error_estimation_schemes_fac.py`
+  - *E.coli* core PAM creation: `analyze_proteome.ipynb` and `create_ecolicore_pam_incl_UE.ipynb`
+  - Sensitivity analysis: `toy_ec_pam.py` and `Ecoli_core_sensitivity_analysis.ipynb`
+- **src/PAModelpy**: source code for PAModelpy package
+
 
 ## Code structure:
 - **EnzymeSectors**: The objects which are used to store the data of the different enzyme sectors which are added to the genome-scale model
@@ -32,6 +49,21 @@ Note that the package has been tested with the [Gurobi](https://www.mathworks.co
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
 
 ## Dependencies
+Dependencies for the scripts in this repository, not included in the PAModelpy package:
+- `PAModelpy`
+- `plotly`
+- `matplotlib`
+- `scipy`
+- `time`
+- `resource`
+- `PIL`
+
+All dependencies can be installed in one go by downloading this repository and running:
+
+`python setup.py install`
+
+from the `PAMpy` directory
+
 The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
 
 ## License
