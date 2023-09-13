@@ -1112,8 +1112,8 @@ class PAModel(Model):
         """
         Change the turnover number of the enzyme for a specific reaction
         :param enzyme_id: Enzyme identifier
-        :param kcats: dict with reaction id, kcat key, value pairs. kcat is again a dict with direction, kcat value
-        key, value pairs
+        :param kcats: dict with reaction id, kcat key, value pairs. kcat is a dict with direction, kcat value
+        key, value pairs {'f': fwd_value, 'b': bckwrd_value}
         """
         if self.enzymes.has_id(enzyme_id):
             enzyme = self.enzymes.get_by_id(enzyme_id)
