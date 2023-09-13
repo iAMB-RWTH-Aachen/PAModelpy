@@ -1040,6 +1040,45 @@ class PAModel(Model):
             self.constraints[rxn_id + '_lb'].ub = -lower_bound
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
+
+    def change_enzyme_bounds(self, enzyme_id: str, lower_bound: float = None, upper_bound: float = None):
+        """
+                Change the enzyme bounds. If the model should be primed for performing a sensitivity analysis,
+                the upper bound of the min and max enzyme concentration constraints are adjusted
+                Parameters
+                ----------
+                enzyme_id: str
+                    string of enzyme id to change
+                lower_bound: float, optional
+                    value of the minimal enzyme concentration
+                upper_bound: float, optional
+                    value of the maximal enzyme concentration
+                """
+        if enzyme_id not in self.enzyme_variables:
+            warnings.warn(f'Enzyme {enzyme_id} does not exist in the model. Cannot change the minimal and maximal concentrations.')
+            return
+        enzyme = self.enzyme_variables.get_by_id(enzyme_id)
+        # make sure the order of setting is right to prevent errors
+        if lower_bound is not None and lower_bound > enzyme.upper_bound:
+            if upper_bound is not None: self.change_enzyme_max(enzyme_id, upper_bound)
+            self.change_enzyme_min(enzyme_id, lower_bound)
+
+        elif upper_bound is not None:
+            if lower_bound is not None: self.change_enzyme_min(enzyme_id, lower_bound)
+            self.change_enzyme_max(enzyme_id, upper_bound)
+
+    def change_enzyme_max(self, enzyme_id: str, upper_bound: float = None):
+        if self.sensitivity:
+            self.constraints[enzyme_id + '_max'].ub = upper_bound
+        else:
+            self.enzyme_variables.get_by_id(enzyme_id).upper_bound = upper_bound
+
+    def change_enzyme_min(self, enzyme_id: str, lower_bound: float = None):
+        if self.sensitivity:
+            self.constraints[enzyme_id + '_min'].ub = -lower_bound
+        else:
+            self.reactions.get_by_id(enzyme_id).lower_bound = lower_bound
+
     def get_enzymes_with_reaction_id(self, rxn_id:str):
         """
         Returns Enzyme objects associated with the reaction id through CatalyticEvent objects
