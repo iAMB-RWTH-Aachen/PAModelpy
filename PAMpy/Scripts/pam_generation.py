@@ -280,7 +280,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
         smax = unused_protein_info[unused_protein_info.Parameter == 's_max_uptake'].loc[1, 'Value']
 
         unused_protein_sector = UnusedEnzymeSector(
-            id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0, 'Value'][:-2]],
+            id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0, 'Value']],
             ups_mu=[ups_0 / smax],
             ups_0=[ups_0],
             mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].loc[3, 'Value']])
