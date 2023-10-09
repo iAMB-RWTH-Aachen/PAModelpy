@@ -948,7 +948,7 @@ class PAModel(Model):
             e_rev = self.enzyme_variables.get_by_id(enzyme.id).reverse_variable.primal
 
             #EC: enzyme constraint
-            enzyme_fa_coefficient = (e_fwd * sp_ec_f - e_rev * sp_ec_b)/obj_value
+            enzyme_fa_coefficient = (e_fwd * sp_ec_f + e_rev * sp_ec_b)/obj_value
             #add new_row to dataframe
             self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = [reactions, enzyme.id, 'enzyme',
                                                                                              enzyme_fa_coefficient]

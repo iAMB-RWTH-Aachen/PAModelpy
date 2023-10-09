@@ -268,7 +268,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
         translation_enzyme_sector = TransEnzymeSector(
             id_list=[translational_info[translational_info.Parameter == 'id_list'].loc[0, 'Value']],
             tps_0=[translational_info[translational_info.Parameter == 'tps_0'].loc[1, 'Value']],
-            tps_mu=[translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
+            tps_mu=[-translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
             mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']])
     else:
         translation_enzyme_sector = None

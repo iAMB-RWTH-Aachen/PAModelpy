@@ -150,6 +150,7 @@ class PAMValidator(object):
             if self.model.solver.status == 'optimal':
                 if pfba: self.model.pfba(fraction_of_optimum=0.1, proteins=True, reactions=False)
                 self.store_results(c_uptake_rxn=c_uptake_rxn)
+            print('Done running simulations\n')
 
     def run_simulations_glc_o2_gradient(self, oxygen_gradient: list, params_to_save:Union[str, list] = 'R_TranslationalProteinSector'):
         """
