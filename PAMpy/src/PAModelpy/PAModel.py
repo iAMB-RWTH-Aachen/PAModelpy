@@ -783,6 +783,9 @@ class PAModel(Model):
 
     def determine_allocation_coefficients(self):
         obj_value = self.objective.value  # v_z
+        if obj_value == 0:
+            print('Objective value is 0, thus allocation coefficients cannot be calculated')
+            return
         mu = self.parse_shadow_prices(self.solver.shadow_prices)
         mu_ub = mu[(mu['direction'] == 'ub')].reset_index()
         mu_lb = mu[(

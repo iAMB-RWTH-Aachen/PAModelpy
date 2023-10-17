@@ -1,6 +1,7 @@
 from cobra import Configuration
 from cobra import Model, Reaction, Metabolite
 import plotly.express
+import numpy as np
 
 #importing the tools from the PAModelpy package
 from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
@@ -22,12 +23,18 @@ Etot = 0.006
 def build_toy_gem():
     '''
     Rebuild the toymodel as in the MATLAB script.
-    S = [1,0,0,0,-1,-1,-1,0,0,0;...
-    0,1,0,0,1,0,0,-1,-1,0;...
-    0,0,0,0,0,1,0,1,0,-1;...
-    0,0,0,0,0,0,1,0,0,-1;...
-    0,0,0,-1,0,0,0,0,0,1;...
-    0,0,-1,0,0,0,0,0,1,1];
+    sub int byp atp co2 pre bio
+R1 = [ 1,  0,  0,  0,  0,  0,  0];
+R2 = [-1,  1,  0,  0,  1,  0,  0];
+R3 = [ 0, -1,  1,  1,  0,  0,  0];
+R3r= -R3;
+R4 = [ 0, -1,  0,  2,  1,  0,  0];
+R5 = [ 0, -1,  0,  0,  0,  1,  0];
+R6 = [ 0,  0,  0, -1,  0, -1,  1];
+R7 = [ 0,  0,  0,  0,  0,  0, -1];
+R8 = [ 0,  0,  0,  0, -1,  0,  0];
+R9 = [ 0,  0, -1,  0,  0,  0,  0];
+S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
 
     :return: Cobrapy model instance as model
     '''
@@ -129,24 +136,24 @@ if __name__ == "__main__":
                       translational_sector = translation_enzyme,
                       unused_sector = unused_enzyme, p_tot=Etot)
 
+    glc_rates = np.arange(0, 11, 0.5)
 
-    for rxn in pamodel.reactions:
-        #only get the network reactions, not the upperbound and lowerbound pseudo-reactions
-        if 'b' not in rxn.id:
-            pamodel.objective = {rxn: 1}
-            pamodel.optimize()
-            Ccac_new = list()
-            for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-                Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
-            Ccac += [Ccac_new]
+    for glc in np.arange(0,11,0.5):
+        pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
+                                       lower_bound=-glc, upper_bound=-glc)
+        pamodel.optimize()
+        Ccac_new = list()
+        for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
+            Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
+        Ccac += [Ccac_new]
 
-            Cfac_new = list()
-            for fac in ['rxn', 'enzyme', 'sector']:
-                Cfac_new += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
-            Cfac += [Cfac_new]
+        Cfac_new = list()
+        for fac in ['rxn', 'enzyme', 'sector']:
+            Cfac_new += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
+        Cfac += [Cfac_new]
 
-        print('Sum of control coefficients: \t \t \t \t \t \t \t \t', round(sum(Ccac_new),6))
-        print('Sum of allocation coefficients: \t \t \t \t \t \t \t', round(sum(Cfac_new), 6), '\n')
+    print('Sum of control coefficients: \t \t \t \t \t \t \t \t', round(sum(Ccac_new),6))
+    print('Sum of allocation coefficients: \t \t \t \t \t \t \t', round(sum(Cfac_new), 6), '\n')
 
     for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
         if cac == 'UB' or cac == 'LB':

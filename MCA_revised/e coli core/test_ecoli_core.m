@@ -1,4 +1,4 @@
-% Protein allocation formulation (without translation sector)
+ % Protein allocation formulation (without translation sector)
 %
 % --------------------- Pedro Saa UC 2023 ----------------------------------
 clc,clearvars,close all
