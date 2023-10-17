@@ -185,7 +185,7 @@ class CatalyticEvent():
             if enzyme in self.enzymes:
                 # print(enzyme)
                 # warn(f'Enzyme {enzyme.id} is already associated with catalytic event {self.id}. This enzyme will be updated')
-                self.change_kcat_values({enzyme.id: enzyme.get_kcat_values(rxn_ids = [self.rxn_id])[self.rxn_id]})
+                self.change_kcat_values({enzyme.id: enzyme.get_kcat_values(rxn_ids = [self.rxn_id])})
                 # print(self.enzymes)
                 continue
 
