@@ -142,12 +142,12 @@ def run_simulations(pamodel, substrate_axis):
             mu_list += [pamodel.objective.value]
             Ccac_new = list()
             for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-                Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
+                Ccac_new += pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == cac].coefficient.to_list()
             Ccac += [Ccac_new]
 
             Cfac_new = list()
             for fac in ['rxn', 'enzyme', 'sector']:
-                Cfac_new += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
+                Cfac_new += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == fac].coefficient.to_list()
             Cfac += [Cfac_new]
 
             print('Sum of control coefficients: \t \t \t \t \t \t \t \t', round(sum(Ccac_new),6))
@@ -155,16 +155,16 @@ def run_simulations(pamodel, substrate_axis):
 
     for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
         if cac == 'UB' or cac == 'LB':
-            x_axis_cac += [rid+'_'+cac for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].rxn_id.to_list()]
+            x_axis_cac += [rid +'_' + cac for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == cac].rxn_id.to_list()]
         else:
-            x_axis_cac += [rid+'_'+cac[-1] for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].enzyme_id.to_list()]
+            x_axis_cac += [rid +'_' + cac[-1] for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == cac].enzyme_id.to_list()]
 
     for fac in ['rxn', 'enzyme', 'sector']:
         if fac == 'rxn':
-            x_axis_fac += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].rxn_id.to_list()
+            x_axis_fac += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == fac].rxn_id.to_list()
         else:
-            x_axis_fac += pamodel.flux_allocation_coefficients[
-                pamodel.flux_allocation_coefficients['constraint'] == fac].enzyme_id.to_list()
+            x_axis_fac += pamodel.variable_sensitivity_coefficients[
+                pamodel.variable_sensitivity_coefficients['constraint'] == fac].enzyme_id.to_list()
 
     return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
             'Ccac':Ccac, 'Cfac':Cfac,
