@@ -2,12 +2,13 @@
  - Enzyme: Constraints relating enzymes to reactions. Including upper and lower bound enzyme constraints
  - EnzymeVariable: Variable related to an enzyme. The value of this variable represent the concentration.
 """
+import PAModelpy.Enzyme
 import cobra.core
 import cobra
 from cobra import Reaction
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
-import sys
+from copy import copy, deepcopy
 
 import optlang
 from optlang.symbolics import Zero
@@ -265,7 +266,29 @@ class Enzyme():
         #remove the event from the DictList
         self.catalytic_events.remove(catalytic_event)
 
-        
+    def __copy__(self) -> 'Enzyme':
+        """ Copy the enzyme variable
+        :return: PAModelpy.Enzyme.Enzyme:
+        A new enzyme that is a copy of the original enzyme
+        """
+
+        cop = copy(super(Enzyme, self))
+        return cop
+
+    def __deepcopy__(self, memo: dict) -> 'Enzyme':
+        """ Copy the enzyme variable with memo
+
+        :param: memo:dict:
+        Automatically passed parameter
+
+        :return: PAModelpy.Enzyme.Enzyme:
+        A new enzyme that is a copy of the original enzyme with memo
+        """
+
+        cop = deepcopy(super(Enzyme, self), memo)
+        return cop
+
+
 class EnzymeComplex(Enzyme):
     """Upper level EnzymeComplex object containing information about the enzymes in a complex
        and link to the enzyme variables (CatalyticEvents) for each reaction the
@@ -716,3 +739,25 @@ class EnzymeVariable(Reaction):
                         self.reaction.reverse_variable: 1 / coeff
                     })
             self._model.solver.update()
+
+    def __copy__(self) -> 'PAModelpy.Enzyme.EnzymeVariable':
+        """ Copy the enzyme variable
+        :return: PAModelpy.Enzyme.EnzymeVariable:
+        A new enzyme variable that is a copy of the original enzyme variable
+        """
+
+        cop = copy(super(PAModelpy.Enzyme.EnzymeVariable, self))
+        return cop
+
+    def __deepcopy__(self, memo: dict) -> 'PAModelpy.Enzyme.EnzymeVariable':
+        """ Copy the enzyme variable with memo
+
+        :param: memo:dict:
+        Automatically passed parameter
+
+        :return: PAModelpy.Enzyme.EnzymeVariable:
+        A new enzyme variable that is a copy of the original enzyme variable with memo
+        """
+
+        cop = deepcopy(super(PAModelpy.Enzyme.EnzymeVariable, self), memo)
+        return cop

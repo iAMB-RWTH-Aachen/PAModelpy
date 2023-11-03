@@ -1,5 +1,5 @@
 from warnings import warn
-import sys
+from copy import copy, deepcopy
 
 from .Enzyme import Enzyme
 from .configuration import Config
@@ -16,6 +16,28 @@ class Sector():
             tpc_metabolite = None
             totprot = False
         return totprot, tpc_metabolite
+
+    def __copy__(self) -> 'Sector':
+        """ Copy the Sector
+        :return: Sector:
+        A new Sector that is a copy of the original Sector
+        """
+
+        cop = copy(super(Sector, self))
+        return cop
+
+    def __deepcopy__(self, memo: dict) -> 'Sector':
+        """ Copy the Sector with memo
+
+        :param: memo:dict:
+        Automatically passed parameter
+
+        :return: Sector:
+        A new Sector that is a copy of the original Sector with memo
+        """
+
+        cop = deepcopy(super(Sector, self), memo)
+        return cop
 
 class EnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
@@ -260,8 +282,10 @@ class UnusedEnzymeSector(EnzymeSector):
         # id_list only contains the model identifier of the substrate uptake
         # mol_mass is the molar mass of a concentration unit of the unused protein sector
         self.ups_0 = ups_0 #amount of protein allocated to the excess enzyme sector at zero substrate uptake
-        self.ups_mu = ups_mu[0] #slope of linear relation with growth
-        self.id = 'UnusedEnzymeSector'
+        if isinstance(ups_mu, list):
+            self.ups_mu = ups_mu[0]  # slope of linear relation with growth
+        else:
+            self.ups_mu = ups_mu
         # *1000 to convert units from g/g_cdw to mg/g_cdw
         self.ups_0_coeff = self.ups_0[0]*1e3
 

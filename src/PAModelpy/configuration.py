@@ -23,3 +23,19 @@ class Config:
     ACETATE_EXCRETION_RXNID = 'EX_ac_e'
     PHYS_RXN_IDS = [BIOMASS_REACTION, GLUCOSE_EXCHANGE_RXNID, ACETATE_EXCRETION_RXNID, CO2_EXHANGE_RXNID, OXYGEN_UPTAKE_RXNID,
                         'PGI', 'G6PDH2r', 'EDA', 'CS', 'ICL', 'PPC', 'ME1', 'ME2']
+
+    def reset(self):
+        """
+        Reset the config object to the standard settings for E.coli iML1515
+        :return:
+        """
+        self.TOTAL_PROTEIN_CONSTRAINT_ID = 'TotalProteinConstraint'
+        self.P_TOT_DEFAULT = 0.258  # g_protein/g_cdw
+        self.CO2_EXHANGE_RXNID = 'EX_co2_e'
+        self.GLUCOSE_EXCHANGE_RXNID = 'EX_glc__D_e'
+        self.BIOMASS_REACTION = 'BIOMASS_Ec_iML1515_core_75p37M'
+        self.OXYGEN_UPTAKE_RXNID = 'EX_o2_e'
+        self.ACETATE_EXCRETION_RXNID = 'EX_ac_e'
+        self.PHYS_RXN_IDS = [self.BIOMASS_REACTION, self.GLUCOSE_EXCHANGE_RXNID, self.ACETATE_EXCRETION_RXNID, self.CO2_EXHANGE_RXNID,
+                        self.OXYGEN_UPTAKE_RXNID,
+                        'PGI', 'G6PDH2r', 'EDA', 'CS', 'ICL', 'PPC', 'ME1', 'ME2']

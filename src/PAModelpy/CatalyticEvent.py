@@ -10,6 +10,7 @@ from cobra.util.solver import check_solver_status
 from optlang.symbolics import Zero
 from typing import Optional, Dict
 from warnings import warn
+from copy import copy, deepcopy
 
 class CatalyticEvent():
     """
@@ -348,3 +349,25 @@ class CatalyticEvent():
                         self.rxn.reverse_variable: 1/coeff
                         })
             self._model.solver.update()
+
+    def __copy__(self) -> 'CatalyticEvent':
+        """ Copy the CatalyticEvent
+        :return: CatalyticEvent:
+        A new CatalyticEvent that is a copy of the original CatalyticEvent
+        """
+
+        cop = copy(super(CatalyticEvent, self))
+        return cop
+
+    def __deepcopy__(self, memo: dict) -> 'CatalyticEvent':
+        """ Copy the CatalyticEvent with memo
+
+        :param: memo:dict:
+        Automatically passed parameter
+
+        :return: CatalyticEvent:
+        A new CatalyticEvent that is a copy of the original CatalyticEvent with memo
+        """
+
+        cop = deepcopy(super(CatalyticEvent, self), memo)
+        return cop
