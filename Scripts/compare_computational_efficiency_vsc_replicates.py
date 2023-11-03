@@ -50,8 +50,8 @@ coeff_dict = {}
 for model in [toy_model_pam, ecolicore_pam]:
     model.optimize()
 
-    x_axis_vsc = model.variable_sensitivity_coefficients[
-                model.variable_sensitivity_coefficients['constraint'] == 'enzyme'].enzyme_id.to_list()
+    x_axis_vsc = model.enzyme_sensitivity_coefficients[
+        model.enzyme_sensitivity_coefficients['constraint'] == 'enzyme'].enzyme_id.to_list()
 
     df_coeff_fcc = pd.DataFrame(columns=['iteration']+x_axis_vsc)
     df_coeff_fcn = pd.DataFrame(columns=['iteration']+x_axis_vsc)
