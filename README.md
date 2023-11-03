@@ -35,7 +35,7 @@ This repository contains not only the source code, but also examples and scripts
 - **Models**: models used (iML1515 and core ecoli model)
 - **Results**: results of computational performance analysis
 - **Scripts**: scripts used for gathering results
-  - computational performance analysis: `compare_computational_efficiency_fac.py` and `numeric_error_estimation_schemes_fac.py`
+  - computational performance analysis: `compare_computational_efficiency_vsc_replicates.py` and `numeric_error_estimation_schemes_vsc.py`
   - *E.coli* core PAM creation: `analyze_proteome.ipynb` and `create_ecolicore_pam_incl_UE.ipynb`
   - Sensitivity analysis: `toy_ec_pam.py` and `Ecoli_core_sensitivity_analysis.ipynb`
 - **src/PAModelpy**: source code for PAModelpy package
@@ -62,7 +62,7 @@ All dependencies can be installed in one go by downloading this repository and r
 
 `python setup.py install`
 
-from the `PAMpy` directory
+from the `src` directory
 
 The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
 
