@@ -6,9 +6,15 @@ import numpy as np
 #importing the tools from the PAModelpy package
 from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from PAModelpy.PAModel import PAModel
+from PAModelpy.configuration import Config
 
-# from PAModelpy import ActiveEnzymeSector, UnusedEnzymeSector, PAModel
+Config.BIOMASS_REACTION = 'R7'
+Config.GLUCOSE_EXCHANGE_RXNID = 'R1'
+Config.CO2_EXHANGE_RXNID = 'R8'
+Config.ACETATE_EXCRETION_RXNID = 'R9'
+
 #need to have gurobipy installed
+
 
 #global variables:
 global metabolites, n, m, Etot
@@ -17,7 +23,7 @@ global metabolites, n, m, Etot
 metabolites = ['Substrate', 'ATP', 'CO2', 'Precursor', 'Biomass', 'Byproduct', 'Intermediate']
 n = 9
 m = 7
-Etot = 0.006
+Etot = 0.6*1e-3 #will be adjusted in the model with 1e3
 
 #functions:
 def build_toy_gem():
@@ -95,8 +101,8 @@ S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
 
     return model
 
-def build_active_enzyme_sector():
-    kcat_fwd = [1, 0.5, 1, 0.5 ,0.45, 1.5]  # High turnover for exchange reactions
+def build_active_enzyme_sector(Config):
+    kcat_fwd = [1, 0.5, 1, 1, 0.5 ,0.45, 1.5]  # High turnover for exchange reactions
     kcat_rev = [kcat for kcat in kcat_fwd]
     rxn2kcat = {}
     for i in range(n-3): # all reactions have an enzyme, except excretion reactions
@@ -105,13 +111,58 @@ def build_active_enzyme_sector():
         #dummy molmass like in MATLAB script
         rxn2kcat = {**rxn2kcat, **{rxn_id: {f'E{i+1}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6), 'molmass': 1e6}}}}
 
-    return ActiveEnzymeSector(rxn2protein = rxn2kcat)
+    return ActiveEnzymeSector(rxn2protein = rxn2kcat, configuration=Config)
 
-def build_unused_protein_sector():
-    return UnusedEnzymeSector(id_list = ['R1'], ups_mu=[0.01*1e-3], ups_0=[0.1*1e-3], mol_mass= [1])
+def build_unused_protein_sector(Config):
+    return UnusedEnzymeSector(id_list = ['R1'], ups_mu=[-0.01*1e-3], ups_0=[0.1*1e-3], mol_mass= [1], configuration=Config)
 
-def build_translational_protein_sector():
-    return TransEnzymeSector(id_list = ['R1'], tps_mu=[0.01*1e-3], tps_0=[0.01*1e-3], mol_mass= [1])
+def build_translational_protein_sector(Config):
+    return TransEnzymeSector(id_list = ['R7'], tps_mu=[0.01*1e-3], tps_0=[0.01*1e-3], mol_mass= [1], configuration=Config)
+def run_simulations(pamodel, substrate_rates):
+    substrate_axis = list()
+    Ccsc = list()
+    Cvsc = list()
+    x_axis_csc = list()
+    x_axis_vsc = list()
+    mu_list = list()
+
+    for substrate in substrate_rates:
+        pamodel.change_reaction_bounds(rxn_id='R1',
+                                       lower_bound=0, upper_bound=substrate)
+        pamodel.optimize()
+        if pamodel.solver.status == 'optimal' and model.objective.value>0:
+            print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
+            substrate_axis += [substrate]
+            mu_list += [pamodel.objective.value]
+            Ccsc_new = list()
+            for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
+                Ccsc_new += pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
+            Ccsc += [Ccsc_new]
+
+            Cvsc_new = list()
+            for vsc in ['flux', 'enzyme', 'sector']:
+                Cvsc_new += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].coefficient.to_list()
+            Cvsc += [Cvsc_new]
+
+            print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Ccsc_new),6))
+            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cvsc_new), 6), '\n')
+
+    for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
+        if csc == 'flux_ub' or csc == 'flux_lb':
+            x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].rxn_id.to_list()]
+        else:
+            x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].enzyme_id.to_list()]
+
+    for vsc in ['flux', 'enzyme', 'sector']:
+        if vsc == 'flux':
+            x_axis_vsc += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].rxn_id.to_list()
+        else:
+            x_axis_vsc += pamodel.variable_sensitivity_coefficients[
+                pamodel.variable_sensitivity_coefficients['constraint'] == vsc].enzyme_id.to_list()
+
+    return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
+            'Ccsc':Ccsc, 'Cvsc':Cvsc,
+            'x_axis_csc': x_axis_csc,'x_axis_vsc': x_axis_vsc}
 
 def print_heatmap(xaxis, matrix, yaxis = None):
     if yaxis is None:
@@ -120,53 +171,24 @@ def print_heatmap(xaxis, matrix, yaxis = None):
             yaxis += [f'R{i}']
     fig = plotly.express.imshow(matrix, aspect="auto",
                                 x = xaxis, y = yaxis,
-                                labels = dict(x = 'control coefficients', y='maximized reaction'))
+                                labels = dict(x = 'sensitivity coefficients', y='substrate uptake'))
     fig.show()
 
 if __name__ == "__main__":
-    Ccac=list()
-    Cfac = list()
-    x_axis_cac = list()
-    x_axis_fac = list()
     model = build_toy_gem()
-    active_enzyme = build_active_enzyme_sector()
-    unused_enzyme = build_unused_protein_sector()
-    translation_enzyme = build_translational_protein_sector()
+    active_enzyme = build_active_enzyme_sector(Config)
+    unused_enzyme = build_unused_protein_sector(Config)
+    translation_enzyme = build_translational_protein_sector(Config)
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
                       translational_sector = translation_enzyme,
-                      unused_sector = unused_enzyme, p_tot=Etot)
+                      unused_sector = unused_enzyme, p_tot=Etot, configuration=Config)
 
-    glc_rates = np.arange(0, 11, 0.5)
+    #optimize biomass formation
+    pamodel.objective={pamodel.reactions.get_by_id('R7') :1}
 
-    for glc in np.arange(0,11,0.5):
-        pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
-                                       lower_bound=-glc, upper_bound=-glc)
-        pamodel.optimize()
-        Ccac_new = list()
-        for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-            Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
-        Ccac += [Ccac_new]
+    substrate_rates = np.arange(1e-3, 1e-1, 1e-3)
+    simulation_results = run_simulations(pamodel, substrate_rates)
 
-        Cfac_new = list()
-        for fac in ['rxn', 'enzyme', 'sector']:
-            Cfac_new += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
-        Cfac += [Cfac_new]
 
-    print('Sum of control coefficients: \t \t \t \t \t \t \t \t', round(sum(Ccac_new),6))
-    print('Sum of allocation coefficients: \t \t \t \t \t \t \t', round(sum(Cfac_new), 6), '\n')
-
-    for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-        if cac == 'UB' or cac == 'LB':
-            x_axis_cac += [rid+'_'+cac for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].rxn_id.to_list()]
-        else:
-            x_axis_cac += [rid+'_'+cac[-1] for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].enzyme_id.to_list()]
-
-    for fac in ['rxn', 'enzyme', 'sector']:
-        if fac == 'rxn':
-            x_axis_fac += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].rxn_id.to_list()
-        else:
-            x_axis_fac += pamodel.flux_allocation_coefficients[
-                pamodel.flux_allocation_coefficients['constraint'] == fac].enzyme_id.to_list()
-
-    print_heatmap(x_axis_cac, Ccac)
-    print_heatmap(x_axis_fac, Cfac)
+    print_heatmap(simulation_results['x_axis_csc'], simulation_results['Ccsc'], yaxis=simulation_results['substrate_axis'])
+    print_heatmap(simulation_results['x_axis_vsc'], simulation_results['Cvsc'], yaxis=simulation_results['substrate_axis'])

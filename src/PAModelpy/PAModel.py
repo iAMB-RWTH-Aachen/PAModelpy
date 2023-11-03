@@ -11,6 +11,8 @@ from typing import List, Optional, Union, Dict, Iterable
 from functools import partial
 import warnings
 import pandas as pd
+from copy import copy, deepcopy
+import inspect
 
 # sys.path.append('../')
 from .EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, UnusedEnzymeSector, CustomSector, Sector
@@ -119,8 +121,8 @@ class PAModel(Model):
         self.sector_constraints = {} # a dict with sector constraint id, optlang.Constraint (enzymes) key, value pairs for constraints related to the protein sectors
         self.tpc = 0 # counter of number of CatalyticEvents which contribute to the total protein constraint
         self.sensitivity = sensitivity
-        self.capacity_allocation_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (capacity allocation coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
-        self.flux_allocation_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (allocation coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
+        self.capacity_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (capacity sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
+        self.variable_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
 
 
         #initialize the model
@@ -781,10 +783,10 @@ class PAModel(Model):
 
         return m,enz
 
-    def determine_allocation_coefficients(self):
+    def determine_sensitivity_coefficients(self):
         obj_value = self.objective.value  # v_z
         if obj_value == 0:
-            print('Objective value is 0, thus allocation coefficients cannot be calculated')
+            print('Objective value is 0, thus sensitivity coefficients cannot be calculated')
             return
         mu = self.parse_shadow_prices(self.solver.shadow_prices)
         mu_ub = mu[(mu['direction'] == 'ub')].reset_index()
@@ -795,8 +797,9 @@ class PAModel(Model):
         mu_ec_f = mu[(mu['direction'] == 'f')].reset_index()
         mu_ec_b = mu[(mu['direction'] == 'b')].reset_index()
 
-        self.calculate_cac(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
-        self.calculate_fac(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+        self.calculate_csc(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
+        self.calculate_vsc(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+        # self.validate_sensitivity_coefficients()
 
 
     @staticmethod
@@ -821,10 +824,10 @@ class PAModel(Model):
         # df_long[['rxn_id', 'direction']] = df_long['rxn_id'].str.rsplit('_', 1, expand = True).rename(columns=lambda x: 'col{}'.format(x + 1))
         return df_long
 
-    def calculate_cac(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+    def calculate_csc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
         """
-        Calculates the capacity allocation coefficient for all inequality constraints in the model.
-        The sum of all capacity allocation coefficients should equal 1 for growth maximization.
+        Calculates the capacity sensitivity coefficient for all inequality constraints in the model.
+        The sum of all capacity sensitivity coefficients should equal 1 for growth maximization.
         Definition: constraint_UB*shadowprice/obj_value.
 
         :param obj_value: Float
@@ -839,20 +842,20 @@ class PAModel(Model):
         :param mu_ec_b: DataFrame
             Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
 
-        Results will be saved in the self.capacity_allocation_coefficients attribute as a dataframe
+        Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
         """
-        self.capacity_allocation_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
-        # add capacity allocation coefficients for sectors if they are there
+        self.capacity_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
+        # add capacity sensitivity coefficients for sectors if they are there
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             for sector in self.sectors:
-                constraint = 'sector'
+                constraint = 'proteome'
                 if isinstance(sector, ActiveEnzymeSector):
                     rxn_id = self.TOTAL_PROTEIN_CONSTRAINT_ID
                     enzyme_id = self.TOTAL_PROTEIN_CONSTRAINT_ID
                     ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == self.TOTAL_PROTEIN_CONSTRAINT_ID]['shadow_prices'].iloc[0] / obj_value
             new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             # add new_row to dataframe
-            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
 
             #treat sectors separately if there is not a total protein constraint
         else:
@@ -864,7 +867,7 @@ class PAModel(Model):
 
                 new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
                 # add new_row to dataframe
-                self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row
+                self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
 
         for rxn in self.reactions:
             # LB
@@ -877,11 +880,11 @@ class PAModel(Model):
             # UB
             ca_coefficient_UB = self.constraints[f'{rxn.id}_ub'].ub * mu_ub[mu_ub['rxn_id'] == rxn.id]['shadow_prices'].iloc[0] / obj_value
 
-            new_row_UB = [rxn.id,'', 'UB', ca_coefficient_UB]
-            new_row_LB = [rxn.id,'', 'LB', ca_coefficient_LB]
+            new_row_UB = [rxn.id,'', 'flux_ub', ca_coefficient_UB]
+            new_row_LB = [rxn.id,'', 'flux_lb', ca_coefficient_LB]
             # add new_row to dataframe
-            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row_UB
-            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_row_LB
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_UB
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_LB
 
         for enzyme in self.enzymes:
             # get reactions associated with this enzyme
@@ -893,19 +896,33 @@ class PAModel(Model):
 
             # max Enzyme constraint
             ca_coefficient_EC_max= self.constraints[f'{enzyme.id}_max'].ub * mu_ec_max_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_max =[reactions, enzyme.id, 'EC_max_f', ca_coefficient_EC_max]
+            new_enzyme_row_EC_max =[reactions, enzyme.id, 'enzyme_max', ca_coefficient_EC_max]
             # add new_row to dataframe
-            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_max
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_enzyme_row_EC_max
 
             # min Enzyme constraint
             ca_coefficient_EC_min = self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_min =[reactions, enzyme.id, 'EC_min_f', ca_coefficient_EC_min]
+            new_enzyme_row_EC_min =[reactions, enzyme.id, 'enzyme_min', ca_coefficient_EC_min]
             # add new_row to dataframe
-            self.capacity_allocation_coefficients.loc[len(self.capacity_allocation_coefficients)] = new_enzyme_row_EC_min
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_enzyme_row_EC_min
 
-    def calculate_fac(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
-        self.flux_allocation_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
-        #add allocation coefficients for sectors if they are there
+    def calculate_vsc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+        """
+        Calculates variable sensitivity coefficients for the reaction and enzyme variables using their primal values
+        the objective value and shadow prices according to the following relations:
+
+        vsc = variable.primal * constraint.shadowprice/obj.value
+
+        :param obj_value: float: objective value from the most recent optimal solution
+        :param mu: pd.DataFrame: all shadow prices
+        :param mu_ub: pd.DataFrame: shadow prices for the upperbound of the reaction fluxes
+        :param mu_lb: pd.DataFrame: shadow prices for the lowerbound of the reaction fluxes
+        :param mu_ec_f: pd.DataFrame: shadow prices for max enzyme concentrations (forward variables)
+        :param mu_ec_b: pd.DataFrame: shadow prices for the min enzyme concentrations (reverse variables)
+        :return: fills the PAModel.variable_sensitivity_coefficients dataframe
+        """
+        self.variable_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
+        #add sensitivity coefficients for sectors if they are there
         w_sectors = []
         lin_rxn_id_sector = {}
         for index, sector in enumerate(self.sectors):
@@ -919,7 +936,7 @@ class PAModel(Model):
                 w_sectors += [0]
                 lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: None}}
                 # add new_row to dataframe
-                self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = ['R_' + sector.id, sector.id, 'sector', fa_coefficient]
+                self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = ['R_' + sector.id, sector.id, 'sector', fa_coefficient]
             elif not isinstance(sector, ActiveEnzymeSector):
                 w_sectors += [sector.slope]
                 lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: sector.id_list[0]}}
@@ -937,9 +954,9 @@ class PAModel(Model):
 
             rxn_fa_coefficient = rxn.flux *(sp_ub-sp_lb+sp_E*w_sector)/obj_value
             # add new_row to dataframe
-            self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = [rxn.id, '', 'rxn', rxn_fa_coefficient]
+            self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = [rxn.id, '', 'flux', rxn_fa_coefficient]
 
-        #calculate flux allocation coefficient for enzymes
+        #calculate variable sensitivity coefficient for enzymes
         for enzyme in self.enzymes:
             #get the reactions associated with the enzyme
             reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
@@ -953,8 +970,77 @@ class PAModel(Model):
             #EC: enzyme constraint
             enzyme_fa_coefficient = (e_fwd * sp_ec_f + e_rev * sp_ec_b)/obj_value
             #add new_row to dataframe
-            self.flux_allocation_coefficients.loc[len(self.flux_allocation_coefficients)] = [reactions, enzyme.id, 'enzyme',
-                                                                                             enzyme_fa_coefficient]
+            self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = [reactions, enzyme.id, 'enzyme',
+                                                                                                       enzyme_fa_coefficient]
+
+    def calculate_sum_of_enzymes(self):
+        """
+        Calculates the sum of all enzyme variables for a feasible solution
+
+        :return: sum: float: sum of all enzyme variables in mg/gcdw/h
+        """
+        if self.solver.status != 'optimal':
+            warnings.warn('Cannot calculate sum of enzymes: solution is not optimal')
+            return
+        sum = 0 #mg/gcdw/h
+        for enzyme in self.enzyme_variables:
+            #convert from mmol to mg using the same formulation as the coefficients in the protein pool constraint
+            sum+= enzyme.concentration *enzyme.molmass *1e-6
+        return sum
+
+    def validate_sensitivity_coefficients(self):
+        feasibility_deviation = self.solver.problem.Params.FeasibilityTol * len(self.variables)
+
+        # calculate fraction of protein space occupied
+        sum_enzymes = self.calculate_sum_of_enzymes()
+        phi_e0 = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub
+        alpha = sum_enzymes / phi_e0
+
+        # calculate sum of coefficients
+        # flux capacity sensitivity coefficients
+        sum_FCSC = sum(self.capacity_sensitivity_coefficients[
+                           (self.capacity_sensitivity_coefficients['constraint'] == 'flux_ub') | (
+                                       self.capacity_sensitivity_coefficients['constraint'] == 'flux_lb')].coefficient)
+        # enzyme capacity sensitivity coefficients
+        sum_ECSC = sum(self.capacity_sensitivity_coefficients[
+                           (self.capacity_sensitivity_coefficients['constraint'] == 'enzyme_min') | (
+                                       self.capacity_sensitivity_coefficients[
+                                           'constraint'] == 'enzyme_max')].coefficient)
+        # enzynme variable sensitivity coefficients
+        sum_EVSC = sum(self.variable_sensitivity_coefficients[
+                           self.variable_sensitivity_coefficients['constraint'] == 'enzyme'].coefficient)
+        # proteome capacity sensitivity coefficients
+        PCSC = self.capacity_sensitivity_coefficients[
+            self.capacity_sensitivity_coefficients['constraint'] == 'proteome'].coefficient.iloc[0]
+
+        # validation sums
+        enzyme_flux_sum = sum_EVSC + sum_FCSC + (1 - alpha) * PCSC
+        enzyme_sum = -sum_EVSC + sum_ECSC + alpha * PCSC
+        print('Variable Sensitivity Relationships')
+        print('----------------------------------')
+
+        print('sum(EnzymeVSC)+sum(FluxCSC)+ (1-alpha)ProteomeCSC = ', enzyme_flux_sum)
+        # check if the result is valid taking into account the protein pool occupancy and the error due to the feasibiity tolerance
+        if round(alpha,
+                 2) == 1.0 and enzyme_flux_sum <= 1 + feasibility_deviation and enzyme_flux_sum >= 1 - feasibility_deviation:
+            print('Protein space is fully utilized and variable sensitivity relation is within bounds\n')
+        elif enzyme_flux_sum >= 1 - feasibility_deviation:
+            print('Protein space is NOT fully utilized and variable sensitivity relation is within bounds\n')
+        else:
+            print('variable sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
+                  'the model structure\n')
+
+        print('-sum(EnzymeVSC) + sum(EnzymeCSC) + alpha*ProteomeCSC = ', enzyme_sum)
+
+        if round(alpha,
+                 2) == 1.0 and enzyme_sum <= 0 + feasibility_deviation and enzyme_sum >= 0 - feasibility_deviation:
+            print('Protein space is fully utilized and variable sensitivity relation is within bounds\n')
+        elif enzyme_sum >= 0 - feasibility_deviation:
+            print('Protein space is NOT fully utilized and variable sensitivity relation is within bounds\n')
+        else:
+            print('variable sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
+                  'the model structure\n')
+
 
     def change_total_protein_constraint(self, p_tot):
         """
@@ -1473,5 +1559,180 @@ class PAModel(Model):
                """
         solution = super().optimize(objective_sense,raise_error)
         if self.sensitivity and self.solver.status == 'optimal':
-            self.determine_allocation_coefficients()
+            self.determine_sensitivity_coefficients()
         return solution
+
+    def copy(self) -> 'PAModel':
+        """Provide a partial 'deepcopy' of the Model.
+
+                Adjusted from cobra.Model.copy()
+               All the Metabolite, Gene, Reaction, Enzyme, EnzymeVariable, Sector and CatalyticEvent
+                objects are created anew but in a faster fashion than deepcopy.
+
+               :return: PAModelpy.PAModel: new model copy
+               """
+
+        do_not_copy_by_ref = {
+            "metabolites",
+            "reactions",
+            "genes",
+            "enzymes",
+            "enzyme_variables",
+            "enzyme_constraints",
+            "sectors",
+            "catalytic_events"
+            "notes",
+            "annotation",
+            "groups",
+        }
+
+        # setting up the dict for the initialization of the model copy
+        model_init_attr = {
+            'm_model',
+            'name',
+            'p_tot',
+            'sensitivity',
+            'sectors',
+            'configuration'
+        }
+
+        new_dict = {}
+        # for attr in self.__dict__:
+        #     if attr not in do_not_copy_by_ref and attr in model_init_attr:
+        #         if attr == 'm_model': new_attr = 'id_or_model'
+        #         else: new_attr = attr
+        #         new_dict[new_attr] = self.__dict__[attr]
+        new_dict = self.find_init_args(self)
+        new_dict['id_or_model'] = self.m_model
+        # initialize new model
+        new = self.__class__(**new_dict)
+        # also adjust the constants
+        for attr in self.__dict__:
+            if attr not in do_not_copy_by_ref and not attr in model_init_attr:
+                new.__dict__[attr] = self.__dict__[attr]
+
+        new.notes = deepcopy(self.notes)
+        new.annotation = deepcopy(self.annotation)
+
+        new.metabolites = DictList()
+        do_not_copy_by_ref = {"_reaction", "_model"}
+        for metabolite in self.metabolites:
+            new_met = metabolite.__class__()
+            for attr, value in metabolite.__dict__.items():
+                if attr not in do_not_copy_by_ref:
+                    new_met.__dict__[attr] = copy(value) if attr == "formula" else value
+            new_met._model = new
+            new.metabolites.append(new_met)
+
+        new.genes = DictList()
+        for gene in self.genes:
+            new_gene = gene.__class__(None)
+            for attr, value in gene.__dict__.items():
+                if attr not in do_not_copy_by_ref:
+                    new_gene.__dict__[attr] = (
+                        copy(value) if attr == "formula" else value
+                    )
+            new_gene._model = new
+            new.genes.append(new_gene)
+
+        new.reactions = DictList()
+        do_not_copy_by_ref = {"_model", "_metabolites", "_genes"}
+        for reaction in self.reactions:
+            new_reaction = reaction.__class__()
+            for attr, value in reaction.__dict__.items():
+                if attr not in do_not_copy_by_ref:
+                    new_reaction.__dict__[attr] = copy(value)
+            new_reaction._model = new
+            new.reactions.append(new_reaction)
+            # update awareness
+            for metabolite, stoic in reaction._metabolites.items():
+                new_met = new.metabolites.get_by_id(metabolite.id)
+                new_reaction._metabolites[new_met] = stoic
+                new_met._reaction.add(new_reaction)
+            new_reaction.update_genes_from_gpr()
+
+        #########################################
+        # adding protein information
+        #########################################
+        new.enzymes = DictList()
+        new.catalytic_events = DictList()
+        new.enzyme_variables = DictList()
+        new.enzyme_constraints = dict()
+
+        # if sectors are added, everything else will be added automatically
+        new.sectors = DictList()
+        do_not_copy_by_ref = {"model", "variables", "_constraints"}
+        for sector in self.sectors:
+            d = sector.__dict__
+            init_args = self.find_init_args(sector)
+            new_sector = sector.__class__(**init_args)
+            for attr, value in sector.__dict__.items():
+                if attr not in do_not_copy_by_ref:
+                    new_sector.__dict__[attr] = copy(value)
+            new_sector.model = new
+            new.sectors += [sector]
+
+        # if some manual enzymes are added, copy them separately
+        do_not_copy_by_ref = {"_model", "enzyme_variables", "catalytic_events", "_constraints"}
+        for enzyme in self.enzymes:
+            if enzyme not in new.enzymes:  # TODO
+                init_args = self.find_init_args(enzyme)
+                new_enzyme = enzyme.__class__(**init_args)
+                for attr, value in enzyme.__dict__.items():
+                    if attr not in do_not_copy_by_ref:
+                        new_enzyme.__dict__[attr] = copy(value)
+                new_enzyme._model = new
+                new.enzymes += [new_enzyme]
+                new.enzyme_variables += [new_enzyme.enzyme_variable]
+                # new.add_enzymes([enzyme])
+
+        new.groups = DictList()
+        do_not_copy_by_ref = {"_model", "_members"}
+        # Groups can be members of other groups. We initialize them first and
+        # then update their members.
+        for group in self.groups:
+            new_group: cobra.core.Group = group.__class__(group.id)
+            for attr, value in group.__dict__.items():
+                if attr not in do_not_copy_by_ref:
+                    new_group.__dict__[attr] = copy(value)
+            new_group._model = new
+            new.groups.append(new_group)
+        for group in self.groups:
+            new_group = new.groups.get_by_id(group.id)
+            # update awareness, as in the reaction copies
+            new_objects = []
+            for member in group.members:
+                if isinstance(member, Metabolite):
+                    new_object = new.metabolites.get_by_id(member.id)
+                elif isinstance(member, Reaction):
+                    new_object = new.reactions.get_by_id(member.id)
+                elif isinstance(member, cobra.core.Gene):
+                    new_object = new.genes.get_by_id(member.id)
+                elif isinstance(member, cobra.core.Group):
+                    new_object = new.groups.get_by_id(member.id)
+                else:
+                    raise TypeError(
+                        f"The group member {member!r} is unexpectedly not a "
+                        f"metabolite, reaction, gene, nor another group."
+                    )
+                new_objects.append(new_object)
+            new_group.add_members(new_objects)
+
+        try:
+            new._solver = deepcopy(self.solver)
+            # Cplex has an issue with deep copies
+        except Exception:  # pragma: no cover
+            new._solver = copy(self.solver)  # pragma: no cover
+
+        # it doesn't make sense to retain the context of a copied model so
+        # assign a new empty context
+        new._contexts = []
+
+        return new
+
+    def find_init_args(self, object):
+        init_args = {}
+        for param, default in inspect.signature(object.__init__).parameters.items():
+            if param != 'self' and default.default == inspect.Parameter.empty:
+                init_args[param] = getattr(object, param)
+        return init_args

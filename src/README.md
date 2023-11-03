@@ -1,6 +1,6 @@
-# PAMpy - Protein Allocation Model reconstruction in Python
+# PAModelpy - Protein Allocation Model reconstruction in Python
 
-## What is PAMpy?
+## What is PAModelpy?
 Models of metabolism are powerful tools to explore the metabolic potential of microorganism. 
 Powerful tools have been created to support Python-based analysis of genome-scale models. 
 These models, however, cannot capture all metabolic phenotypes and the simulation results have high flux variability.

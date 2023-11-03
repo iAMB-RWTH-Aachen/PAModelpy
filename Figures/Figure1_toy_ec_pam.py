@@ -19,7 +19,6 @@ Config.ACETATE_EXCRETION_RXNID = 'R9'
 
 #need to have gurobipy installed
 
-FONTSIZE = 16
 
 #global variables:
 global metabolites, n, m, Etot
@@ -126,10 +125,10 @@ def build_translational_protein_sector(Config):
 
 def run_simulations(pamodel, substrate_axis):
     substrate_axis = list()
-    Ccac = list()
-    Cfac = list()
-    x_axis_cac = list()
-    x_axis_fac = list()
+    Ccsc = list()
+    Cvsc = list()
+    x_axis_csc = list()
+    x_axis_vsc = list()
     mu_list = list()
 
     for substrate in substrate_rates:
@@ -140,73 +139,71 @@ def run_simulations(pamodel, substrate_axis):
             print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
             substrate_axis += [substrate]
             mu_list += [pamodel.objective.value]
-            Ccac_new = list()
-            for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-                Ccac_new += pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].coefficient.to_list()
-            Ccac += [Ccac_new]
+            Ccsc_new = list()
+            for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
+                Ccsc_new += pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
+            Ccsc += [Ccsc_new]
 
-            Cfac_new = list()
-            for fac in ['rxn', 'enzyme', 'sector']:
-                Cfac_new += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].coefficient.to_list()
-            Cfac += [Cfac_new]
+            Cvsc_new = list()
+            for vsc in ['flux', 'enzyme', 'sector']:
+                Cvsc_new += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].coefficient.to_list()
+            Cvsc += [Cvsc_new]
 
-            print('Sum of control coefficients: \t \t \t \t \t \t \t \t', round(sum(Ccac_new),6))
-            print('Sum of allocation coefficients: \t \t \t \t \t \t \t', round(sum(Cfac_new), 6), '\n')
+            print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Ccsc_new),6))
+            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cvsc_new), 6), '\n')
 
-    for cac in ['UB', 'LB', 'EC_f', 'EC_b', 'sector']:
-        if cac == 'UB' or cac == 'LB':
-            x_axis_cac += [rid+'_'+cac for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].rxn_id.to_list()]
+    for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
+        if csc == 'flux_ub' or csc == 'flux_lb':
+            x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].rxn_id.to_list()]
         else:
-            x_axis_cac += [rid+'_'+cac[-1] for rid in pamodel.capacity_allocation_coefficients[pamodel.capacity_allocation_coefficients['constraint'] == cac].enzyme_id.to_list()]
+            x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].enzyme_id.to_list()]
 
-    for fac in ['rxn', 'enzyme', 'sector']:
-        if fac == 'rxn':
-            x_axis_fac += pamodel.flux_allocation_coefficients[pamodel.flux_allocation_coefficients['constraint'] == fac].rxn_id.to_list()
+    for vsc in ['flux', 'enzyme', 'sector']:
+        if vsc == 'flux':
+            x_axis_vsc += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].rxn_id.to_list()
         else:
-            x_axis_fac += pamodel.flux_allocation_coefficients[
-                pamodel.flux_allocation_coefficients['constraint'] == fac].enzyme_id.to_list()
+            x_axis_vsc += pamodel.variable_sensitivity_coefficients[
+                pamodel.variable_sensitivity_coefficients['constraint'] == vsc].enzyme_id.to_list()
 
     return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
-            'Ccac':Ccac, 'Cfac':Cfac,
-            'x_axis_cac': x_axis_cac,'x_axis_fac': x_axis_fac}
+            'Ccsc':Ccsc, 'Cvsc':Cvsc,
+            'x_axis_csc': x_axis_csc,'x_axis_vsc': x_axis_vsc}
 
-def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_cac, substrate_cac, e1_fac, substrate_fac):
-    gs = gridspec.GridSpecFromSubplotSpec(3, 1,
-                                          height_ratios=[1,1,1], hspace=0, subplot_spec=grdspec)
-    fac_ax = fig.add_subplot(gs[2, 0])  # FAC linegraph
-    mu_ax = fig.add_subplot(gs[0, 0], sharex=fac_ax) # mu vs v_s linegraph
-    cac_ax = fig.add_subplot(gs[1, 0], sharex=fac_ax)  # CAC linegraph
-
+def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate_csc, e1_vsc):
+    gs = gridspec.GridSpecFromSubplotSpec(2, 1,
+                                          height_ratios=[1,1], hspace=0, subplot_spec=grdspec)
+    sens_ax = fig.add_subplot(gs[1, 0])  # sensitivity coefficient linegraph
+    mu_ax = fig.add_subplot(gs[0, 0], sharex=sens_ax) # mu vs v_s linegraph
 
 
-    mu_ax.plot(glc_rates, mu_list, color = 'blue', linewidth= 3)#(35/255,158/255,137/255)
+
+
+    mu = mu_ax.plot(glc_rates, mu_list, color = 'black', linewidth= 3)#(35/255,158/255,137/255)
     mu_ax.xaxis.set_visible(False)
-    mu_ax.set_ylabel('$v_{biomass} (h^{-1})$', fontsize = FONTSIZE)
+    # mu_ax.legend([mu], labels=['growth rate'], loc='center left')
+    mu_ax.set_ylabel('$v_{biomass} $ $(h^{-1})$', fontsize = FONTSIZE)
     # add B panel annotation
     mu_ax.annotate('B', xy=(0.01, 0.01), xycoords='data',
-                   xytext=(-0.10, 1.2), textcoords='axes fraction',
-                   va='top', ha='left', fontsize=FONTSIZE, weight='bold')
+                   xytext=(-0.25, 1.05), textcoords='axes fraction',
+                   va='top', ha='left', fontsize=FONTSIZE*1.5, weight='bold')
 
-    e_tot = cac_ax.plot(glc_rates, tot_prot_cac, color = 'darkred', linewidth= 3)#(62/255, 64/255, 137/255)
-    vs = cac_ax.plot(glc_rates, substrate_cac, color ='gray', linewidth= 3) #(62/255,174/255, 137/255)
-    cac_ax.legend([e_tot, vs], labels=['$\phi_{E,0}$','$v_{1}$'], loc='center left')
-    cac_ax.xaxis.set_visible(False)
-    cac_ax.set_ylim([-0.1,1.3])
-    cac_ax.set_ylabel('CAC', fontsize = FONTSIZE)
+    # plot the sensitivity coefficients
+    vs = sens_ax.plot(glc_rates, substrate_csc, color ='orange', linewidth= 3) #(62/255,174/255, 137/255)
+    e1 = sens_ax.plot(glc_rates, e1_vsc, color =(68 / 255, 1 / 255, 84 / 255), linewidth= 3, linestyle = 'dashed')
+    e_tot = sens_ax.plot(glc_rates, tot_prot_csc, color ='darkred', linewidth= 3, linestyle ='dotted')#(62/255, 64/255, 137/255)
 
-
-    e1 = fac_ax.plot(glc_rates, e1_fac, color =(68/255,1/255,84/255), linewidth= 3)
-    vs = fac_ax.plot(glc_rates, substrate_fac, color= 'gray', linewidth= 3)#(62/255,174/255, 137/255)
-    fac_ax.legend([e1, vs], labels=['$E_{1}$', '$v_{1}$'], loc='center left')
-    fac_ax.set_ylim([-0.1,1.3])
-    fac_ax.set_ylabel('FAC', fontsize = FONTSIZE)
-    fac_ax.set_xlabel('$v_{substrate,max} (mmol_{substrate}/g_{CDW}/h)$', fontsize = FONTSIZE)
+    sens_ax.legend([vs, e1, e_tot], labels=['$CSC_{v_{1}}$','$VSC_{E_{1}}$','$CSC_{\phi_{E,0}}$'], loc='center left')
+    sens_ax.set_ylim([-0.1,1.3])
+    sens_ax.set_ylabel('Sensitivity Coefficients', fontsize = FONTSIZE)
+    sens_ax.set_xlabel('$v_{substrate,max}$ $(mmol_{substrate}/g_{CDW}/h)$', fontsize = FONTSIZE)
 
     return fig
 
 if __name__ == "__main__":
-    width = 13
-    height =10
+
+    FONTSIZE = 16
+    width = 18
+    height =7
     model = build_toy_gem()
     active_enzyme = build_active_enzyme_sector(Config)
     unused_enzyme = build_unused_protein_sector(Config)
@@ -227,38 +224,35 @@ if __name__ == "__main__":
     fig = plt.figure()
 
     gs0 = gridspec.GridSpec(1, 18, figure=fig, wspace = 25)
-    gs_toymodel = gs0[:10]
-    gs_sensitivities = gs0[11:]
+    gs_toymodel = gs0[:13]
+    gs_sensitivities = gs0[14:]
 
     image_path = 'Figure1_toy-model.png'
     toy_model = np.asarray(Image.open(image_path))
     ax_fig = fig.add_subplot(gs_toymodel)
     ax_fig.imshow(toy_model)
     ax_fig.annotate('A', xy=(2, 1), xycoords='data',
-                    xytext=(-0.1, 1.1), textcoords='axes fraction',
-                    va='top', ha='left', fontsize=FONTSIZE, weight='bold')
+                    xytext=(0, 1), textcoords='axes fraction',
+                    va='top', ha='left', fontsize=FONTSIZE*1.5, weight='bold')
     ax_fig.axis('off')
     ax_fig.set_xticks([])
     ax_fig.set_yticks([])
 
-    for index, id in enumerate(simulation_results['x_axis_cac']):
-        if 'TotalProteinConstraint' in id:
-            tot_prot_cac = [row[index] for row in simulation_results['Ccac']]
-        if 'R1_UB' in id:
-            substrate_cac = [row[index] for row in simulation_results['Ccac']]
+    for index, id in enumerate(simulation_results['x_axis_csc']):
+        if 'TotalProteinConstraint_proteome' in id:
+            tot_prot_csc = [row[index] for row in simulation_results['Ccsc']]
+        if 'R1_flux_ub' in id:
+            substrate_csc = [row[index] for row in simulation_results['Ccsc']]
 
-    for index, id in enumerate(simulation_results['x_axis_fac']):
+    for index, id in enumerate(simulation_results['x_axis_vsc']):
         if 'E1' in id:
-            e1_fac = [row[index] for row in simulation_results['Cfac']]
-
-        if 'R1' in id:
-            substrate_fac = [row[index] for row in simulation_results['Cfac']]
+            e1_vsc = [row[index] for row in simulation_results['Cvsc']]
 
 
     fig = plot_sensitivities(fig, gs_sensitivities, simulation_results['substrate_axis'], simulation_results['mu_list'],
-                             tot_prot_cac, substrate_cac, e1_fac, substrate_fac)
+                             tot_prot_csc, substrate_csc, e1_vsc)
     fig.set_figwidth(width)
     fig.set_figheight(height)
 
-    fig.savefig('Figure1_toy_model-sensitivities.png')
+    fig.savefig('Figure1_toy_model-sensitivities.png',bbox_inches='tight')
     plt.show()
