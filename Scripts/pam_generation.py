@@ -14,22 +14,23 @@ from toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translat
 
 
 def set_up_toy_pam(sensitivity =True):
+    config = Config()
     #setting the configuration for the toy model
-    Config.BIOMASS_REACTION = 'R7'
-    Config.GLUCOSE_EXCHANGE_RXNID = 'R1'
-    Config.CO2_EXHANGE_RXNID = 'R8'
-    Config.ACETATE_EXCRETION_RXNID = 'R9'
+    config.BIOMASS_REACTION = 'R7'
+    config.GLUCOSE_EXCHANGE_RXNID = 'R1'
+    config.CO2_EXHANGE_RXNID = 'R8'
+    config.ACETATE_EXCRETION_RXNID = 'R9'
 
     Etot = 0.6*1e-3
     model = build_toy_gem()
-    active_enzyme = build_active_enzyme_sector(Config)
-    unused_enzyme = build_unused_protein_sector(Config)
-    translation_enzyme = build_translational_protein_sector(Config)
+    active_enzyme = build_active_enzyme_sector(config)
+    unused_enzyme = build_unused_protein_sector(config)
+    translation_enzyme = build_translational_protein_sector(config)
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
                       translational_sector=translation_enzyme,
                       unused_sector=unused_enzyme, p_tot=Etot, sensitivity=sensitivity)
     pamodel.objective = 'R7'
-    Config.reset()
+    config.reset()
     return pamodel
 
 def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True, translational_enzymes:bool = True, unused_enzymes:bool = True, sensitivity =True):
@@ -305,18 +306,15 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
 
 def parse_coefficients(pamodel):
     Ccsc = list()
-    Cvsc = list()
 
     for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
         Ccsc += pamodel.capacity_sensitivity_coefficients[
             pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
 
-    for vsc in ['flux', 'enzyme', 'sector']:
-        Cvsc += pamodel.variable_sensitivity_coefficients[
-            pamodel.variable_sensitivity_coefficients['constraint'] == vsc].coefficient.to_list()
+    Cesc = pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
 
-    return Ccsc, Cvsc
+    return Ccsc, Cesc
 
-def parse_enzyme_vsc(pamodel):
-    return pamodel.variable_sensitivity_coefficients[
-            pamodel.variable_sensitivity_coefficients['constraint'] == 'enzyme'].coefficient.to_list()
+def parse_esc(pamodel):
+    return pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
+

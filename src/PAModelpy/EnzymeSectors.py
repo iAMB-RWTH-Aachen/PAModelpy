@@ -1,11 +1,12 @@
 from warnings import warn
 from copy import copy, deepcopy
+from cobra import Object
 
 from .Enzyme import Enzyme
 from .configuration import Config
 
 
-class Sector():
+class Sector(Object):
     TOTAL_PROTEIN_CONSTRAINT_ID = Config.TOTAL_PROTEIN_CONSTRAINT_ID
     def get_tpc_metabolite(self, model):
         tpc = self.TOTAL_PROTEIN_CONSTRAINT_ID
