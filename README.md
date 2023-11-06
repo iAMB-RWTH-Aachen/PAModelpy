@@ -32,10 +32,11 @@ This repository contains not only the source code, but also examples and scripts
   - *Ecoli_phenotypes/Ecoli_phenotypes_py_rev*: experimental physiology measurements to validate the model simulations
 - **Examples**: example notebook on how to build, run and validate a PAM using the PAModelpy package
 - **Figures**: scripts used to create Figure 2-3 and supplementary figures
+- **MATLAB**: MATLAB code for doing simulations with the E.coli core PAM and the toy model (validating the sensitivity relationships)
 - **Models**: models used (iML1515 and core ecoli model)
 - **Results**: results of computational performance analysis
 - **Scripts**: scripts used for gathering results
-  - computational performance analysis: `compare_computational_efficiency_vsc_replicates.py` and `numeric_error_estimation_schemes_vsc.py`
+  - computational performance analysis: `compare_computational_efficiency_esc.py` and `numeric_error_estimation_schemes_esc.py`
   - *E.coli* core PAM creation: `analyze_proteome.ipynb` and `create_ecolicore_pam_incl_UE.ipynb`
   - Sensitivity analysis: `toy_ec_pam.py` and `Ecoli_core_sensitivity_analysis.ipynb`
 - **src/PAModelpy**: source code for PAModelpy package

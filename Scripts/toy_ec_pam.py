@@ -121,9 +121,8 @@ def build_translational_protein_sector(Config):
 def run_simulations(pamodel, substrate_rates):
     substrate_axis = list()
     Ccsc = list()
-    Cvsc = list()
+    Cesc = list()
     x_axis_csc = list()
-    x_axis_vsc = list()
     mu_list = list()
 
     for substrate in substrate_rates:
@@ -134,18 +133,16 @@ def run_simulations(pamodel, substrate_rates):
             print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
             substrate_axis += [substrate]
             mu_list += [pamodel.objective.value]
+
             Ccsc_new = list()
             for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
                 Ccsc_new += pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
             Ccsc += [Ccsc_new]
 
-            Cvsc_new = list()
-            for vsc in ['flux', 'enzyme', 'sector']:
-                Cvsc_new += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].coefficient.to_list()
-            Cvsc += [Cvsc_new]
+            Cesc += [pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()]
 
             print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Ccsc_new),6))
-            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cvsc_new), 6), '\n')
+            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cesc[-1]), 6), '\n')
 
     for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
         if csc == 'flux_ub' or csc == 'flux_lb':
@@ -153,16 +150,11 @@ def run_simulations(pamodel, substrate_rates):
         else:
             x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].enzyme_id.to_list()]
 
-    for vsc in ['flux', 'enzyme', 'sector']:
-        if vsc == 'flux':
-            x_axis_vsc += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].rxn_id.to_list()
-        else:
-            x_axis_vsc += pamodel.variable_sensitivity_coefficients[
-                pamodel.variable_sensitivity_coefficients['constraint'] == vsc].enzyme_id.to_list()
+    x_axis_esc = pamodel.enzyme_sensitivity_coefficients.enzyme_id.to_list()
 
     return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
-            'Ccsc':Ccsc, 'Cvsc':Cvsc,
-            'x_axis_csc': x_axis_csc,'x_axis_vsc': x_axis_vsc}
+            'Ccsc':Ccsc, 'Cesc':Cesc,
+            'x_axis_csc': x_axis_csc,'x_axis_esc': x_axis_esc}
 
 def print_heatmap(xaxis, matrix, yaxis = None):
     if yaxis is None:
@@ -191,4 +183,4 @@ if __name__ == "__main__":
 
 
     print_heatmap(simulation_results['x_axis_csc'], simulation_results['Ccsc'], yaxis=simulation_results['substrate_axis'])
-    print_heatmap(simulation_results['x_axis_vsc'], simulation_results['Cvsc'], yaxis=simulation_results['substrate_axis'])
+    print_heatmap(simulation_results['x_axis_esc'], simulation_results['Cesc'], yaxis=simulation_results['substrate_axis'])

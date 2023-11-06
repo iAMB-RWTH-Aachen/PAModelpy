@@ -126,9 +126,8 @@ def build_translational_protein_sector(Config):
 def run_simulations(pamodel, substrate_axis):
     substrate_axis = list()
     Ccsc = list()
-    Cvsc = list()
+    Cesc = list()
     x_axis_csc = list()
-    x_axis_vsc = list()
     mu_list = list()
 
     for substrate in substrate_rates:
@@ -139,18 +138,16 @@ def run_simulations(pamodel, substrate_axis):
             print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
             substrate_axis += [substrate]
             mu_list += [pamodel.objective.value]
+
             Ccsc_new = list()
             for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
                 Ccsc_new += pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
             Ccsc += [Ccsc_new]
 
-            Cvsc_new = list()
-            for vsc in ['flux', 'enzyme', 'sector']:
-                Cvsc_new += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].coefficient.to_list()
-            Cvsc += [Cvsc_new]
+            Cesc += [pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()]
 
             print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Ccsc_new),6))
-            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cvsc_new), 6), '\n')
+            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cesc[-1]), 6), '\n')
 
     for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
         if csc == 'flux_ub' or csc == 'flux_lb':
@@ -158,18 +155,13 @@ def run_simulations(pamodel, substrate_axis):
         else:
             x_axis_csc += [rid +'_' + csc for rid in pamodel.capacity_sensitivity_coefficients[pamodel.capacity_sensitivity_coefficients['constraint'] == csc].enzyme_id.to_list()]
 
-    for vsc in ['flux', 'enzyme', 'sector']:
-        if vsc == 'flux':
-            x_axis_vsc += pamodel.variable_sensitivity_coefficients[pamodel.variable_sensitivity_coefficients['constraint'] == vsc].rxn_id.to_list()
-        else:
-            x_axis_vsc += pamodel.variable_sensitivity_coefficients[
-                pamodel.variable_sensitivity_coefficients['constraint'] == vsc].enzyme_id.to_list()
+    x_axis_esc = pamodel.enzyme_sensitivity_coefficients.enzyme_id.to_list()
 
     return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
-            'Ccsc':Ccsc, 'Cvsc':Cvsc,
-            'x_axis_csc': x_axis_csc,'x_axis_vsc': x_axis_vsc}
+            'Ccsc':Ccsc, 'Cesc':Cesc,
+            'x_axis_csc': x_axis_csc,'x_axis_esc': x_axis_esc}
 
-def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate_csc, e1_vsc):
+def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate_csc, e1_esc):
     gs = gridspec.GridSpecFromSubplotSpec(2, 1,
                                           height_ratios=[1,1], hspace=0, subplot_spec=grdspec)
     sens_ax = fig.add_subplot(gs[1, 0])  # sensitivity coefficient linegraph
@@ -189,10 +181,10 @@ def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate
 
     # plot the sensitivity coefficients
     vs = sens_ax.plot(glc_rates, substrate_csc, color ='orange', linewidth= 3) #(62/255,174/255, 137/255)
-    e1 = sens_ax.plot(glc_rates, e1_vsc, color =(68 / 255, 1 / 255, 84 / 255), linewidth= 3, linestyle = 'dashed')
+    e1 = sens_ax.plot(glc_rates, e1_esc, color =(68 / 255, 1 / 255, 84 / 255), linewidth= 3, linestyle ='dashed')
     e_tot = sens_ax.plot(glc_rates, tot_prot_csc, color ='darkred', linewidth= 3, linestyle ='dotted')#(62/255, 64/255, 137/255)
 
-    sens_ax.legend([vs, e1, e_tot], labels=['$CSC_{v_{1}}$','$VSC_{E_{1}}$','$CSC_{\phi_{E,0}}$'], loc='center left')
+    sens_ax.legend([vs, e1, e_tot], labels=['$CSC_{v_{1}}$','$ESC_{E_{1}}$','$CSC_{\phi_{E,0}}$'], loc='center left')
     sens_ax.set_ylim([-0.1,1.3])
     sens_ax.set_ylabel('Sensitivity Coefficients', fontsize = FONTSIZE)
     sens_ax.set_xlabel('$v_{substrate,max}$ $(mmol_{substrate}/g_{CDW}/h)$', fontsize = FONTSIZE)
@@ -244,13 +236,13 @@ if __name__ == "__main__":
         if 'R1_flux_ub' in id:
             substrate_csc = [row[index] for row in simulation_results['Ccsc']]
 
-    for index, id in enumerate(simulation_results['x_axis_vsc']):
+    for index, id in enumerate(simulation_results['x_axis_esc']):
         if 'E1' in id:
-            e1_vsc = [row[index] for row in simulation_results['Cvsc']]
+            e1_esc = [row[index] for row in simulation_results['Cesc']]
 
 
     fig = plot_sensitivities(fig, gs_sensitivities, simulation_results['substrate_axis'], simulation_results['mu_list'],
-                             tot_prot_csc, substrate_csc, e1_vsc)
+                             tot_prot_csc, substrate_csc, e1_esc)
     fig.set_figwidth(width)
     fig.set_figheight(height)
 

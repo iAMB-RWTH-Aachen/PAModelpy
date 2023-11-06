@@ -122,7 +122,7 @@ class PAModel(Model):
         self.tpc = 0 # counter of number of CatalyticEvents which contribute to the total protein constraint
         self.sensitivity = sensitivity
         self.capacity_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (capacity sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
-        self.variable_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
+        self.enzyme_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
 
 
         #initialize the model
@@ -644,12 +644,16 @@ class PAModel(Model):
 
         print(f'\tTotal protein concentration: {p_tot} g/gDW\n')
 
-        # Create the pseudometabolite associated with the constraint, this metabolite will be 'produced' in the enzyme 'reactions'
-        #*1e3 to convert gp/gcdw to mg/gcdw for easier computing
-        tpc_constraint= self.problem.Constraint(Zero, name = self.TOTAL_PROTEIN_CONSTRAINT_ID, lb = 0, ub = self.p_tot*1e3)
-        self.sector_constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID] = tpc_constraint
-        self.add_cons_vars([tpc_constraint])
-
+        # check if there already is a total protein constraint in the solver
+        if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
+            self.change_total_protein_constraint(p_tot)
+        else:
+            # Create the pseudometabolite associated with the constraint, this metabolite will be 'produced' in the enzyme 'reactions'
+            # *1e3 to convert gp/gcdw to mg/gcdw for easier computing
+            tpc_constraint = self.problem.Constraint(Zero, name=self.TOTAL_PROTEIN_CONSTRAINT_ID, lb=0,
+                                                     ub=self.p_tot * 1e3)
+            self.sector_constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID] = tpc_constraint
+            self.add_cons_vars([tpc_constraint])
 
     def add_reactions(self, reaction_list: Iterable[Reaction]) -> None:
         """Add reactions to the model.
@@ -798,7 +802,7 @@ class PAModel(Model):
         mu_ec_b = mu[(mu['direction'] == 'b')].reset_index()
 
         self.calculate_csc(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
-        self.calculate_vsc(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+        self.calculate_esc(obj_value, mu_ec_f, mu_ec_b)
         # self.validate_sensitivity_coefficients()
 
 
@@ -828,6 +832,7 @@ class PAModel(Model):
         """
         Calculates the capacity sensitivity coefficient for all inequality constraints in the model.
         The sum of all capacity sensitivity coefficients should equal 1 for growth maximization.
+
         Definition: constraint_UB*shadowprice/obj_value.
 
         :param obj_value: Float
@@ -906,57 +911,22 @@ class PAModel(Model):
             # add new_row to dataframe
             self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_enzyme_row_EC_min
 
-    def calculate_vsc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+    def calculate_esc(self, obj_value, mu_ec_f, mu_ec_b):
         """
-        Calculates variable sensitivity coefficients for the reaction and enzyme variables using their primal values
+        Calculates enzyme sensitivity coefficients for the enzyme variables using their primal values
         the objective value and shadow prices according to the following relations:
 
-        vsc = variable.primal * constraint.shadowprice/obj.value
+        esc = enzyme_variable.primal * constraint.shadowprice/obj.value
 
         :param obj_value: float: objective value from the most recent optimal solution
-        :param mu: pd.DataFrame: all shadow prices
-        :param mu_ub: pd.DataFrame: shadow prices for the upperbound of the reaction fluxes
-        :param mu_lb: pd.DataFrame: shadow prices for the lowerbound of the reaction fluxes
         :param mu_ec_f: pd.DataFrame: shadow prices for max enzyme concentrations (forward variables)
         :param mu_ec_b: pd.DataFrame: shadow prices for the min enzyme concentrations (reverse variables)
-        :return: fills the PAModel.variable_sensitivity_coefficients dataframe
+
+        :return: fills the PAModel.enzyme_sensitivity_coefficients dataframe
         """
-        self.variable_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
-        #add sensitivity coefficients for sectors if they are there
-        w_sectors = []
-        lin_rxn_id_sector = {}
-        for index, sector in enumerate(self.sectors):
-            if isinstance(sector, ActiveEnzymeSector):
-                w_sectors += [0]
-            if not isinstance(sector, ActiveEnzymeSector) and self.TOTAL_PROTEIN_CONSTRAINT_ID not in self.constraints.keys():
-                sector_0 = self.constraints[sector.id].ub
-                sector_primal = self.variables['R_' + sector.id].primal
-                fa_coefficient = (sector_0-sector_primal) * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] /obj_value
+        self.enzyme_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'coefficient'])
 
-                w_sectors += [0]
-                lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: None}}
-                # add new_row to dataframe
-                self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = ['R_' + sector.id, sector.id, 'sector', fa_coefficient]
-            elif not isinstance(sector, ActiveEnzymeSector):
-                w_sectors += [sector.slope]
-                lin_rxn_id_sector = {**lin_rxn_id_sector, **{index: sector.id_list[0]}}
-
-        for rxn in self.reactions:
-            if rxn.id in lin_rxn_id_sector.values():
-                index = [key for key, value in lin_rxn_id_sector.items() if value == rxn.id]
-                w_sector = w_sectors[index[0]]
-            else:
-                w_sector = 0
-
-            sp_E = mu[mu['rxn_id'] == self.TOTAL_PROTEIN_CONSTRAINT_ID]['shadow_prices'].iloc[0]
-            sp_ub = mu_ub[mu_ub['rxn_id'] == rxn.id]['shadow_prices'].iloc[0]
-            sp_lb = mu_lb[mu_lb['rxn_id'] == rxn.id]['shadow_prices'].iloc[0]
-
-            rxn_fa_coefficient = rxn.flux *(sp_ub-sp_lb+sp_E*w_sector)/obj_value
-            # add new_row to dataframe
-            self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = [rxn.id, '', 'flux', rxn_fa_coefficient]
-
-        #calculate variable sensitivity coefficient for enzymes
+        #calculate enzyme sensitivity coefficient
         for enzyme in self.enzymes:
             #get the reactions associated with the enzyme
             reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
@@ -968,10 +938,10 @@ class PAModel(Model):
             e_rev = self.enzyme_variables.get_by_id(enzyme.id).reverse_variable.primal
 
             #EC: enzyme constraint
-            enzyme_fa_coefficient = (e_fwd * sp_ec_f + e_rev * sp_ec_b)/obj_value
+            enzyme_sensitivity_coefficient = (e_fwd * sp_ec_f + e_rev * sp_ec_b)/obj_value
             #add new_row to dataframe
-            self.variable_sensitivity_coefficients.loc[len(self.variable_sensitivity_coefficients)] = [reactions, enzyme.id, 'enzyme',
-                                                                                                       enzyme_fa_coefficient]
+            self.enzyme_sensitivity_coefficients.loc[len(self.enzyme_sensitivity_coefficients)] = [reactions, enzyme.id,
+                                                                                                   enzyme_sensitivity_coefficient]
 
     def calculate_sum_of_enzymes(self):
         """
@@ -1006,39 +976,38 @@ class PAModel(Model):
                            (self.capacity_sensitivity_coefficients['constraint'] == 'enzyme_min') | (
                                        self.capacity_sensitivity_coefficients[
                                            'constraint'] == 'enzyme_max')].coefficient)
-        # enzynme variable sensitivity coefficients
-        sum_EVSC = sum(self.variable_sensitivity_coefficients[
-                           self.variable_sensitivity_coefficients['constraint'] == 'enzyme'].coefficient)
+        # enzynme sensitivity coefficients
+        sum_ESC = sum(self.enzyme_sensitivity_coefficients.coefficient)
         # proteome capacity sensitivity coefficients
         PCSC = self.capacity_sensitivity_coefficients[
             self.capacity_sensitivity_coefficients['constraint'] == 'proteome'].coefficient.iloc[0]
 
         # validation sums
-        enzyme_flux_sum = sum_EVSC + sum_FCSC + (1 - alpha) * PCSC
-        enzyme_sum = -sum_EVSC + sum_ECSC + alpha * PCSC
-        print('Variable Sensitivity Relationships')
+        enzyme_flux_sum = sum_ESC + sum_FCSC + (1 - alpha) * PCSC
+        enzyme_sum = -sum_ESC + sum_ECSC + alpha * PCSC
+        print('Sensitivity Relationships')
         print('----------------------------------')
 
-        print('sum(EnzymeVSC)+sum(FluxCSC)+ (1-alpha)ProteomeCSC = ', enzyme_flux_sum)
+        print('sum(ESC)+sum(FluxCSC)+ (1-alpha)ProteomeCSC = ', enzyme_flux_sum)
         # check if the result is valid taking into account the protein pool occupancy and the error due to the feasibiity tolerance
         if round(alpha,
                  2) == 1.0 and enzyme_flux_sum <= 1 + feasibility_deviation and enzyme_flux_sum >= 1 - feasibility_deviation:
-            print('Protein space is fully utilized and variable sensitivity relation is within bounds\n')
+            print('Protein space is fully utilized and sensitivity relation is within bounds\n')
         elif enzyme_flux_sum >= 1 - feasibility_deviation:
-            print('Protein space is NOT fully utilized and variable sensitivity relation is within bounds\n')
+            print('Protein space is NOT fully utilized and sensitivity relation is within bounds\n')
         else:
-            print('variable sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
+            print('sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
                   'the model structure\n')
 
-        print('-sum(EnzymeVSC) + sum(EnzymeCSC) + alpha*ProteomeCSC = ', enzyme_sum)
+        print('-sum(ESC) + sum(EnzymeCSC) + alpha*ProteomeCSC = ', enzyme_sum)
 
         if round(alpha,
                  2) == 1.0 and enzyme_sum <= 0 + feasibility_deviation and enzyme_sum >= 0 - feasibility_deviation:
-            print('Protein space is fully utilized and variable sensitivity relation is within bounds\n')
+            print('Protein space is fully utilized and sensitivity relation is within bounds\n')
         elif enzyme_sum >= 0 - feasibility_deviation:
-            print('Protein space is NOT fully utilized and variable sensitivity relation is within bounds\n')
+            print('Protein space is NOT fully utilized and sensitivity relation is within bounds\n')
         else:
-            print('variable sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
+            print('sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
                   'the model structure\n')
 
 
@@ -1207,6 +1176,10 @@ class PAModel(Model):
         if self.enzymes.has_id(enzyme_id):
             enzyme = self.enzymes.get_by_id(enzyme_id)
             enzyme.change_kcat_values(kcats)
+            #also change the active enzyme sector
+            active_enzyme = self.sectors.get_by_id('ActiveEnzymeSector')
+            for rxn, kcat_f_b in kcats.items():
+                active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
 

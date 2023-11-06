@@ -4,7 +4,7 @@ It contains multiple functions which enable easy mapping and handling of one Eve
 (e.g. one conversion of substrate to product, can be catalyzed by multiple enzymes)
 """
 import cobra
-from cobra import DictList
+from cobra import DictList, Object
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from optlang.symbolics import Zero
@@ -12,7 +12,7 @@ from typing import Optional, Dict
 from warnings import warn
 from copy import copy, deepcopy
 
-class CatalyticEvent():
+class CatalyticEvent(Object):
     """
         CatalyticEvent is a class for holding information regarding the
         catalysis of a Reaction in a cobra.Model object. It serves as an interface

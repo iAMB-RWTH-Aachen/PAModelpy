@@ -5,7 +5,7 @@
 import PAModelpy.Enzyme
 import cobra.core
 import cobra
-from cobra import Reaction
+from cobra import Reaction, Object
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from copy import copy, deepcopy
@@ -20,7 +20,7 @@ from warnings import warn
 
 
 
-class Enzyme():
+class Enzyme(Object):
     """Upper level Enzyme object containing information about the enzyme
     and link to the EnzymeVariables for each reaction the
     enzyme catalyzes.
