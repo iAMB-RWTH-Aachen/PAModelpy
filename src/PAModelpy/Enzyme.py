@@ -204,6 +204,8 @@ class Enzyme(Object):
         # update the enzyme variables
         for rxn_id, kcats in rxn2kcat.items():
             catalytic_event_id = self.catalytic_event_id.format(rxn_id)
+            #change rxn2kcat dictionary
+            self.rxn2kcat[rxn_id] = kcats
             # is there already a link between enzyme and reaction?
             if catalytic_event_id not in self.catalytic_events:
                 warn(f'Reaction {rxn_id} is not associated with enzyme {self.id}. Skip')
@@ -731,11 +733,11 @@ class EnzymeVariable(Reaction):
                 # change kcat value in the constraint
                 coeff = kcat * 3600 * 1e-6
                 if direction == 'f':
-                    constraint.set_linear_coefficients({
+                    self._model.constraints[constraint_id].set_linear_coefficients({
                         self.reaction.forward_variable: 1 / coeff
                     })
                 elif direction == 'b':
-                    constraint.set_linear_coefficients({
+                    self._model.constraints[constraint_id].set_linear_coefficients({
                         self.reaction.reverse_variable: 1 / coeff
                     })
             self._model.solver.update()
