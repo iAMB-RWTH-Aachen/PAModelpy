@@ -331,7 +331,7 @@ class CatalyticEvent(Object):
             enzyme_var = self._model.enzyme_variables.get_by_id(enzyme)
             if enzyme_var not in self.enzyme_variables: self.enzyme_variables.add(enzyme_var)
             enzyme_obj = self._model.enzymes.get_by_id(enzyme)
-
+            enzyme_var.change_kcat_values({self.rxn: kcat_dict})
             for direction, kcat in kcats_change.items():
                 #change enzyme variable
                 enzyme_var.kcats[self.rxn_id][direction] = kcat
@@ -341,11 +341,11 @@ class CatalyticEvent(Object):
                 # change kcat value in the constraint
                 coeff =  kcat * 3600 * 1e-6
                 if direction == 'f':
-                    constraint.set_linear_coefficients({
+                    self._model.constraints[constraint_id].set_linear_coefficients({
                         self.rxn.forward_variable: 1/coeff
-                        })   
-                elif direction == 'b':    
-                    constraint.set_linear_coefficients({
+                        })
+                elif direction == 'b':
+                    self._model.constraints[constraint_id].set_linear_coefficients({
                         self.rxn.reverse_variable: 1/coeff
                         })
             self._model.solver.update()

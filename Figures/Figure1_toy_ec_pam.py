@@ -147,7 +147,7 @@ def run_simulations(pamodel, substrate_axis):
             Cesc += [pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()]
 
             print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Ccsc_new),6))
-            print('Sum of variable sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cesc[-1]), 6), '\n')
+            print('Sum of enzyme sensitivity coefficients: \t \t \t \t \t \t \t ', round(sum(Cesc[-1]), 6), '\n')
 
     for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
         if csc == 'flux_ub' or csc == 'flux_lb':
@@ -184,7 +184,7 @@ def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate
     e1 = sens_ax.plot(glc_rates, e1_esc, color =(68 / 255, 1 / 255, 84 / 255), linewidth= 3, linestyle ='dashed')
     e_tot = sens_ax.plot(glc_rates, tot_prot_csc, color ='darkred', linewidth= 3, linestyle ='dotted')#(62/255, 64/255, 137/255)
 
-    sens_ax.legend([vs, e1, e_tot], labels=['$CSC_{v_{1}}$','$ESC_{E_{1}}$','$CSC_{\phi_{E,0}}$'], loc='center left')
+    sens_ax.legend([vs, e1, e_tot], labels=['$FCSC_{v_{1}}$','$ESC_{E_{1}}$','$PCSC$'], loc='center left')
     sens_ax.set_ylim([-0.1,1.3])
     sens_ax.set_ylabel('Sensitivity Coefficients', fontsize = FONTSIZE)
     sens_ax.set_xlabel('$v_{substrate,max}$ $(mmol_{substrate}/g_{CDW}/h)$', fontsize = FONTSIZE)

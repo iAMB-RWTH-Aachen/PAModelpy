@@ -1021,9 +1021,13 @@ class PAModel(Model):
         """
         print(f'Change total condition-dependent protein constraint from {self.p_tot} to {p_tot}')
         tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
-        #correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
-        diff = p_tot - self.p_tot
-        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub += diff
+        protein_availability = tot_prot_constraint.ub
+        # correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
+        new_protein_fraction = p_tot * 1e3
+        for sector in self.sectors:
+            if hasattr(sector, 'intercept'):
+                new_protein_fraction -= sector.intercept
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = new_protein_fraction
         self.p_tot = p_tot
         self.solver.update()
 
@@ -1079,7 +1083,7 @@ class PAModel(Model):
             return
         rxn = self.reactions.get_by_id(rxn_id)
         #make sure the order of setting is right to prevent errors
-        if lower_bound is not None and lower_bound > rxn.upper_bound:
+        if lower_bound is not None and lower_bound >= rxn.upper_bound:
             if upper_bound is not None: self.change_reaction_ub(rxn_id, upper_bound)
             self.change_reaction_lb(rxn_id,lower_bound)
 
@@ -1260,32 +1264,34 @@ class PAModel(Model):
 
         #remove the catalytic events if they exist for the reactions
         for rxn in reactions:
-            catalytic_event = self.catalytic_events.get_by_id('CE_' + rxn.id)
-            self.catalytic_events.remove(catalytic_event)
-
-            # removing catalytic event from the enzymes
-            for enzyme in catalytic_event.enzymes:
-                enzyme.remove_catalytic_event(catalytic_event)
-
-            for enzyme_var in catalytic_event.enzyme_variables:
-                enzyme_var.remove_catalytic_event(catalytic_event)
-
-                # removing orphaned enzymes
-                if remove_orphans and len(enzyme.catalytic_events) == 0:
-                    print(f'Enzyme {enzyme.id} is orphaned. This enzyme will be removed from the model')
-                    self.remove_cons_vars(enzyme._constraints)
-                    enzyme._model = None
-                    self.enzymes.remove(enzyme)
-                    self.remove_cons_vars(enzyme._constraints)
+            # catalytic_event = self.catalytic_events.get_by_id('CE_' + rxn.id)
+            # self.catalytic_events.remove(catalytic_event)
+            #
+            # # removing catalytic event from the enzymes
+            # for enzyme in catalytic_event.enzymes:
+            #     enzyme.remove_catalytic_event(catalytic_event)
+            #
+            # for enzyme_var in catalytic_event.enzyme_variables:
+            #     enzyme_var.remove_catalytic_event(catalytic_event)
+            #
+            #     # removing orphaned enzymes
+            #     if remove_orphans and len(enzyme.catalytic_events) == 0:
+            #         print(f'Enzyme {enzyme.id} is orphaned. This enzyme will be removed from the model')
+            #         self.remove_cons_vars(enzyme._constraints)
+            #         enzyme._model = None
+            #         self.enzymes.remove(enzyme)
+            #         self.remove_cons_vars(enzyme._constraints)
 
             try:
                 catalytic_event = self.catalytic_events.get_by_id('CE_' + rxn.id)
                 self.catalytic_events.remove(catalytic_event)
 
-
-                #removing catalytic event from the enzymes
+                # removing catalytic event from the enzymes
                 for enzyme in catalytic_event.enzymes:
                     enzyme.remove_catalytic_event(catalytic_event)
+
+                for enzyme_var in catalytic_event.enzyme_variables:
+                    enzyme_var.remove_catalytic_event(catalytic_event)
 
                     #removing orphaned enzymes
                     if remove_orphans and len(enzyme.catalytic_events) == 0:
@@ -1627,6 +1633,7 @@ class PAModel(Model):
         #########################################
         # adding protein information
         #########################################
+        new.change_total_protein_constraint(self.p_tot)
         new.enzymes = DictList()
         new.catalytic_events = DictList()
         new.enzyme_variables = DictList()
