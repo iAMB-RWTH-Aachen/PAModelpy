@@ -1,4 +1,4 @@
-name: Run Pytest again
+name: Run Pytest
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  common:
+  test:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -29,23 +29,3 @@ jobs:
 
       - name: Run Pytest
         run: pytest
-
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Run Common Job - Linux
-        uses: ./.github/workflows/common.yml
-        with:
-          os: ubuntu-latest
-
-      - name: Run Common Job - Windows
-        uses: ./.github/workflows/common.yml
-        with:
-          os: windows-latest
-
-      - name: Run Common Job - macOS
-        uses: ./.github/workflows/common.yml
-        with:
-          os: macos-latest
-
