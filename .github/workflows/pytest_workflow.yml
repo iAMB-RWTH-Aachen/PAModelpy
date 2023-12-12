@@ -26,8 +26,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install PAModelpy  # If you have a requirements.txt file
-        with:
-          os: ${{matrix.os}}
 
       - name: Run Pytest
         run: pytest
