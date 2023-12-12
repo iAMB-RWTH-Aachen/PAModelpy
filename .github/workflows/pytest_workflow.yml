@@ -6,12 +6,46 @@ on:
       - main
 
 jobs:
+  common:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PAModelpy  # If you have a requirements.txt file
+
+      - name: Run Pytest
+        run: pytest
+
   test:
     runs-on: ubuntu-latest
-    outputs:
-      job: ${{ needs.test.outputs.job }}
 
-      steps:
-        - name: Trigger common job
-          id: test
-          uses: ./.github/workflows/common.yml
+    steps:
+      - name: Run Common Job - Linux
+        uses: ./.github/workflows/common.yml
+        with:
+          os: ubuntu-latest
+
+      - name: Run Common Job - Windows
+        uses: ./.github/workflows/common.yml
+        with:
+          os: windows-latest
+
+      - name: Run Common Job - macOS
+        uses: ./.github/workflows/common.yml
+        with:
+          os: macos-latest
+
