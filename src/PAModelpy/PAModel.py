@@ -958,58 +958,6 @@ class PAModel(Model):
             sum+= enzyme.concentration *enzyme.molmass *1e-6
         return sum
 
-    def validate_sensitivity_coefficients(self):
-        feasibility_deviation = self.solver.problem.Params.FeasibilityTol * len(self.variables)
-
-        # calculate fraction of protein space occupied
-        sum_enzymes = self.calculate_sum_of_enzymes()
-        phi_e0 = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub
-        alpha = sum_enzymes / phi_e0
-
-        # calculate sum of coefficients
-        # flux capacity sensitivity coefficients
-        sum_FCSC = sum(self.capacity_sensitivity_coefficients[
-                           (self.capacity_sensitivity_coefficients['constraint'] == 'flux_ub') | (
-                                       self.capacity_sensitivity_coefficients['constraint'] == 'flux_lb')].coefficient)
-        # enzyme capacity sensitivity coefficients
-        sum_ECSC = sum(self.capacity_sensitivity_coefficients[
-                           (self.capacity_sensitivity_coefficients['constraint'] == 'enzyme_min') | (
-                                       self.capacity_sensitivity_coefficients[
-                                           'constraint'] == 'enzyme_max')].coefficient)
-        # enzynme sensitivity coefficients
-        sum_ESC = sum(self.enzyme_sensitivity_coefficients.coefficient)
-        # proteome capacity sensitivity coefficients
-        PCSC = self.capacity_sensitivity_coefficients[
-            self.capacity_sensitivity_coefficients['constraint'] == 'proteome'].coefficient.iloc[0]
-
-        # validation sums
-        enzyme_flux_sum = sum_ESC + sum_FCSC + (1 - alpha) * PCSC
-        enzyme_sum = -sum_ESC + sum_ECSC + alpha * PCSC
-        print('Sensitivity Relationships')
-        print('----------------------------------')
-
-        print('sum(ESC)+sum(FluxCSC)+ (1-alpha)ProteomeCSC = ', enzyme_flux_sum)
-        # check if the result is valid taking into account the protein pool occupancy and the error due to the feasibiity tolerance
-        if round(alpha,
-                 2) == 1.0 and enzyme_flux_sum <= 1 + feasibility_deviation and enzyme_flux_sum >= 1 - feasibility_deviation:
-            print('Protein space is fully utilized and sensitivity relation is within bounds\n')
-        elif enzyme_flux_sum >= 1 - feasibility_deviation:
-            print('Protein space is NOT fully utilized and sensitivity relation is within bounds\n')
-        else:
-            print('sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
-                  'the model structure\n')
-
-        print('-sum(ESC) + sum(EnzymeCSC) + alpha*ProteomeCSC = ', enzyme_sum)
-
-        if round(alpha,
-                 2) == 1.0 and enzyme_sum <= 0 + feasibility_deviation and enzyme_sum >= 0 - feasibility_deviation:
-            print('Protein space is fully utilized and sensitivity relation is within bounds\n')
-        elif enzyme_sum >= 0 - feasibility_deviation:
-            print('Protein space is NOT fully utilized and sensitivity relation is within bounds\n')
-        else:
-            print('sensitivity relation is NOT within bounds. Please check the accuray of the solver and '
-                  'the model structure\n')
-
 
     def change_total_protein_constraint(self, p_tot):
         """
@@ -1139,7 +1087,7 @@ class PAModel(Model):
         if self.sensitivity:
             self.constraints[enzyme_id + '_min'].ub = -lower_bound
         else:
-            self.reactions.get_by_id(enzyme_id).lower_bound = lower_bound
+            self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
     def get_enzymes_with_reaction_id(self, rxn_id:str):
         """
