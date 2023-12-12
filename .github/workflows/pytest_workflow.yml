@@ -43,10 +43,10 @@ jobs:
     needs: [linux, windows, macos]
 
   linux:
-    extends: common
+    uses: common
 
   windows:
-    extends: common
+    uses: common
 
   macos:
-    extends: common
+    uses: common
