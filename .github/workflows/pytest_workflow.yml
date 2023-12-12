@@ -40,13 +40,25 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: [linux, windows, macos]
+    needs: [ linux, windows, macos ]
 
   linux:
-    uses: common
+    runs-on: ubuntu-latest
+    needs: common
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
 
   windows:
-    uses: common
+    runs-on: windows-latest
+    needs: common
+    strategy:
+      matrix:
+        os: [ windows-latest ]
 
   macos:
-    uses: common
+    runs-on: macos-latest
+    needs: common
+    strategy:
+      matrix:
+        os: [ macos-latest ]
