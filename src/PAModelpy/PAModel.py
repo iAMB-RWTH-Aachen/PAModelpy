@@ -1530,7 +1530,7 @@ class PAModel(Model):
         #         else: new_attr = attr
         #         new_dict[new_attr] = self.__dict__[attr]
         new_dict = self.find_init_args(self)
-        new_dict['id_or_model'] = self.m_model
+        new_dict['id_or_model'] = self.m_model.copy()
         # initialize new model
         new = self.__class__(**new_dict)
         # also adjust the constants
@@ -1655,6 +1655,15 @@ class PAModel(Model):
         # it doesn't make sense to retain the context of a copied model so
         # assign a new empty context
         new._contexts = []
+
+        #copy bounds
+        for key, var in self.variables.items():
+            new.variables[key].lb = var.lb
+            new.variables[key].ub = var.ub
+
+        for key, cons in self.constraints.items():
+            new.constraints[key].lb = cons.lb
+            new.constraints[key].ub = cons.ub
 
         return new
 

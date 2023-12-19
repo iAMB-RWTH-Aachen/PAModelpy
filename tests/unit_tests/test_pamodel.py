@@ -110,6 +110,15 @@ def test_if_pamodel_change_enzyme_bounds_function_without_sensitivity_works():
     assert new_E1_min == new_toy_E1_min
     assert new_E1_max == new_toy_E1_max
 
+def test_if_pamodel_copy_function_works():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    # act
+    toy_pam_copy = toy_pam.copy()
+    # assert
+    assert_bounds(toy_pam, toy_pam_copy)
+    assert_total_protein_content(toy_pam, toy_pam_copy)
+
 
 #######################################################################################################
 #HELPER METHODS
@@ -147,3 +156,17 @@ def build_toy_pam(sensitivity = True):
                       translational_sector = translation_enzyme, sensitivity = sensitivity,
                       unused_sector = unused_enzyme, p_tot=0.6*1e-3, configuration=Config)
     return pamodel
+
+def assert_bounds(model_ori, model_copy):
+    for key, var in model_ori.variables.items():
+        assert var.ub == model_copy.variables[key].ub
+        assert var.lb == model_copy.variables[key].lb
+
+    for key, cons in model_ori.constraints.items():
+        assert cons.ub == model_copy.constraints[key].ub
+        assert cons.lb == model_copy.constraints[key].lb
+
+def assert_total_protein_content(model_ori, model_copy):
+    assert model_ori.p_tot == model_copy.p_tot
+    tot_prot_cons_id = model_ori.TOTAL_PROTEIN_CONSTRAINT_ID
+    assert model_ori.constraints[tot_prot_cons_id].ub == model_copy.constraints[tot_prot_cons_id].ub

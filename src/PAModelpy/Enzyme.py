@@ -748,7 +748,7 @@ class EnzymeVariable(Reaction):
         A new enzyme variable that is a copy of the original enzyme variable
         """
 
-        cop = copy(super(PAModelpy.Enzyme.EnzymeVariable, self))
+        cop = copy(super(EnzymeVariable, self))
         return cop
 
     def __deepcopy__(self, memo: dict) -> 'PAModelpy.Enzyme.EnzymeVariable':
@@ -761,5 +761,5 @@ class EnzymeVariable(Reaction):
         A new enzyme variable that is a copy of the original enzyme variable with memo
         """
 
-        cop = deepcopy(super(PAModelpy.Enzyme.EnzymeVariable, self), memo)
+        cop = deepcopy(super(EnzymeVariable, self), memo)
         return cop
