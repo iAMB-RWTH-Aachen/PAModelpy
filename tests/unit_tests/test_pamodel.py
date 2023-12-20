@@ -119,6 +119,19 @@ def test_if_pamodel_copy_function_works():
     assert_bounds(toy_pam, toy_pam_copy)
     assert_total_protein_content(toy_pam, toy_pam_copy)
 
+def test_if_pamodel_enzyme_get_kcat_values_correctly():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    enzyme_to_return = 'E3'
+    reaction_to_return = 'R3'
+    kcat_to_return = 1/(3600*1e-6) #unit correction to be consistent with the way it is saved (see toymodel setup function)
+
+    # act
+    kcat_returned = toy_pam.enzymes.get_by_id(enzyme_to_return).get_kcat_values([reaction_to_return])
+
+    # assert
+    assert kcat_to_return == kcat_returned['f']
+
 
 #######################################################################################################
 #HELPER METHODS
