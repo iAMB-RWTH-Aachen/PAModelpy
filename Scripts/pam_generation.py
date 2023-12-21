@@ -8,7 +8,7 @@ from PAModelpy.PAModel import PAModel
 from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from PAModelpy.configuration import Config
 
-from toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
+from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 
 'Function library for making Protein Allocation Models as described in the publication'
 
@@ -194,8 +194,15 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
 
 def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: bool = True,
                    translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True):
+
+    config = Config()
+    config.reset()
     # Setting the relative paths
-    BASE_DIR = os.path.split(os.getcwd())[0]
+    cwd = os.getcwd()
+    if os.path.split(cwd)[1] != 'Scripts':
+        BASE_DIR = cwd
+    else:
+        BASE_DIR = os.path.split(os.getcwd())[0]
     MODEL_DIR = os.path.join(BASE_DIR, 'Models')
     DATA_DIR = os.path.join(BASE_DIR, 'Data')
     pam_info_file = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
@@ -268,7 +275,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
             else:
                 rxn2protein[rxn] = {ec: ec_dict}
 
-        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein)
+        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, configuration = config)
 
     else:
         active_enzyme_sector = None
@@ -279,7 +286,8 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
             id_list=[translational_info[translational_info.Parameter == 'id_list'].loc[0, 'Value']],
             tps_0=[translational_info[translational_info.Parameter == 'tps_0'].loc[1, 'Value']],
             tps_mu=[-translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
-            mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']])
+            mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']],
+            configuration = config)
     else:
         translation_enzyme_sector = None
 
@@ -293,7 +301,8 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
             id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0, 'Value']],
             ups_mu=[ups_0 / smax],
             ups_0=[ups_0],
-            mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].loc[3, 'Value']])
+            mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].loc[3, 'Value']],
+            configuration = config)
     else:
         unused_protein_sector = None
 
@@ -301,7 +310,8 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
 
     pamodel = PAModel(id_or_model=model, p_tot=total_protein,
                        active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
-                       unused_sector=unused_protein_sector, sensitivity=sensitivity)
+                       unused_sector=unused_protein_sector, sensitivity=sensitivity, configuration = config
+                      )
     return pamodel
 
 def parse_coefficients(pamodel):

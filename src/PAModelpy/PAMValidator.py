@@ -338,7 +338,7 @@ class PAMValidator(object):
         subplot_titles= ('Glucose consumption', 'Acetate production', 'O2 consumption','CO2 production'))
 
         self.results[c_uptake_rxn] = abs(self.results[c_uptake_rxn])
-        self.results[configuration.OXYGEN_UPTAKE_RXNID] = abs(self.results[configuration.OXYGEN_UPTAKE_RXNID])
+        self.results[self.OXYGEN_UPTAKE_RXNID] = abs(self.results[self.OXYGEN_UPTAKE_RXNID])
         self.yield_data[c_uptake_rxn] = abs(self.yield_data[c_uptake_rxn])
         self.yield_data[self.OXYGEN_UPTAKE_RXNID] = abs(self.yield_data[self.OXYGEN_UPTAKE_RXNID])
         self.yield_data[self.BIOMASS_REACTION] = abs(self.yield_data[self.BIOMASS_REACTION])
@@ -365,7 +365,7 @@ class PAMValidator(object):
 
         # O2 uptake
         fig.add_trace(
-            go.Scatter(x=self.results[c_uptake_rxn], y=self.results[configuration.OXYGEN_UPTAKE_RXNID], mode='lines',
+            go.Scatter(x=self.results[c_uptake_rxn], y=self.results[self.OXYGEN_UPTAKE_RXNID], mode='lines',
                        showlegend=False, marker=dict(color='blue')), row=2, col=1)
         fig.add_trace(go.Scatter(x=self.yield_data[c_uptake_rxn],
                                  y=self.yield_data[self.OXYGEN_UPTAKE_RXNID],
@@ -376,7 +376,7 @@ class PAMValidator(object):
 
         #CO2 excretion
         fig.add_trace(go.Scatter(x=self.results[c_uptake_rxn], y=self.results[
-            configuration.CO2_EXHANGE_RXNID], mode='lines',
+            self.CO2_EXHANGE_RXNID], mode='lines',
                                  showlegend=False, marker=dict(color='blue')), row=2, col=2)
         fig.add_trace(go.Scatter(x=self.yield_data[c_uptake_rxn],
                                  y=self.yield_data[self.CO2_EXHANGE_RXNID],

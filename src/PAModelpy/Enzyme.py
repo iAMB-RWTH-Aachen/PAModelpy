@@ -728,17 +728,17 @@ class EnzymeVariable(Reaction):
 
             for direction, kcat in kcats_change.items():
                 # get constraint
-                constraint_id = f'EC_{rxn.id}_{direction}'
+                constraint_id = f'EC_{self.id}_{direction}'
                 constraint = self.enzyme._constraints[constraint_id]
                 # change kcat value in the constraint
                 coeff = kcat * 3600 * 1e-6
                 if direction == 'f':
                     self._model.constraints[constraint_id].set_linear_coefficients({
-                        self.reaction.forward_variable: 1 / coeff
+                        rxn.forward_variable: 1 / coeff
                     })
                 elif direction == 'b':
                     self._model.constraints[constraint_id].set_linear_coefficients({
-                        self.reaction.reverse_variable: 1 / coeff
+                        rxn.reverse_variable: 1 / coeff
                     })
             self._model.solver.update()
 
@@ -748,7 +748,7 @@ class EnzymeVariable(Reaction):
         A new enzyme variable that is a copy of the original enzyme variable
         """
 
-        cop = copy(super(PAModelpy.Enzyme.EnzymeVariable, self))
+        cop = copy(super(EnzymeVariable, self))
         return cop
 
     def __deepcopy__(self, memo: dict) -> 'PAModelpy.Enzyme.EnzymeVariable':
@@ -761,5 +761,5 @@ class EnzymeVariable(Reaction):
         A new enzyme variable that is a copy of the original enzyme variable with memo
         """
 
-        cop = deepcopy(super(PAModelpy.Enzyme.EnzymeVariable, self), memo)
+        cop = deepcopy(super(EnzymeVariable, self), memo)
         return cop

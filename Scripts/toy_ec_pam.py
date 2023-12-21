@@ -1,6 +1,6 @@
 from cobra import Configuration
 from cobra import Model, Reaction, Metabolite
-import plotly.express
+
 import numpy as np
 
 #importing the tools from the PAModelpy package
@@ -157,6 +157,8 @@ def run_simulations(pamodel, substrate_rates):
             'x_axis_csc': x_axis_csc,'x_axis_esc': x_axis_esc}
 
 def print_heatmap(xaxis, matrix, yaxis = None):
+    import plotly.express
+
     if yaxis is None:
         yaxis = list()
         for i in range(1, n + 1):
