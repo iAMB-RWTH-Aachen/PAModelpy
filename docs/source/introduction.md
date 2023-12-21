@@ -1,4 +1,5 @@
 # PAModelpy - Protein Allocation Model reconstruction in Python
+*******
 
 ## What is PAModelpy?
 Models of metabolism are powerful tools to explore the metabolic potential of microorganism. 
@@ -6,7 +7,7 @@ Powerful tools have been created to support Python-based analysis of genome-scal
 These models, however, cannot capture all metabolic phenotypes and the simulation results have high flux variability.
 Adding protein to each reaction increases the simulation fidelity.
 The PAModelpy package is designed to integrate protein constraints and protein sectors as described by [Alter et al. (2021)](https://journals.asm.org/doi/10.1128/mSystems.00625-20) to metabolic models.
-It is the Python implementation of the [PAM MATLAB framework](https://github.com/Spherotob/PAM_public) to create GECKO like ME models.
+It is the Python implementation of the [PAM MATLAB framework](https://github.com/Spherotob/PAM_public) to create GECKO like protein-constrained models.
 
 The PAModelpy package builds upon the community-wide used [COBRApy](https://github.com/opencobra/cobrapy/tree/devel). 
 We have extended this package with the following features:
