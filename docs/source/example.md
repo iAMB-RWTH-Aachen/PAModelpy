@@ -1,5 +1,6 @@
 # Example usage of PAModelpy
-******
+*************
+
 ## Example 1: setting up an *Escherichia coli* Protein Allocation model (PAM)
 *****
 *Escherichia coli* (*E.coli*) is a commonly used model organism in Microbiology. When this microorganism is grown
@@ -14,8 +15,7 @@ For this entire tutorial, you'll need to load the following packages:
 ```python
 #importing the packages
 import os
-from cobra.io import read_sbml_model, load_matlab_model
-import sys
+from cobra.io import read_sbml_model
 import pandas as pd
 
 #load PAMpy modules
@@ -233,7 +233,30 @@ we get the sensitivity of the objective function to slight changes in the enzyme
 coefficients, ESC) as a result from the model simulations. In this example we'll use a toy model to illustrate how these
 sensitivities can help us explain concepts of protein allocation.
 
+[//]: # (image reference)
+[toy_model_image]: toy-model.png "Figure 1. Toy model network and parameters"
+
+
+![toy_model][toy_model_image]
+**Figure 1. Toy model network and parameters.** *This toy model represents a schematic overview of a microbial metabolism,
+with an energy efficient (R1-R2-R4+R5-R6-R7) and an enzyme efficient (R1-R2-R3+R5-R6-R7) pathway. Besides the enzymes 
+catalyzing the reactions (denoted with an 'E') and corresponding catalytic efficiency (k<sub>cat</sub>), also the relation 
+with the reactions and the enzyme sectors are given. UES: Unused Enzyme Sector, TES: Translational Enzyme Sector, AES:
+Active Enzyme Sector.*
+
+
 First, all import statements you'll need in this example:
+
+```python
+import numpy as np
+from cobra.io import load_json_model
+import plotly.express
+
+from PAModelpy.EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, UnusedEnzymeSector
+from PAModelpy.PAModel import PAModel
+from PAModelpy.PAMValidator import PAMValidator
+from PAModelpy.configuration import Config
+```
 
 ### Step 1: Build the toy model
 Obviously, we first have to build the toy model. To make it easy, we have provided the toy model structure
@@ -335,7 +358,6 @@ metabolic phenotype.
 
 ```python
 def print_heatmap(xaxis, matrix, yaxis = None):
-    import plotly.express
 
     if yaxis is None:
         yaxis = list()
@@ -351,7 +373,7 @@ print_heatmap(x_axis_esc, Cesc, yaxis=substrate_axis)
 ```
 
 ### Step 4: Interpret the results
-Compare the toy model network structure with the results from the heatmap. Did you expect these results? Do they make 
+Compare the [toy model network structure][toy_model_image] with the results from the heatmap. Did you expect these results? Do they make 
 sense? Which mechanisms to explain these observations. If the observations are not inline with you're expectations,
 you can use the enzyme sensitivities to point to the enzymatic parameters which might need to be adjusted (in this dummy
 example this makes no sense off course, but in reality this is a very plausible outcome).
