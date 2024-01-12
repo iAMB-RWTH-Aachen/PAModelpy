@@ -176,7 +176,7 @@ def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate
     mu_ax.set_ylabel('$v_{biomass} $ $(h^{-1})$', fontsize = FONTSIZE)
     # add B panel annotation
     mu_ax.annotate('B', xy=(0.01, 0.01), xycoords='data',
-                   xytext=(-0.25, 1.05), textcoords='axes fraction',
+                   xytext=(-0.1, 1.05), textcoords='axes fraction',
                    va='top', ha='left', fontsize=FONTSIZE*1.5, weight='bold')
 
     # plot the sensitivity coefficients
@@ -194,8 +194,8 @@ def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate
 if __name__ == "__main__":
 
     FONTSIZE = 16
-    width = 18
-    height =7
+    width = 7
+    height = 12
     model = build_toy_gem()
     active_enzyme = build_active_enzyme_sector(Config)
     unused_enzyme = build_unused_protein_sector(Config)
@@ -215,16 +215,16 @@ if __name__ == "__main__":
     # gridspec inside gridspec
     fig = plt.figure()
 
-    gs0 = gridspec.GridSpec(1, 18, figure=fig, wspace = 25)
-    gs_toymodel = gs0[:13]
-    gs_sensitivities = gs0[14:]
+    gs0 = gridspec.GridSpec(2, 1, figure=fig, height_ratios=[1,1])
+    gs_toymodel = gs0[0]
+    gs_sensitivities = gs0[1]
 
     image_path = 'Figure1_toy-model.png'
     toy_model = np.asarray(Image.open(image_path))
     ax_fig = fig.add_subplot(gs_toymodel)
     ax_fig.imshow(toy_model)
     ax_fig.annotate('A', xy=(2, 1), xycoords='data',
-                    xytext=(0, 1), textcoords='axes fraction',
+                    xytext=(-0.1, 1), textcoords='axes fraction',
                     va='top', ha='left', fontsize=FONTSIZE*1.5, weight='bold')
     ax_fig.axis('off')
     ax_fig.set_xticks([])
@@ -245,6 +245,7 @@ if __name__ == "__main__":
                              tot_prot_csc, substrate_csc, e1_esc)
     fig.set_figwidth(width)
     fig.set_figheight(height)
+    plt.tight_layout()
 
     fig.savefig('Figure1_toy_model-sensitivities.png',bbox_inches='tight')
     plt.show()
