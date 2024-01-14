@@ -1,3 +1,10 @@
+---
+title: 'Introduction'
+sidebar_position: 1
+sidebar_title: 'Introduction'
+slug: '/'
+---
+
 # PAModelpy - Protein Allocation Model reconstruction in Python
 *******
 
@@ -25,7 +32,7 @@ We have extended this package with the following features:
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
 ## What can you find where in this repository?
-This repository contains not only the source code, but also examples and scripts which were used in [publication](linktopublication).
+This repository contains not only the source code, but also examples and scripts which were used in **INSERT PUBLICATION HERE**.
 - **Data**
   - *eGFP_expression_Bienick2014*: measured growth rate and eGFP expression by [Bienick et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0109105)
   - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
