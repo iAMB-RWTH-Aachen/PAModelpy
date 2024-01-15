@@ -1,3 +1,9 @@
+---
+title: 'Examples'
+sidebar_position: 2
+sidebar_title: 'Examples'
+---
+
 # Example usage of PAModelpy
 *************
 
@@ -70,13 +76,15 @@ active_enzyme_info[nan_values]
 We need to collect the data from this table and put it in the correct structure to be parsed into the ActiveEnzymeSector
 object. The main input in this object is the rxn2protein dictionary, where all the information about protein-reaction 
 associations required to build the protein-reaction relations in the model. It has the following format:
-```
-        {'R1':
-             {'E1':
-                  {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass},
-                'E2':
-                    {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass}
-        }
+
+```json
+{'R1':
+    {'E1':
+        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass},
+     'E2':
+        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass}
+    }
+}
 ```
 
 We need to take the following steps to get the right format:
@@ -233,16 +241,18 @@ we get the sensitivity of the objective function to slight changes in the enzyme
 coefficients, ESC) as a result from the model simulations. In this example we'll use a toy model to illustrate how these
 sensitivities can help us explain concepts of protein allocation.
 
-[//]: # (image reference)
-[toy_model_image]: toy-model.png "Figure 1. Toy model network and parameters"
 
+<figure id="toy_model_image">
 
-![toy_model][toy_model_image]
-**Figure 1. Toy model network and parameters.** *This toy model represents a schematic overview of a microbial metabolism,
+![toy_model_image](./assets/toy-model.png)
+
+<figcaption>**Figure 1. Toy model network and parameters**  
+*This toy model represents a schematic overview of a microbial metabolism,
 with an energy efficient (R1-R2-R4+R5-R6-R7) and an enzyme efficient (R1-R2-R3+R5-R6-R7) pathway. Besides the enzymes 
 catalyzing the reactions (denoted with an 'E') and corresponding catalytic efficiency (k<sub>cat</sub>), also the relation 
 with the reactions and the enzyme sectors are given. UES: Unused Enzyme Sector, TES: Translational Enzyme Sector, AES:
-Active Enzyme Sector.*
+Active Enzyme Sector.*</figcaption>
+</figure> 
 
 
 First, all import statements you'll need in this example:
@@ -373,7 +383,7 @@ print_heatmap(x_axis_esc, Cesc, yaxis=substrate_axis)
 ```
 
 ### Step 4: Interpret the results
-Compare the [toy model network structure][toy_model_image] with the results from the heatmap. Did you expect these results? Do they make 
+Compare the [toy model network structure](#toy_model_image) with the results from the heatmap. Did you expect these results? Do they make 
 sense? Which mechanisms to explain these observations. If the observations are not inline with you're expectations,
 you can use the enzyme sensitivities to point to the enzymatic parameters which might need to be adjusted (in this dummy
 example this makes no sense off course, but in reality this is a very plausible outcome).
