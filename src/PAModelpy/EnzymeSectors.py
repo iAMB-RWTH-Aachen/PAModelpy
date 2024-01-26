@@ -1,6 +1,6 @@
 from warnings import warn
 from copy import copy, deepcopy
-from cobra import Object
+from cobra import Object, Gene, Model
 
 from .Enzyme import Enzyme
 from .configuration import Config
@@ -58,7 +58,7 @@ class EnzymeSector(Sector):
 class ActiveEnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
     #class with all the information on enzymes related to metabolic reactions
-    def __init__(self, rxn2protein: dict, configuration:Config =Config):
+    def __init__(self, rxn2protein: dict, protein2gene:dict = {},configuration:Config =Config):
         """_summary_
 
         Parameters
@@ -76,6 +76,14 @@ class ActiveEnzymeSector(Sector):
                             E2:
                                 {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'genes': [G3, G4],
                                  'complex_with': 'E1'}}
+        protein2gene: dict
+            enzyme_id, gene_list key, value pairs for each enzyme.The gene_list value is a list of lists which indicates
+            'and' or 'or' relationships between the genes which code for the enzyme(complex).
+
+            example: {E1: [[gene1], [gene2, gene3]], E2: [[gene4]]}
+            where the gene-protein-reaction associations are the following:
+            E1: gene1 or (gene2 and gene3)
+            E2: gene4
 
         configuration: Config object, optional
                     Information about general configuration of the model including identifier conventions.
@@ -84,6 +92,7 @@ class ActiveEnzymeSector(Sector):
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
 
         self.rxn2protein = rxn2protein
+        self.protein2gene = protein2gene
         # ID of the sector
         self.id = 'ActiveEnzymeSector'
         self.model = None
@@ -151,10 +160,16 @@ class ActiveEnzymeSector(Sector):
                         enzyme.create_catalytic_event(rxn_id=rxn_id, kcats=kcat)
                         model.add_catalytic_events([enzyme.catalytic_events.get_by_id(f'CE_{rxn_id}')])
                 else:
+                    if self.protein2gene != {}:
+                        gene_list = self._get_model_genes_from_enzyme(enzyme_id, model)
+                    else:
+                        gene_list = []
+
                     enzyme = Enzyme(
                         id = enzyme_id,
                         rxn2kcat= {rxn_id: kcat},
-                        molmass = molmass
+                        molmass = molmass,
+                        genes = gene_list
                     )
                     #in the add enzymes function the enzyme with corresponding catalytic events will be added to the model
                     #and connected to the reaction and total protein constraint
@@ -226,6 +241,18 @@ class ActiveEnzymeSector(Sector):
                 return False
 
         return rxn_dir == 'consistent'
+
+    def _get_model_genes_from_enzyme(self, enzyme_id: str, model: Model) -> list:
+        gene_id_list = self.protein2gene[enzyme_id]
+        gene_list = []
+        for genes_or in gene_id_list:
+            genes_and_list = []
+            for gene_and in genes_or:
+                if not gene_and in model.genes:
+                    model.genes.append(Gene(gene_and))
+                genes_and_list.append(model.genes.get_by_id(gene_and))
+            gene_list.append(genes_and_list)
+        return gene_list
 
 class TransEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 4.0590394e05  # default E. coli ribosome molar mass [g/mol]

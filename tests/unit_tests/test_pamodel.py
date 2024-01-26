@@ -4,10 +4,6 @@ from cobra.io import load_json_model
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.dirname(
-            os.path.dirname( #testing dir
-                os.path.dirname(__file__))))) #this dir
-
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.configuration import Config
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector

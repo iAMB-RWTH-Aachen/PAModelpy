@@ -59,6 +59,7 @@ class Enzyme(Object):
         self,
         id: str,
         rxn2kcat: Dict,
+        genes: list = [],
         upper_bound: Union[int, float] = 1000.0,
         lower_bound: Union[int, float] = 0,
         name: Optional[str] = None,
@@ -85,6 +86,7 @@ class Enzyme(Object):
         self._constraints = {} # dict with constraint_id:optlang.Constraint, key:value pairs.
         self._model = None
         self.enzyme_complex = [] #is the enzyme in a complex?
+        self.genes = genes
         self.annotation = {'type':'Constraint'}#you can add an annotation for an enzyme
      
     @property

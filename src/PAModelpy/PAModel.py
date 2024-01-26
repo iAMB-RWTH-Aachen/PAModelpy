@@ -103,8 +103,8 @@ class PAModel(Model):
         self.CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
         self.GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
         self.BIOMASS_REACTION = configuration.BIOMASS_REACTION
-
         self.configuration = configuration
+
         """Initialize the Model."""
         if isinstance(id_or_model, str):
             id_or_model = load_model(id_or_model)
@@ -123,7 +123,6 @@ class PAModel(Model):
         self.sensitivity = sensitivity
         self.capacity_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (capacity sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
         self.enzyme_sensitivity_coefficients = pd.DataFrame() #dataframe to store the result of the sensitivity analysis (sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
-
 
         #initialize the model
         print(f'Setting up the proteome allocation model {self.id}\n')
@@ -393,6 +392,12 @@ class PAModel(Model):
                     catalytic_event_model.constraints[enzyme.id] = self.constraints[constraint_id]
                     enzyme_var_model.constraints[constraint_id] = self.constraints[constraint_id]
                     self.solver.update()
+
+            #check if all genes are in the model
+            for genes_or in enzyme.genes:
+                    for gene_and in genes_or:
+                        if not gene_and in self.genes:
+                            self.genes.append(gene_and)
 
     def add_sectors(self, sectors: List = None):
         """
