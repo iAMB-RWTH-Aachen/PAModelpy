@@ -193,7 +193,8 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
     return pa_model
 
 def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: bool = True,
-                   translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True):
+                   translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True,
+                     updated_relations = False):
 
     config = Config()
     config.reset()
@@ -206,6 +207,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
     MODEL_DIR = os.path.join(BASE_DIR, 'Models')
     DATA_DIR = os.path.join(BASE_DIR, 'Data')
     pam_info_file = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
+    pam_info_updated_file = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_230503.xls')
 
     # some other constants
     TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
@@ -281,7 +283,10 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
         active_enzyme_sector = None
 
     if translational_enzymes:
-        translational_info = pd.read_excel(pam_info_file, sheet_name='Translational')
+        if updated_relations:
+            translational_info = pd.read_excel(pam_info_updated_file, sheet_name='Translational')
+        else:
+            translational_info = pd.read_excel(pam_info_file, sheet_name='Translational')
         translation_enzyme_sector = TransEnzymeSector(
             id_list=[translational_info[translational_info.Parameter == 'id_list'].loc[0, 'Value']],
             tps_0=[translational_info[translational_info.Parameter == 'tps_0'].loc[1, 'Value']],
@@ -292,17 +297,24 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
         translation_enzyme_sector = None
 
     if unused_enzymes:
-        unused_protein_info = pd.read_excel(pam_info_file, sheet_name='ExcessEnzymes')
+        if updated_relations:
+            unused_protein_info = pd.read_excel(pam_info_updated_file, sheet_name='ExcessEnzymes')
+            ups_0 = unused_protein_info[unused_protein_info.Parameter == 'ups_0'].Value.iloc[0]
+            ups_mu = unused_protein_info[unused_protein_info.Parameter == 'ups_mu'].Value.iloc[0]
 
-        ups_0 = unused_protein_info[unused_protein_info.Parameter == 'ups_0'].loc[2, 'Value']
-        smax = unused_protein_info[unused_protein_info.Parameter == 's_max_uptake'].loc[1, 'Value']
+        else:
+            unused_protein_info = pd.read_excel(pam_info_file, sheet_name='ExcessEnzymes')
+            ups_0 = unused_protein_info[unused_protein_info.Parameter == 'ups_0'].loc[2, 'Value']
+            smax = unused_protein_info[unused_protein_info.Parameter == 's_max_uptake'].loc[1, 'Value']
+            ups_mu = ups_0 / smax
 
         unused_protein_sector = UnusedEnzymeSector(
-            id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0, 'Value']],
-            ups_mu=[ups_0 / smax],
+            id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].Value.iloc[0]],
+            ups_mu=[ups_mu],
             ups_0=[ups_0],
-            mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].loc[3, 'Value']],
+            mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].Value.iloc[0]],
             configuration = config)
+        unused_protein_sector.id = 'UnusedEnzymeSector'
     else:
         unused_protein_sector = None
 

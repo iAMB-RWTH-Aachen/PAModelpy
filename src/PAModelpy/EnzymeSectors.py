@@ -316,6 +316,7 @@ class UnusedEnzymeSector(EnzymeSector):
             self.ups_mu = ups_mu
         # *1000 to convert units from g/g_cdw to mg/g_cdw
         self.ups_0_coeff = self.ups_0[0]*1e3
+        self.id = 'UnusedEnzymeSector'
 
         self.slope = self.ups_mu*1e3
         self.intercept = self.ups_0_coeff

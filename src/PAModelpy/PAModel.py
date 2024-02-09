@@ -95,7 +95,7 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
-                 custom_sectors: Union[List, CustomSector] =None,
+                 custom_sectors: Optional[CustomSector] =[None],
                  configuration = Config):
         """Constants"""
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
@@ -131,7 +131,8 @@ class PAModel(Model):
         if sensitivity: #perform sensitivity analysis when the model is run
             self.add_lb_ub_constraints()
 
-        for sector in [active_sector, translational_sector, unused_sector, custom_sectors]:
+        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
         print(f'Done with setting up the proteome allocation model {self.id}\n')
@@ -741,17 +742,17 @@ class PAModel(Model):
     @staticmethod
     def make_enzyme_min_max_constraint(m: Optional[Model], enz: Enzyme, lower_bound: float, upper_bound:float):
         """
-        Adding variables and constraints for the lower and upperbounds of a reaction to a model.
+        Adding variables and constraints for the lower and upperbounds of an Enzyme to a model.
         When solving the model, shadow prices for the lower and upperbounds will be calculated.
         This allows for the calculation of sensitivity coefficients. The constraints are formulated as follows:
-        R_ub : E <= Emax
-        R_lb : -E <= -Emin
+        enz_max : E <= Emax
+        enz_min : -E <= -Emin
 
         Parameters
         ----------
         m: cobra.Model or PAModelpy.PAModel
             model to which the upper and lowerbound constraints and variables should be added
-        rxn: PAModelpy.Enzyme
+        enz: PAModelpy.Enzyme
             Enzyme for which minimal and maximal concentration constraints should be generated
         lower_bound: float
             Value of the lowerbound
