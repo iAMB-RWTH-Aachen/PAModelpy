@@ -619,18 +619,17 @@ class EnzymeVariable(Reaction):
 
             # add enzyme to catalytic event and the related variable
             for direction, kcatvalue in kcat.items():
-                coeff = kcatvalue * 3600 * 1e-6
+                self._model._change_kcat_in_enzyme_constraint(rxn, self.id,
+                                                              direction, kcatvalue)
                 # add enzyme to the associated reaction with kinetic constants
                 # and relate enzyme to the catalytic event
                 if direction == 'f':
                     self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
-                        rxn.forward_variable: 1 / coeff,
                         self.forward_variable: -1
                     })
 
                 elif direction == 'b':
                     self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
-                        rxn.reverse_variable: 1 / coeff,
                         self.reverse_variable: -1
                     })
 
@@ -729,19 +728,8 @@ class EnzymeVariable(Reaction):
                 warn(f'Catalytic event {self.id} is not integrated into a model!')
 
             for direction, kcat in kcats_change.items():
-                # get constraint
-                constraint_id = f'EC_{self.id}_{direction}'
-                constraint = self.enzyme._constraints[constraint_id]
-                # change kcat value in the constraint
-                coeff = kcat * 3600 * 1e-6
-                if direction == 'f':
-                    self._model.constraints[constraint_id].set_linear_coefficients({
-                        rxn.forward_variable: 1 / coeff
-                    })
-                elif direction == 'b':
-                    self._model.constraints[constraint_id].set_linear_coefficients({
-                        rxn.reverse_variable: 1 / coeff
-                    })
+                self._model._change_kcat_in_enzyme_constraint(rxn, self.id,
+                                                              direction, kcat)
             self._model.solver.update()
 
     def __copy__(self) -> 'PAModelpy.Enzyme.EnzymeVariable':

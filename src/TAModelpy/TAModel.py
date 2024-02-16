@@ -20,7 +20,7 @@ class TAModel(PAModel):
                  active_sector: Optional[ActiveEnzymeSector] = None,
                  translational_sector: Optional[TransEnzymeSector] = None,
                  unused_sector: Optional[UnusedEnzymeSector] = None,
-                 custom_sectors: Union[List, CustomSector] = None,
+                 custom_sectors: Union[List, CustomSector] = [None],
                  mrna_sector: ActivemRNASector = None,
                  configuration=Config):
         """ Transcript allocation model
@@ -141,6 +141,7 @@ class TAModel(PAModel):
             >>> tamodel.add_transcript_information(gene2transcript=gene2transcript)
         """
         for gene, transcript_info in gene2transcript.items():
+            if isinstance(gene, str): gene = Gene(gene)
             if not gene in self.genes: self.genes.append(gene)
             gene_object = self.genes.get_by_id(gene.id)
             enzymes = self.get_enzymes_by_gene_id(gene.id)
@@ -166,13 +167,15 @@ class TAModel(PAModel):
             f_max: conversion factor between mrna concentration and enzymes. `f_max` determines the largest number of
                 enzymes generated from a single enzyme (in mmol_enzyme/mmol_mrna)
         """
-        transcript_object.f_min = f_min
-        transcript_object.f_max = f_max
+        #adjust minimal and maximal protein/transcript ratios based
+        transcript_object.f_min = f_min*transcript_object.length**2/3
+        transcript_object.f_max = f_max*transcript_object.length**2/3
+
         print('adding model to transcript ', transcript_object.id)
         transcript_object.model = self
         self.transcripts.append(transcript_object)
 
-    def add_total_mrna_constraint(self, mrna_sector):
+    def add_total_mrna_constraint(self, mrna_sector:ActivemRNASector) -> None:
 
         tot_mrna_constraint = self.problem.Constraint(Zero,name=self.TOTAL_MRNA_CONSTRAINT_ID,
                                                       lb=mrna_sector.intercept, ub = mrna_sector.intercept)
@@ -184,7 +187,7 @@ class TAModel(PAModel):
                                        **{transcript.mrna_variable:1}}
 
         self.constraints[self.TOTAL_MRNA_CONSTRAINT_ID].set_linear_coefficients(constraint_coefficients)
-        pass
+
 
     def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))

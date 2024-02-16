@@ -4,9 +4,11 @@ from cobra import Model, Reaction, Metabolite
 import numpy as np
 
 #importing the tools from the PAModelpy package
-from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from PAModelpy.PAModel import PAModel
-from PAModelpy.configuration import Config
+from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.configuration import Config
+
+from src.TAModelpy import TAModel, ActivemRNASector
 
 Config.BIOMASS_REACTION = 'R7'
 Config.GLUCOSE_EXCHANGE_RXNID = 'R1'
@@ -111,7 +113,7 @@ def build_active_enzyme_sector(Config):
         # 1e-6 to correct for the unit transformation in the model (meant to make the calculations preciser for different unit dimensions)
         #dummy molmass like in MATLAB script
         rxn2kcat = {**rxn2kcat, **{rxn_id: {f'E{i+1}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6), 'molmass': 1e6}}}}
-        protein2gene = {f'E{i+1}':[[f'g{i+1}']]}
+        protein2gene = {**protein2gene,**{f'E{i+1}':[[f'g{i+1}']]}}
 
     return ActiveEnzymeSector(rxn2protein = rxn2kcat, protein2gene = protein2gene, configuration=Config)
 
@@ -120,6 +122,11 @@ def build_unused_protein_sector(Config):
 
 def build_translational_protein_sector(Config):
     return TransEnzymeSector(id_list = ['R7'], tps_mu=[0.01*1e-3], tps_0=[0.01*1e-3], mol_mass= [1], configuration=Config)
+
+def build_active_mrnasector(pamodel, Config):
+    gene2transcript = {gene: {'id': f'mRNA{gene.id[-1]}', 'length': 100} for gene in pamodel.genes}
+    return ActivemRNASector(id_list = ['R7'], gene2transcript = gene2transcript, configuration = Config)
+
 def run_simulations(pamodel, substrate_rates):
     substrate_axis = list()
     Ccsc = list()
@@ -178,6 +185,8 @@ if __name__ == "__main__":
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
                       translational_sector = translation_enzyme,
                       unused_sector = unused_enzyme, p_tot=Etot, configuration=Config)
+    mrna_sector = build_active_mrnasector(pamodel, Config)
+    tamodel = TAModel(pamodel, mrna_sector=mrna_sector)
 
     #optimize biomass formation
     pamodel.objective={pamodel.reactions.get_by_id('R7') :1}

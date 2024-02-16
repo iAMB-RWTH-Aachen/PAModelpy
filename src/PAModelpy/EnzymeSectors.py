@@ -182,7 +182,7 @@ class ActiveEnzymeSector(Sector):
                 self.variables.append(enzyme.enzyme_variable)
         return model
 
-    def check_kcat_values(self, model, reaction, kcat):
+    def check_kcat_values(self, model, reaction, enzyme_dict):
         """
         Function to check if the kcat values provided for an enzyme are consistent with the direction of the reaction
         Parameters
@@ -191,7 +191,7 @@ class ActiveEnzymeSector(Sector):
             model to which the kcat values should be added
         reaction: cobra.Reaction
             reaction which is catalyzed with the enzyme related to the kcats
-        kcat: dict
+        enzyme_dict: dict
             a dict with the turnover values for the forward and/or backward reaction for different enzymes [/s]
             {'E1':{'f': forward kcat, 'b': backward kcat}}
 
@@ -208,11 +208,14 @@ class ActiveEnzymeSector(Sector):
 
          # check consistency between provided kcat values and reaction direction
         directions = []
-        for val in kcat.values():# get all directions from the kcat dict
-            directions += list(val.keys())
         kcats = []
-        for val in kcat.values():# get all directions from the kcat dict
-            kcats += list(val.values())
+        for enzyme_info in enzyme_dict.values():
+            # get all directions from the kcat dict
+            for key, value in enzyme_info.items():
+                if key == 'f' or key =='b':
+                    directions += [key]
+                    kcats += [value]
+
 
         rxn_dir = 'consistent'
         if reaction.lower_bound >= 0 and reaction.upper_bound > 0:
@@ -243,14 +246,25 @@ class ActiveEnzymeSector(Sector):
         return rxn_dir == 'consistent'
 
     def _get_model_genes_from_enzyme(self, enzyme_id: str, model: Model) -> list:
+        """
+           Retrieves genes associated with the specified enzyme from the model.
+
+           Args:
+               enzyme_id (str): The identifier of the enzyme.
+               model (Model): The model containing gene information.
+
+           Returns:
+               list: A nested list of gene objects associated with the enzyme.
+           """
         gene_id_list = self.protein2gene[enzyme_id]
         gene_list = []
         for genes_or in gene_id_list:
             genes_and_list = []
             for gene_and in genes_or:
-                if not gene_and in model.genes:
-                    model.genes.append(Gene(gene_and))
-                genes_and_list.append(model.genes.get_by_id(gene_and))
+                for gene in gene_and:
+                    if gene not in model.genes:
+                        model.genes.append(Gene(gene))
+                    genes_and_list.append(model.genes.get_by_id(gene))
             gene_list.append(genes_and_list)
         return gene_list
 

@@ -121,8 +121,8 @@ def assert_transcript_is_in_model(tamodel, transcript):
     mrna_sector = tamodel.sectors.get_by_id('ActivemRNASector')
     assert tamodel == transcript.model
     assert transcript in tamodel.transcripts
-    assert mrna_sector.f_min == transcript.f_min
-    assert mrna_sector.f_max == transcript.f_max
+    assert mrna_sector.f_min*10**2/3 == transcript.f_min
+    assert mrna_sector.f_max*10**2/3 == transcript.f_max
 
 def assert_correct_min_max_mrna_constraint(tamodel, transcript, enzyme):
 

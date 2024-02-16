@@ -377,16 +377,15 @@ class PAModel(Model):
 
                     # kcat is used as a coefficient for the enzyme concentration
                     # Get existent forward/reverse variables
-                    coeff = kcat*3600*1e-6 #3600 to convert to /h to /s *1e-6 to make calculations more accurate
+                    self._change_kcat_in_enzyme_constraint(rxn, enzyme.id,
+                                                           direction, kcat)
                     if direction == 'f':
                         self.constraints[constraint_id].set_linear_coefficients(
                             {enzyme_var_model.forward_variable: -1,
-                              self.reactions.get_by_id(rxn).forward_variable: 1/coeff
                             })
                     elif direction == 'b':
                         self.constraints[constraint_id].set_linear_coefficients(
                             {enzyme_var_model.reverse_variable: -1,
-                             self.reactions.get_by_id(rxn).reverse_variable: 1/coeff
                             })
 
                     # make reaction-enzyme interface and the enzyme variable aware of its participation in the constraint
@@ -1141,6 +1140,26 @@ class PAModel(Model):
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
 
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
+                                                direction: str, kcat: float):
+        constraint_id = f'EC_{enzyme_id}_{direction}'
+        if isinstance(rxn, str):
+            rxn = self.reactions.get_by_id(rxn)
+        # change kcat value in the constraint
+        if kcat == 0:
+            coeff = 0
+        else:
+            coeff = 1 / (kcat * 3600 * 1e-6) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
+        if direction == 'f':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.forward_variable: coeff
+            })
+        elif direction == 'b':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.reverse_variable: coeff
+            })
+        self.solver.update()
+
     def remove_enzymes(self,
                        enzymes: Union[str, Enzyme, List[Union[str, Enzyme]]]
                        )-> None:
@@ -1679,3 +1698,4 @@ class PAModel(Model):
             if param != 'self' and default.default == inspect.Parameter.empty:
                 init_args[param] = getattr(object, param)
         return init_args
+

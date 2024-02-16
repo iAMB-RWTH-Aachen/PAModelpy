@@ -51,10 +51,12 @@ def parse_gpr_relationships_from_Ecocyc():
          'Molecular-Weight-KiloDaltons', 'mrna_length', 'gpr']]
     enzyme_gene_reaction_relation.columns = ['Gene', 'Enzyme', 'Reaction', 'gene_id', 'enzyme_id',
                                              'molmass_kDa', 'mrna_length', 'gpr']
+    tam_info_merged = parse_enzymatic_data_information(enzyme_gene_reaction_relation)
 
     #write to excel
     with pd.ExcelWriter(TAM_DATA_FILE) as writer:
-        enzyme_gene_reaction_relation.to_excel(writer, sheet_name='enzyme-gene-reaction')
+        tam_info_merged.to_excel(writer, sheet_name='enzyme-gene-reaction')
+        # enzyme_gene_reaction_relation.to_excel(writer, sheet_name='enzyme-gene-reaction')
         pd.DataFrame({'not_matched': not_matched_reactions}).to_excel(writer, sheet_name='non-matched_reactions')
 
 
@@ -64,13 +66,21 @@ def parse_and_or_gpr_relations_from_string(gpr_info:str):
         gpr_list.append(gene_relation.split(' and '))
     return gpr_list
 
-def parse_enzymatic_data_information():
-    enzyme_gene_reaction_relation = pd.read_excel(TAM_DATA_FILE, sheet_name='enzyme-gene-reaction')
+def parse_enzymatic_data_information(enzyme_gene_reaction_relation):
+    # enzyme_gene_reaction_relation = pd.read_excel(TAM_DATA_FILE, sheet_name='enzyme-gene-reaction')
     enzyme_info = pd.read_excel(os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py.xls'),
                                 sheet_name='ActiveEnzymes')
+    enzyme_info = enzyme_info.assign(EC_nmbr=enzyme_info['EC_nmbr'].str.split(', ')).explode('EC_nmbr')
 
     tam_info = pd.merge(enzyme_info, enzyme_gene_reaction_relation, how = 'left', left_on='rxnID', right_on='Reaction')
 
+    for i,row in tam_info.iterrows():
+        if not np.isnan(row.molmass_kDa):
+            tam_info.iloc[i, tam_info.columns.get_loc('molMass')] = row.molmass_kDa *1e3
+    #     print(row.molmass_kDa, np.isnan(row.molmass_kDa), row.molMass)
+    # tam_info = tam_info.assign(molmass = lambda x: x.molmass_kDa *1e3 if not np.isnan(x.molmass_kDa) else x.molMass)
+    tam_info = tam_info.drop(['molmass_kDa', 'Reaction'], axis = 1)
+    return tam_info
 
 
 
