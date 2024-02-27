@@ -753,3 +753,27 @@ class EnzymeVariable(Reaction):
 
         cop = deepcopy(super(EnzymeVariable, self), memo)
         return cop
+
+
+class EnzymeComplex(Enzyme):
+
+    DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
+
+    def __init__(
+        self,
+        id: str,
+        rxn2kcat: Dict,
+        genes: list = [],
+        upper_bound: Union[int, float] = 1000.0,
+        lower_bound: Union[int, float] = 0,
+        name: Optional[str] = None,
+        molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,):
+
+        super().__init__(
+        id = id,
+        rxn2kcat = rxn2kcat,
+        genes = genes,
+        upper_bound = upper_bound,
+        lower_bound = lower_bound,
+        name = name,
+        molmass=molmass)

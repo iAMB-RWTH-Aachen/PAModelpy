@@ -4,9 +4,9 @@ from cobra import Model, Reaction, Metabolite
 import numpy as np
 
 #importing the tools from the PAModelpy package
-from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from PAModelpy.PAModel import PAModel
-from PAModelpy.configuration import Config
+from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.configuration import Config
 
 Config.BIOMASS_REACTION = 'R7'
 Config.GLUCOSE_EXCHANGE_RXNID = 'R1'

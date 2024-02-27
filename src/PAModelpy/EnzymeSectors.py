@@ -2,7 +2,7 @@ from warnings import warn
 from copy import copy, deepcopy
 from cobra import Object, Gene, Model
 
-from .Enzyme import Enzyme
+from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 
 
@@ -160,12 +160,14 @@ class ActiveEnzymeSector(Sector):
                         enzyme.create_catalytic_event(rxn_id=rxn_id, kcats=kcat)
                         model.add_catalytic_events([enzyme.catalytic_events.get_by_id(f'CE_{rxn_id}')])
                 else:
+                    enzyme_obj = Enzyme
                     if self.protein2gene != {}:
                         gene_list = self._get_model_genes_from_enzyme(enzyme_id, model)
+                        if any([len(gene)>1 for gene in gene_list]): enzyme_obj = EnzymeComplex
                     else:
                         gene_list = []
 
-                    enzyme = Enzyme(
+                    enzyme = enzyme_obj(
                         id = enzyme_id,
                         rxn2kcat= {rxn_id: kcat},
                         molmass = molmass,

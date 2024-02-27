@@ -33,8 +33,8 @@ class ActivemRNASector(EnzymeSector):
         if len(id_list) == 0:
             id_list = [configuration.BIOMASS_REACTION]
         super().__init__(id_list, mol_mass, configuration)
-        self.mrnas_0 = mrnas_0  # amount of protein allocated to the translational sector at zero growth (g_p/g_cdw)
-        self.mrnas_mu = mrnas_mu  # amount of protein allocated to the translational sector at zero growth (g_p/g_cdw)'
+        self.mrnas_0 = mrnas_0  # amount of mrna allocated to the active enzyme sector at zero growth (mmol_mrna/g_cdw)
+        self.mrnas_mu = mrnas_mu  # amount of mrna allocated to the active enzyme sector at zero growth (mmol_mrna/g_cdw/h)'
         self.id = 'ActivemRNASector'
 
         self.slope = None # mmol/gcdw
@@ -50,8 +50,8 @@ class ActivemRNASector(EnzymeSector):
         self.f_max = self.elongation_rates[1]/self.ribosome_spacing[1]
 
     def set_slope(self):
-        self.slope = self.mrnas_mu
+        self.slope = self.mrnas_mu * 1e3 # unit correction for efficient computing
 
     def set_intercept(self):
-        self.intercept = self.mrnas_0
+        self.intercept = self.mrnas_0 *1e3 # unit correction for efficient computing
 

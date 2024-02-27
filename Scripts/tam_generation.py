@@ -48,12 +48,14 @@ def set_up_ecolicore_tam(total_protein:bool = True, active_enzymes: bool = True,
     # some other constants
     BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
     TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
-    MRNA_MU = 1
-    MRNA_0=1
+    MRNA_MU = 0.00013049558330984208 # [g_mrna/g_cdw/h]
+    MRNA_0= 1.7750480089801658e-05 # [g_mrna/g_cdw]
+
+    # MRNA_MU = 0.0036378316565569466
+    # MRNA_0= 10000000
     config = Config()
     config.reset()
     config.BIOMASS_REACTION = BIOMASS_REACTION
-    #TODO need to fit mrna vs growth relation
 
     # load the genome-scale information
     model = cobra.io.load_json_model(os.path.join(MODEL_DIR, 'e_coli_core.json'))
@@ -69,6 +71,8 @@ def set_up_ecolicore_tam(total_protein:bool = True, active_enzymes: bool = True,
         active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein,
                                                   protein2gene = protein2gene,
                                                   configuration = config)
+
+        # gene2transcript = {'gene_dummy': {'id': 'mRNA_gene_dummy', 'length': 750.0}}
         active_mrna_sector = ActivemRNASector(mrnas_0 = MRNA_0,
                                               mrnas_mu = MRNA_MU,
                                               id_list = [BIOMASS_REACTION],
@@ -126,14 +130,8 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
     config = Config()
     config.reset()
     # Setting the relative paths
-    cwd = os.getcwd()
-    if os.path.split(cwd)[1] != 'Scripts':
-        BASE_DIR = cwd
-    else:
-        BASE_DIR = os.path.split(os.getcwd())[0]
-    MODEL_DIR = os.path.join(BASE_DIR, 'Models')
-    DATA_DIR = os.path.join(BASE_DIR, 'Data')
-    pam_info_file = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
+    MODEL_DIR = 'Models'
+    pam_info_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
 
     # some other constants
     TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
@@ -289,7 +287,6 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
     rxn2protein = {}
     protein2gene = {}
     gene2transcript = {'gene_dummy': {'id': 'mRNA_gene_dummy', 'length': 750.0}}
-    print(gene2transcript)
 
     # Iterate over each row in the DataFrame
     for index, row in enzyme_db.iterrows():
