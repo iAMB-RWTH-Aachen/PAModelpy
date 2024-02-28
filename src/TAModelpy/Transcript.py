@@ -31,11 +31,6 @@ class Transcript(Object):
         # check if enzymes are in the model
         for enzyme in self.enzymes:
             if not enzyme in model.enzymes: model.add_enzyme(enzyme)
-            # #check the gpr relations: is an additional gene required or is there 'competition' with another gene?
-            # other_mrnas= model.get_transcripts_associated_with_enzyme(enzyme)
-            # #TODO how to handle other mrna relations?
-            # # add the mRNA relations to the model
-            # self._model.make_mrna_min_max_constraint(enzyme, self)
 
     def change_concentration(self, concentration:float, error: float = 0) -> None:
         """ Setting the concentration of an mRNA species

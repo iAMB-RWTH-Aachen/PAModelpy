@@ -39,7 +39,7 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
     DATA_DIR = 'Data'
     MODEL_DIR = 'Models'
     PAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
-    TAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'TAModel','2024-02-16_gene_enzyme_reaction_relation_Ecoli.xlsx')
+    TAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'TAModel','2024-02-27_gene_enzyme_reaction_relation_Ecoli.xlsx')
 
     # some other constants
     BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
@@ -376,6 +376,7 @@ def _get_fwd_bckw_kcat(rxn_id: str, kcat:float, model:PAModel) -> Union[list, No
 
     # Iterate over each identifier in the input
     if base_id in model.reactions:
+        if not model.reactions.get_by_id(base_id).genes: return None
         # Determine the form of the identifier
         if rxn_id.endswith('_f'):
             kcat_fwd = kcat
@@ -390,6 +391,7 @@ def _get_fwd_bckw_kcat(rxn_id: str, kcat:float, model:PAModel) -> Union[list, No
         else:
             return None
     elif rxn_id in model.reactions:
+        if not model.reactions.get_by_id(rxn_id).genes: return None
         kcat_fwd = kcat
         kcat_rev = kcat
     else:

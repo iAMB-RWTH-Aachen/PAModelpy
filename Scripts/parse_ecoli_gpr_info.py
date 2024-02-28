@@ -51,7 +51,12 @@ def parse_gpr_relationships_from_Ecocyc():
          'Molecular-Weight-KiloDaltons', 'mrna_length', 'gpr']]
     enzyme_gene_reaction_relation.columns = ['Gene', 'Enzyme', 'Reaction', 'gene_id', 'enzyme_id',
                                              'molmass_kDa', 'mrna_length', 'gpr']
+
+    #Get enzyme and kcat information already available
     tam_info_merged = parse_enzymatic_data_information(enzyme_gene_reaction_relation)
+
+    #Append the information of each gene with information from the 'GeneList'
+    tam_info_merged = parse_ecoli_genome_information(tam_info_merged)
 
     #write to excel
     with pd.ExcelWriter(TAM_DATA_FILE) as writer:
@@ -82,7 +87,15 @@ def parse_enzymatic_data_information(enzyme_gene_reaction_relation):
     tam_info = tam_info.drop(['molmass_kDa', 'Reaction'], axis = 1)
     return tam_info
 
+def parse_ecoli_genome_information(tam_info_merged):
+    genome_information = pd.read_excel(os.path.join('Data', 'TAModel','GeneList_ecoli.xlsx'),
+                                sheet_name='GeneList').set_index('bnumber')
+    genome_info_useful = genome_information[['start', 'end']]
+    for bnumber, row in genome_info_useful.iterrows():
+        tam_info_gene = tam_info_merged[tam_info_merged.gene_id == bnumber]
+        tam_info_gene['mrna_length'] = row.start - row.end
 
+    return tam_info_merged
 
 if __name__ == '__main__':
     parse_gpr_relationships_from_Ecocyc()

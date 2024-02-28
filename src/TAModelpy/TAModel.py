@@ -66,15 +66,18 @@ class TAModel(PAModel):
             >>>          translational_sector = translation_enzyme,sensitivity = sensitivity,
             >>>          unused_sector = unused_enzyme, p_tot=0.6*1e-3, configuration=Config)
             >>> gene2transcript = {gene: {'id': f'mRNA{gene.id[-1]}', 'length': 100} for gene in pamodel.genes}
-            >>> tamodel = TAModel(id_or_model = pamodel, mrna_sector = mrna_sector,  gene2transcript= gene2transcript)
+            >>> active_mrna_sector = ActivemRNASector(mrnas_0 = MRNA_0,
+            >>>                                  mrnas_mu = MRNA_MU,
+            >>>                                  id_list = [BIOMASS_REACTION],
+            >>>                                  gene2transcript = gene2transcript,
+            >>>                                  configuration = config)
+            >>> tamodel = TAModel(id_or_model = pamodel, mrna_sector = active_mrna_sector)
 
             From scratch:
             >>>  tamodel = TAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
-            >>>          translational_sector = translation_enzyme, mrna_sector = mrna_sector, sensitivity = sensitivity,
-            >>>          unused_sector = unused_enzyme, p_tot=0.6*1e-3, configuration=Config,
-            >>>          gene2transcript= gene2transcript)
+            >>>          translational_sector = translation_enzyme, mrna_sector = active_mrna_sector, sensitivity = sensitivity,
+            >>>          unused_sector = unused_enzyme, p_tot=0.6*1e-3, configuration=Config)
         """
-        #TODO update examples
 
         self.transcripts = DictList()
         self.f_min = 1
@@ -169,14 +172,26 @@ class TAModel(PAModel):
                 enzymes generated from a single enzyme (in mmol_enzyme/mmol_mrna)
         """
         #adjust minimal and maximal protein/transcript ratios based
-        transcript_object.f_min = f_min*transcript_object.length**2/3
-        transcript_object.f_max = f_max*transcript_object.length**2/3*1e6
+        transcript_object.f_min = f_min*pow(transcript_object.length,2)/3*1e6
+        transcript_object.f_max = f_max*pow(transcript_object.length,2)/3*1e6
 
         # print('adding model to transcript ', transcript_object.id)
         transcript_object.model = self
         self.transcripts.append(transcript_object)
 
     def add_transcript_enzyme_relations(self, enzyme: Union[Enzyme, EnzymeComplex]) -> None:
+        """Adds constraints for mRNA abundance and enzyme concentration relations.
+
+            This function checks the gene-protein-reaction (GPR) relations to determine if the type of relation should
+            be included in the transcript/enzyme relationship ('and' or 'or').
+            Then, it adds constraints based on these relations.
+
+            Args:
+                enzyme (Union[Enzyme, EnzymeComplex]): The enzyme or enzyme complex for which constraints are being added.
+
+            Returns:
+                None
+            """
         # check the gpr relations: is an additional gene required or is there 'competition' with another gene?
         transcript_associated_with_enzyme = self.get_transcripts_associated_with_enzyme(enzyme)
         for relation, transcripts in transcript_associated_with_enzyme.items():
@@ -186,7 +201,18 @@ class TAModel(PAModel):
 
 
     def add_total_mrna_constraint(self, mrna_sector:ActivemRNASector) -> None:
+        """Adds a constraint to limit the total mRNA abundance.
 
+           This function adds a constraint to limit the total mRNA abundance based on the intercept
+           adn slope provided by the the ActivemRNA sector.
+           It calculates the coefficients for each transcript and sets the linear coefficients for the constraint.
+
+           Args:
+               mrna_sector (ActivemRNASector): The active mRNA sector.
+
+           Returns:
+               None
+           """
         tot_mrna_constraint = self.problem.Constraint(Zero,name=self.TOTAL_MRNA_CONSTRAINT_ID,
                                                       lb=0, ub = mrna_sector.intercept)
         self.add_cons_vars(tot_mrna_constraint)
@@ -300,6 +326,28 @@ class TAModel(PAModel):
 
     def set_mrna_enzyme_minmax_constraint_and_relation(self, enzyme: Enzyme,
                                                        transcripts: list, transcript_ids: list) -> None:
+        """Sets constraints and relations for mRNA abundance and enzyme concentration.
+
+            The lowest mRNA concentration of the available transcripts is used. This is achieved by adding an
+            auxiliary variable for the min and max enzyme concentration in the following format:
+            ```
+            mrna_aux_min <= mrna1 * fmin_1
+            mrna_aux_min <= mrna2 * fmin_2
+
+            mrna_aux_max <= mrna1 * fmax_1
+            mrna_aux_max <= mrna2 * fmax_2
+
+            mrna_aux_min - E >= 0
+            mrna_aux_max - E <= 0
+            ```
+           Args:
+               enzyme (Enzyme): The enzyme for which constraints and relations are being set.
+               transcripts (list): List of Transcript objects.
+               transcript_ids (list): List of transcript IDs.
+
+           Returns:
+               None
+        """
         transcript_aux_min_variable = self.problem.Variable(Zero, name=f'{transcript_ids}_{enzyme.id}_min_aux', lb=0, ub=1e6)
         transcript_aux_max_variable = self.problem.Variable(Zero, name=f'{transcript_ids}_{enzyme.id}_max_aux', lb=0, ub=1e6)
 
@@ -309,7 +357,7 @@ class TAModel(PAModel):
         # is used to constrain the enzyme concentration
         for transcript in transcripts:
             aux_min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_{enzyme.id}_min_aux', lb=0, ub=1e6)
-            aux_max_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_{enzyme.id}__max_aux', lb=0, ub=1e6)
+            aux_max_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_{enzyme.id}_max_aux', lb=0, ub=1e6)
             self.add_cons_vars([aux_min_constraint, aux_max_constraint])
 
             # this auxiliary variable is already converted to g_enzyme/g_cdw
@@ -338,6 +386,21 @@ class TAModel(PAModel):
 
     def set_mrna_enzyme_minmax_constraint_or_relationship(self, enzyme: Enzyme,
                                                            transcript: Transcript, transcript_ids: list):
+        """Sets constraints for mRNA abundance and enzyme concentration based on 'or' relationship.
+            This is in the following format:
+            ```
+            mrna_1 * fmin_1 + mrna_2 * fmin_2 - E >= 0
+            mrna_1 * fmax_1 + mrna_2 * fmax_2 - E <= 0
+            ```
+
+           Args:
+               enzyme (Enzyme): The enzyme for which constraints are being set.
+               transcript (Transcript): The transcript object.
+               transcript_ids (list): List of transcript IDs.
+
+           Returns:
+               None
+           """
         self.constraints[f'{transcript_ids}_{enzyme.id}_max'].set_linear_coefficients({
             transcript.mrna_variable: transcript.f_max
         })
@@ -368,14 +431,9 @@ class TAModel(PAModel):
         # enzyme_complex_id = 0
         for gene_list in enzyme.genes:
             if len(gene_list)>1: # and relationship
-                # gene_relations_dict = {**gene_relations_dict,
-                #                        **{gene:['and', enzyme_complex_id] for gene in gene_list if gene in self.genes}}
-                # enzyme_complex_id += 1
                 gene_relations_dict['and'] += [[gene for gene in gene_list if gene in self.genes]]
             elif gene_list[0] in self.genes:
                     gene_relations_dict['or'] += [gene_list[0]]
-            #     gene_relations_dict = {**gene_relations_dict,
-            #                            **{gene_list[0]: ['or', 0] if gene_list[0] in self.genes}}
         return gene_relations_dict
 
     def get_transcripts_associated_with_enzyme(self, enzyme: Enzyme) -> dict:
@@ -402,16 +460,8 @@ class TAModel(PAModel):
         # enzyme_complex_id = 0
         for gene_list in enzyme.genes:
             if len(gene_list)>1: # and relationship
-                # mrna_relations_dict = {**mrna_relations_dict,
-                #                        **{self.transcripts.get_by_id('mRNA_'+gene):
-                #                              ['and', enzyme_complex_id] for gene in gene_list if 'mRNA_'+gene in self.transcripts}}
-                # enzyme_complex_id += 1
                 mrna_relations_dict['and'] += [[self.transcripts.get_by_id('mRNA_'+gene) for gene in gene_list if 'mRNA_'+gene in self.transcripts]]
             elif 'mRNA_' + gene_list[0] in self.transcripts:
-                # mrna_relations_dict = {**mrna_relations_dict,
-                #                        **{self.transcripts.get_by_id('mRNA_'+gene_list[0]):
-                #                               ['or', 0] if 'mRNA_'+gene_list[0] in self.transcripts}}
-
                 mrna_relations_dict['or'] += [self.transcripts.get_by_id('mRNA_' + gene_list[0])]
         return mrna_relations_dict
 
@@ -421,3 +471,40 @@ class TAModel(PAModel):
             return True
         else:
             return False
+
+    def calculate_csc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+        """
+        Calculates the capacity sensitivity coefficient for all inequality constraints in the model.
+        The sum of all capacity sensitivity coefficients should equal 1 for growth maximization.
+
+        Definition: constraint_UB*shadowprice/obj_value.
+
+        Inherits from the PAModel calculate_csc function and adds the calculation of the csc for the total rna
+        constraint.
+
+        :param obj_value: Float
+        :param mu: DataFrame
+            Shadowprices for all constraints
+        :param mu_ub: DataFrame
+            Shadowprices for the reaction UB constraints
+        :param mu_lb: DataFrame
+            Shadowprices for the reaction LB constraints
+        :param mu_ec_f: DataFrame
+            Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+        :param mu_ec_b: DataFrame
+            Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+
+        Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
+        """
+        super().calculate_csc(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+        constraint = 'mRNA'
+        rxn_id = self.TOTAL_MRNA_CONSTRAINT_ID
+        enzyme_id = self.TOTAL_MRNA_CONSTRAINT_ID
+        ca_coefficient = self.constraints[enzyme_id].ub * \
+                         mu[mu['index'] == self.TOTAL_MRNA_CONSTRAINT_ID]['shadow_prices'].iloc[0] / obj_value
+
+        new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+        #  add new_row to dataframe
+        self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
+
+        #TODO sensitivity analysis for transcripts

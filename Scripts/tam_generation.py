@@ -42,12 +42,14 @@ def set_up_ecolicore_tam(total_protein:bool = True, active_enzymes: bool = True,
     # Setting the relative paths
     DATA_DIR = os.path.join('Data')
     MODEL_DIR = os.path.join('Models')
-    TAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'TAModel','2024-02-16_gene_enzyme_reaction_relation_Ecoli.xlsx')
+    TAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'TAModel','2024-02-27_gene_enzyme_reaction_relation_Ecoli.xlsx')
 
 
     # some other constants
     BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
-    TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+    # TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+    TOTAL_PROTEIN_CONCENTRATION = 0.185  # [g_prot/g_cdw]
+
     MRNA_MU = 0.00013049558330984208 # [g_mrna/g_cdw/h]
     MRNA_0= 1.7750480089801658e-05 # [g_mrna/g_cdw]
 
