@@ -15,19 +15,19 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://SamiralVdB.github.io',
+  url: 'https://iamb-rwth-aachen.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/PAModelpy',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'Samira van den Bogaard', // Usually your GitHub org/user name.
+  organizationName: 'iAMB-RWTH-Aachen', // Usually your GitHub org/user name.
   projectName: 'PAModelpy', // Usually your repo name.
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-
+  trailingSlash: false,
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
