@@ -23,6 +23,9 @@ We have extended this package with the following features:
 
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
+## Documentation
+The documentation including coding examples can be found [here](https://iamb-rwth-aachen.github.io/PAModelpy/).
+
 ## What can you find where in this repository?
 This repository contains not only the source code, but also examples and scripts which were used in **INSERT PUBLICATION HERE**.
 - **Data**
