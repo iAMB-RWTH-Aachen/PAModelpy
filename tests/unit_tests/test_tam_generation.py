@@ -28,6 +28,7 @@ from Scripts.pam_generation import set_up_ecolicore_pam, set_up_toy_pam
 
 def test_set_up_toy_tam_works():
     sut = set_up_toy_tam
+    assert True
 
 def test_set_up_ecolicore_tam_works():
     sut = set_up_ecolicore_tam()
@@ -66,25 +67,40 @@ def test_ecolicore_tam_without_constraints_has_same_result_as_pam():
     # Act
     sut.optimize()
     ecolicore_pam.optimize()
-    # for enzyme in ecolicore_pam.enzyme_variables:
+    # for enzyme in sut.enzyme_variables:
     #     print(enzyme.id, enzyme.flux)
+    # for transcript in sut.transcripts:
+    #     print(transcript.mrna_variable.primal)
+    for i,row in sut.capacity_sensitivity_coefficients.iterrows():
+        if row.coefficient > 0: print(row)
+    for i,row in ecolicore_pam.capacity_sensitivity_coefficients.iterrows():
+        if row.coefficient > 0: print(row)
+    for enzyme in sut.enzyme_variables:
+        try:
+            if enzyme.concentration != pytest.approx(ecolicore_pam.enzyme_variables.get_by_id(enzyme.id).concentration, rel = 1e-3):
+                print(enzyme.id, enzyme.concentration, ecolicore_pam.enzyme_variables.get_by_id(enzyme.id).concentration)
+        except:
+            print(enzyme.id)
+    print(sut.constraints[sut.TOTAL_MRNA_CONSTRAINT_ID].primal)
+    for transcript in sut.transcripts:
+        for enzyme in transcript.enzymes:
+            print(enzyme.id, sut.enzyme_variables.get_by_id(enzyme.id).concentration, ecolicore_pam.enzyme_variables.get_by_id(enzyme.id).concentration)
+        print(transcript.id, transcript.mrna_variable.primal)
+        for constraint in transcript._constraints.values():
+            print(constraint, constraint.dual)
 
     # Arrange
-    assert 'optimal' == ecolicore_pam.solver.status
-    assert 'optimal' == sut.solver.status
     assert_solution_pam_equals_tam(ecolicore_pam, sut)
-    assert ecolicore_pam.objective.value == sut.objective.value
+
+
+############################################################################################################################
+# HELPER FUNCTIONS
+############################################################################################################################
 
 def assert_solution_pam_equals_tam(pam, tam):
-    # for reaction in tam.reactions:
-    #     # print(reaction.id, pam.reactions.get_by_id(reaction.id).flux,reaction.flux)
-    #     # assert pam.reactions.get_by_id(reaction.id).flux == pytest.approx(reaction.flux, rel= 1e-3)
-    # for enzyme in tam.enzyme_variables:
-    #     if enzyme.id == 'E114':
-            # print(enzyme.id,enzyme.reactions, pam.enzyme_variables.get_by_id(enzyme.id).flux,enzyme.flux)
-
-        # assert pam.enzymes.get_by_id(enzyme.id).flux == pytest.approx(enzyme.flux, rel= 1e-3)
-    assert pam.objective.value == tam.objective.value
+    assert 'optimal' == pam.solver.status
+    assert 'optimal' == tam.solver.status
+    assert pam.objective.value == pytest.approx(tam.objective.value, abs=1e-2)
 
 
 

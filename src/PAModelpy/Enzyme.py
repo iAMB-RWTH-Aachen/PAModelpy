@@ -5,7 +5,7 @@
 import PAModelpy.Enzyme
 import cobra.core
 import cobra
-from cobra import Reaction, Object
+from cobra import Reaction, Object, Gene
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from copy import copy, deepcopy
@@ -87,6 +87,7 @@ class Enzyme(Object):
         self._model = None
         self.enzyme_complex = [] #is the enzyme in a complex?
         self.genes = genes
+        self.transcripts = DictList()
         self.annotation = {'type':'Constraint'}#you can add an annotation for an enzyme
      
     @property
@@ -114,9 +115,7 @@ class Enzyme(Object):
         """
 
         # sum up concentrations (aka fluxes) of all enzyme objects
-        concentration = 0.0
-        for catalytic_event in self.catalytic_events:
-            concentration += catalytic_event.flux()
+        concentration = self.enzyme_variable.concentration
         if units == 'g/gDW':
             #converting mmol to grams of protein:
             # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol]
@@ -146,6 +145,40 @@ class Enzyme(Object):
         """
         self.catalytic_events += [ce]
         self.enzyme_variable.add_catalytic_events([ce],[kcats])
+
+    def add_genes(self, gene_list: list, gene_length:list, relation:str = 'OR') -> None:
+        """
+            Add genes to the enzyme and the model related to the enzyme if applicable
+
+            Args:
+                gene_list (list): A list of gene identifiers to be added.
+                gene_length (list): A list of lengths corresponding to each gene.
+                relation (str, optional): The relationship between genes in gene_list.
+                    Defaults to 'OR'. Possible values: 'OR' or 'AND'.
+
+            Raises:
+                ValueError: If an invalid relation is provided.
+
+            Note:
+                If relation is 'OR', each gene in gene_list will be treated as coding for an individual isozyme
+                If relation is 'AND', all genes in gene_list will be treated as coding for peptides in an enzyme complex
+
+            """
+        # check/correct type of arguments
+        if isinstance(gene_list, str): gene_list = [gene_list]
+        if not isinstance(gene_length, list): gene_length = [gene_length]
+
+        if relation == 'OR':
+            genes_to_add = [[Gene(gene)] for gene in gene_list][0]
+        elif relation == 'AND':
+            genes_to_add = [Gene(gene) for gene in gene_list]
+        else:
+            raise ValueError("Invalid relation. Supported values are 'OR' or 'AND'.")
+        self.genes.append(genes_to_add)
+
+        if self._model is not None:
+            self._model.add_genes(genes = genes_to_add, enzymes = [self], gene_lengths=gene_length)
+
 
     def create_catalytic_event(self, rxn_id: str, kcats: Dict):
         """creates enzyme variables that link to reactions
@@ -632,6 +665,7 @@ class EnzymeVariable(Reaction):
                     self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
                         self.reverse_variable: -1
                     })
+
 
     def remove_catalytic_event(self, catalytic_event: Union[CatalyticEvent, str]):
         """

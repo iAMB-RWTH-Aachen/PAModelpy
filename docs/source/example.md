@@ -42,7 +42,7 @@ First, we'll define the paths we'll download the data
 
 ```python
 protein_sector_info_path = 'Data/proteinAllocationModel_iML1515_EnzymaticData_py.xls'
-active_enzyme_data = pd.read_excel(protein_sector_info_path, sheet_name='ActiveEnzymes'))
+active_enzyme_info = pd.read_excel(protein_sector_info_path, sheet_name='ActiveEnzymes'))
 ```
 
 The data is now in a dataframe with the following columns:
@@ -52,9 +52,6 @@ rxn_id - rxnName - rxnEquat - EC_nmbr - molMass
 First, let's add an identifier to the reactions for which the enzyme is unknown, in order to distinguish between the 
 enzymes
 ```python
-#load active enzyme sector information
-active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
-
 # replace NaN values with unique identifiers
 #select the NaN values 
 nan_values = active_enzyme_info['EC_nmbr'].isnull()

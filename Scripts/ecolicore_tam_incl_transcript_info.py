@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import cobra
 
 from Scripts.tam_generation import set_up_toy_tam, set_up_ecolicore_tam
 from Scripts.pam_generation import set_up_ecolicore_pam
@@ -14,8 +15,8 @@ TRANSCRIPT_FILE_PATH = os.path.join('Data', 'TAModel', 'Sinha-etal_2021_transcri
 FLUX_FILE_PATH = os.path.join('Data', 'TAModel', 'Sinha-etal_2021_flux-data.xlsx')
 
 
-mrna_vs_mu_slope = 2.64E-10
-mrna_vs_mu_intercept = 3.59E-11
+mrna_vs_mu_slope = 0.00013049558330984208
+mrna_vs_mu_intercept = 1.7750480089801658e-05
 
 
 def get_transcript_data(transcript_file_path:str = TRANSCRIPT_FILE_PATH, mmol = True,
@@ -43,25 +44,71 @@ def get_pam_fluxes(substrate_uptake_rate):
     pam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
     sol = pam.optimize()
     pam_fluxes = sol.fluxes
-    return pam_fluxes
+    return pam_fluxes,pam
 
-def set_up_tamodel(strain ='REF'):
+def set_up_tamodel(substrate_uptake_rate, strain ='REF'):
     tam = set_up_ecolicore_tam()
-    tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-1e6, upper_bound=0)
+    tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
     transcript_data_mmol = get_transcript_data()
+    i=0
+    infeasible = []
+    for transcript in tam.transcripts:
+        # print(enzyme, transcript)
+        conc = []
+        for gene in transcript.genes:
+            if gene.id in transcript_data_mmol.index: #and gene.id != 'b2987' and gene.id!= 'b3493': #genes related to phosphate transport seem to mess up the calculations
+                conc += [transcript_data_mmol.loc[gene.id, strain]]
+        if len(conc) > 0:
+            transcript.change_concentration(concentration=min(conc) * 1e-3, error= max(conc)*1e-3* 0.01)
 
-    for gene, expression_data in transcript_data_mmol.iterrows():
-        transcript_id = 'mRNA_' + gene
-        if not transcript_id in tam.transcripts: continue
-        transcript = tam.transcripts.get_by_id('mRNA_' + gene)
-        # testing wildtype condition
-        transcript.change_concentration(concentration=expression_data[strain],
-                                        error=expression_data[strain] * 0.01)
+            tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-9, upper_bound=-9)
+            tam.optimize()
+            if tam.solver.status != 'optimal': infeasible += [transcript]
+            else: print(tam.objective.value)
+
+        elif gene.id != 'gene_dummy':
+            print(transcript)
+
+    print(infeasible)
+            # tam.test()
+            # print(transcript.enzymes)
+            # print(tam.solver.status)
+    # for gene, expression_data in transcript_data_mmol.iterrows():
+    #     if i<10000:
+    #         transcript_id = 'mRNA_' + gene
+    #         if not transcript_id in tam.transcripts: continue
+    #
+    #         transcript = tam.transcripts.get_by_id('mRNA_' + gene)
+    #         # testing wildtype condition
+    #         transcript.change_concentration(concentration=expression_data[strain]*1e-3,
+    #                                             error=expression_data[strain] *1e-3* 0.01)
+    #         i+=1
+    #         tam.test()
+    #         print(transcript.enzymes)
+    #         print(tam.solver.status)
+    #         print(transcript)
+    #         if tam.solver.status != 'optimal':
+    #             print('number of transcripts which were be added to the model: ',i)
+    #             for name, cons in transcript._constraints.items():
+    #                 print(name, cons, expression_data[strain])
+    #             break
+    # print('number of transcripts which could be added to the model: ', len(tam.transcripts))
+    # enz = tam.enzymes.get_by_id('2.7.3.9')
+    # print(enz.name, enz.enzyme_variable.concentration)
+    # print(infeasible)
     return tam
 
 def get_tam_fluxes(tam,substrate_uptake_rate):
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
     sol = tam.optimize()
+    if tam.solver.status != 'optimal': return None
+    for transcript in tam.transcripts:
+        for constr in transcript._constraints.values():
+            if constr.dual !=0:
+                print(transcript, transcript.mrna_variable.primal, constr.primal)
+                print(transcript.f_min*transcript.mrna_variable.primal, transcript.f_max*transcript.mrna_variable.primal)
+                for enzyme in transcript.enzymes: print(enzyme.id, enzyme.concentration)
+                print(constr)
     tam_fluxes = sol.fluxes
     return tam_fluxes
 
@@ -92,21 +139,46 @@ def compare_flux_data(flux_data, pam_fluxes, tam_fluxes, strain ='REF', abs=True
     print(flux_results_percentage.to_markdown())
     return flux_results_percentage
 
-def compare_fluxes_holm_reference(strain = 'REF'):
+def compare_fluxes_holm_reference(strain = 'REF', plot = True):
     flux_data =get_flux_data()
     substrate_uptake_rate = flux_data[strain]['GLCptspp']
 
-    pam_fluxes = get_pam_fluxes(substrate_uptake_rate=substrate_uptake_rate)
+    pam_fluxes, pam = get_pam_fluxes(substrate_uptake_rate=substrate_uptake_rate)
 
-    tam = set_up_tamodel(strain)
+    tam = set_up_tamodel(substrate_uptake_rate,strain)
     tam_fluxes = get_tam_fluxes(tam, substrate_uptake_rate=substrate_uptake_rate)
+    if tam_fluxes is None:
+        print('TAModel was infeasible')
+        return
     for i,row in tam.capacity_sensitivity_coefficients.iterrows():
         if row.coefficient > 0: print(row)
+
+    # for transcript in tam.transcripts:
+    #     if transcript.mrna_variable.lb != 0:
+    #         for gene in transcript.genes:
+    #             gene_id = gene.id
+    #             enzymes = tam.get_enzymes_by_gene_id(gene_id)
+    #             for enzyme in enzymes:
+    #                 print(enzyme.id, 'TAM',enzyme.concentration,'PAM' ,pam.enzymes.get_by_id(enzyme.id).concentration)
+    #                 print()
+    # print('RNA constraints primal', tam.constraints[tam.TOTAL_MRNA_CONSTRAINT_ID].primal)
+    # print('RNA constraints dual', tam.constraints[tam.TOTAL_MRNA_CONSTRAINT_ID].dual)
+    # for enzyme in pam.enzyme_variables[:9]:
+    #     tam_enzyme = tam.enzyme_variables.get_by_id(enzyme.id)
+    #
+    #     print(enzyme.id, enzyme.concentration, tam_enzyme.concentration)
+    #     tam_transcripts = tam.get_transcripts_associated_with_enzyme(tam.enzymes.get_by_id(enzyme.id), output='list')
+    #     for transcript in tam_transcripts:
+    #         print(transcript.id, transcript.mrna_variable.primal)
+    #         print('bounds',transcript.mrna_variable.lb, transcript.mrna_variable.ub)
+    #         for constraint in transcript._constraints.values():
+    #             if constraint.dual>0: print(constraint, constraint.dual)
+
 
     flux_relative = compare_flux_data(flux_data, pam_fluxes, tam_fluxes,  strain,abs = False)
     flux_absolute = compare_flux_data(flux_data, pam_fluxes, tam_fluxes,  strain)
 
-    plot_flux_comparison(flux_absolute, flux_relative, strain)
+    if plot: plot_flux_comparison(flux_absolute, flux_relative, strain)
 
 def plot_flux_comparison(flux_df_abs, flux_df_rel, strain):
     fig, ax = plt.subplots(1,2)
@@ -136,11 +208,12 @@ def plot_flux_comparison(flux_df_abs, flux_df_rel, strain):
 
 
 if __name__ == '__main__':
+
     print('Reference condition')
-    compare_fluxes_holm_reference()
+    compare_fluxes_holm_reference(plot =False)
     print('\n-------------------------------------------------------------------------------------------------')
-    print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
-    compare_fluxes_holm_reference('NOX')
+    # print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
+    # compare_fluxes_holm_reference('NOX', plot=False)
     # TODO print mRNA and protein concentrations to compare with lb
     # TODO print shadowprices of mRNA (are lbs hit? how far can I constrain?)
 

@@ -166,7 +166,6 @@ class ActiveEnzymeSector(Sector):
                         if any([len(gene)>1 for gene in gene_list]): enzyme_obj = EnzymeComplex
                     else:
                         gene_list = []
-
                     enzyme = enzyme_obj(
                         id = enzyme_id,
                         rxn2kcat= {rxn_id: kcat},
@@ -258,15 +257,22 @@ class ActiveEnzymeSector(Sector):
            Returns:
                list: A nested list of gene objects associated with the enzyme.
            """
+        if enzyme_id not in self.protein2gene.keys(): return []
         gene_id_list = self.protein2gene[enzyme_id]
         gene_list = []
         for genes_or in gene_id_list:
             genes_and_list = []
             for gene_and in genes_or:
-                for gene in gene_and:
+                #check if there is an and relation (then gene and should be a list and not a string)
+                if isinstance(gene_and, list):
+                    for gene in gene_and:
+                        if gene not in model.genes:
+                            model.genes.append(Gene(gene))
+                else:
+                    gene = gene_and
                     if gene not in model.genes:
                         model.genes.append(Gene(gene))
-                    genes_and_list.append(model.genes.get_by_id(gene))
+                genes_and_list.append(model.genes.get_by_id(gene))
             gene_list.append(genes_and_list)
         return gene_list
 

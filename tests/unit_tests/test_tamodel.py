@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from cobra.io import load_json_model
 from cobra import Gene
 
@@ -28,10 +29,10 @@ def test_if_tam_adds_transcript_to_model():
     # Arrange
     sut = build_toy_tam()
     gene = Gene('test')
-    sut.enzymes[0].genes.append(gene)
+    sut.enzymes[0].genes.append([gene])
     enzymes = [sut.enzymes[0]]
     transcript = Transcript(id='test',
-                            gene=gene,
+                            gene=[gene],
                             enzymes=enzymes,
                             length=10)
     mrna_sector = sut.sectors.get_by_id('ActivemRNASector')
@@ -51,7 +52,7 @@ def test_if_tam_makes_mrna_min_max_constraint_correctly():
     sut.enzymes[0].genes.append(gene)
     enzymes = [sut.enzymes[0]]
     transcript = Transcript(id = 'test',
-                            gene = gene,
+                            gene = [gene],
                             enzymes = enzymes,
                             length = 10)
     transcript.f_min = sut.f_min
@@ -66,9 +67,41 @@ def test_if_tam_makes_mrna_min_max_constraint_correctly():
     # Assert
     assert_correct_min_max_mrna_constraint(sut, transcript, enzymes[0])
 
+def test_if_enzyme_add_genes_function_add_correct_constraint_to_tamodel():
+    # Arrange
+    sut = build_toy_tam()
+    enzyme_ut = sut.enzymes[0]
+    gene_ut = 'test'
+    gene_length = 10
+
+    # Act
+    enzyme_ut.add_genes(gene_ut, gene_length)
+    transcript = sut.transcripts.get_by_id('mRNA_'+gene_ut)
+
+    # Assert
+    assert gene_ut in sut.genes
+    assert len([gene for gene in enzyme_ut.genes if gene[0].id == gene_ut]) == 1
+    assert_correct_min_max_mrna_constraint(sut, transcript, enzyme_ut)
+
+def test_if_tamodel_adds_genes_with_and_relations_to_the_model_correctly():
+    # Arrange
+    sut = build_toy_tam()
+    enzyme_ut = sut.enzymes[0]
+    genes_ut = ['test1', 'test2']
+    gene_length = [10,11]
+
+    # Act
+    enzyme_ut.add_genes(genes_ut, gene_length, relation = 'AND')
+    for trans in sut.transcripts:
+        for key, value in trans._constraints.items(): print(key, value)
+    lumped_transcript = sut.transcripts.get_by_id('mRNA_' + '_'.join(genes_ut))
+
+    # Assert
+    assert np.sum(gene_length) == lumped_transcript.length
+    assert_correct_min_max_mrna_constraint(sut, lumped_transcript, enzyme_ut)
 
 ############################################################################################################################
-#HELPER FUNCTIONS
+# HELPER FUNCTIONS
 ############################################################################################################################
 def build_active_enzyme_sector(Config):
     n = 9
@@ -121,20 +154,21 @@ def assert_transcript_is_in_model(tamodel, transcript):
     mrna_sector = tamodel.sectors.get_by_id('ActivemRNASector')
     assert tamodel == transcript.model
     assert transcript in tamodel.transcripts
-    assert mrna_sector.f_min*10**2/3 == transcript.f_min
-    assert mrna_sector.f_max*10**2/3 == transcript.f_max
+    # calculating conversion factor, *1e6 to correct for the unit conversion in enzymes (g->mg)
+    assert mrna_sector.f_min* (transcript.length**2)/3 *1e6 == transcript.f_min
+    assert mrna_sector.f_max* (transcript.length**2)/3 *1e6 == transcript.f_max
 
 def assert_correct_min_max_mrna_constraint(tamodel, transcript, enzyme):
 
-    enz_var_f = tamodel.enzyme_variables.get_by_id(enzyme.id).forward_variable
-    enz_var_b = tamodel.enzyme_variables.get_by_id(enzyme.id).reverse_variable
+    enz_var_f = enzyme.enzyme_variable.forward_variable
+    enz_var_b = enzyme.enzyme_variable.reverse_variable
 
-    ref_min_constraint = {enz_var_f:-1.0, enz_var_b:-1.0, transcript.mrna_variable:tamodel.f_min}
-    ref_max_constraint = {enz_var_f:-1.0, enz_var_b:-1.0, transcript.mrna_variable:tamodel.f_max}
+    ref_min_constraint = {enz_var_f:-1.0, enz_var_b:-1.0, transcript.mrna_variable:transcript.f_min}
+    ref_max_constraint = {enz_var_f:1.0, enz_var_b:1.0, transcript.mrna_variable:-transcript.f_max}
 
-    min_constraint_coeff = tamodel.constraints[f'test_{enzyme.id}_min'].get_linear_coefficients(
+    min_constraint_coeff = tamodel.constraints[f'{transcript.id}_min'].get_linear_coefficients(
         [enz_var_f, enz_var_b, transcript.mrna_variable])
-    max_constraint_coeff = tamodel.constraints[f'test_{enzyme.id}_max'].get_linear_coefficients(
+    max_constraint_coeff = tamodel.constraints[f'{transcript.id}_max'].get_linear_coefficients(
         [enz_var_f, enz_var_b, transcript.mrna_variable])
 
     assert all(v == min_constraint_coeff[k] for k,v in ref_min_constraint.items()) and len(ref_min_constraint) == len(min_constraint_coeff)

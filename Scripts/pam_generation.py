@@ -9,6 +9,7 @@ from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.configuration import Config
 
+from Scripts.tam_generation import parse_reaction2protein2gene2transcript
 from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 
 'Function library for making Protein Allocation Models as described in the publication'
@@ -43,7 +44,9 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
 
     # some other constants
     BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
-    TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+    # TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+    TOTAL_PROTEIN_CONCENTRATION = 0.185  # [g_prot/g_cdw]
+
 
     config = Config()
     config.reset()
@@ -57,7 +60,7 @@ def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True,
         enzyme_db = _parse_enzyme_information_from_file(TAM_DATA_FILE_PATH)
 
         # create enzyme objects for each gene-associated reaction
-        rxn2protein, protein2gene, gene2transcript = parse_reaction2protein(enzyme_db, model)
+        rxn2protein, protein2gene, gene2transcript = parse_reaction2protein2gene2transcript(enzyme_db, model)
 
         # create active enzymes sector
         active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein,
@@ -252,7 +255,6 @@ def parse_coefficients(pamodel):
 def parse_esc(pamodel):
     return pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
 
-
 def _parse_enzyme_information_from_file(file_path:str):
     # load active enzyme sector information
     enzyme_db = pd.read_excel(file_path, sheet_name='enzyme-gene-reaction')
@@ -376,7 +378,6 @@ def _get_fwd_bckw_kcat(rxn_id: str, kcat:float, model:PAModel) -> Union[list, No
 
     # Iterate over each identifier in the input
     if base_id in model.reactions:
-        if not model.reactions.get_by_id(base_id).genes: return None
         # Determine the form of the identifier
         if rxn_id.endswith('_f'):
             kcat_fwd = kcat
@@ -391,7 +392,6 @@ def _get_fwd_bckw_kcat(rxn_id: str, kcat:float, model:PAModel) -> Union[list, No
         else:
             return None
     elif rxn_id in model.reactions:
-        if not model.reactions.get_by_id(rxn_id).genes: return None
         kcat_fwd = kcat
         kcat_rev = kcat
     else:
