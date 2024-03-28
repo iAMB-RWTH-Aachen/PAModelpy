@@ -1,7 +1,7 @@
 """
 CatalyticEvent object which relates Reaction variables to the EnzymeVariable and Enzyme objects.
 It contains multiple functions which enable easy mapping and handling of one Event of catalysis
-(e.g. one conversion of substrate to product, can be catalyzed by multiple enzymes)
+(e.g. one conversion of substrate to product, can be catalyzed by multiple enzymes.)
 """
 import cobra
 from cobra import DictList, Object
