@@ -50,65 +50,36 @@ def set_up_tamodel(substrate_uptake_rate, strain ='REF'):
     tam = set_up_ecolicore_tam()
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
     transcript_data_mmol = get_transcript_data()
-    i=0
-    infeasible = []
-    for transcript in tam.transcripts:
-        # print(enzyme, transcript)
-        conc = []
-        for gene in transcript.genes:
-            if gene.id in transcript_data_mmol.index: #and gene.id != 'b2987' and gene.id!= 'b3493': #genes related to phosphate transport seem to mess up the calculations
-                conc += [transcript_data_mmol.loc[gene.id, strain]]
-        if len(conc) > 0:
-            transcript.change_concentration(concentration=min(conc) * 1e-3, error= max(conc)*1e-3* 0.01)
-
-            tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-9, upper_bound=-9)
-            tam.optimize()
-            if tam.solver.status != 'optimal': infeasible += [transcript]
-            else: print(tam.objective.value)
-
-        elif gene.id != 'gene_dummy':
-            print(transcript)
-
-    print(infeasible)
-            # tam.test()
-            # print(transcript.enzymes)
-            # print(tam.solver.status)
-    # for gene, expression_data in transcript_data_mmol.iterrows():
-    #     if i<10000:
-    #         transcript_id = 'mRNA_' + gene
-    #         if not transcript_id in tam.transcripts: continue
-    #
-    #         transcript = tam.transcripts.get_by_id('mRNA_' + gene)
-    #         # testing wildtype condition
-    #         transcript.change_concentration(concentration=expression_data[strain]*1e-3,
-    #                                             error=expression_data[strain] *1e-3* 0.01)
-    #         i+=1
-    #         tam.test()
-    #         print(transcript.enzymes)
-    #         print(tam.solver.status)
-    #         print(transcript)
-    #         if tam.solver.status != 'optimal':
-    #             print('number of transcripts which were be added to the model: ',i)
-    #             for name, cons in transcript._constraints.items():
-    #                 print(name, cons, expression_data[strain])
-    #             break
-    # print('number of transcripts which could be added to the model: ', len(tam.transcripts))
-    # enz = tam.enzymes.get_by_id('2.7.3.9')
-    # print(enz.name, enz.enzyme_variable.concentration)
-    # print(infeasible)
+    for gene, expression_data in transcript_data_mmol.iterrows():
+        transcript_id = 'mRNA_' + gene
+        if not transcript_id in tam.transcripts: continue
+        transcript = tam.transcripts.get_by_id('mRNA_' + gene)
+        # testing wildtype condition
+        transcript.change_concentration(concentration=expression_data[strain],
+                                        error=expression_data[strain] * 0.01)
+        print(transcript_id)
+        tam.optimize()
+        print(tam.objective.value)
+        if tam.solver.status != 'optimal': transcript.reset_concentration()
     return tam
 
 def get_tam_fluxes(tam,substrate_uptake_rate):
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
     sol = tam.optimize()
     if tam.solver.status != 'optimal': return None
-    for transcript in tam.transcripts:
-        for constr in transcript._constraints.values():
-            if constr.dual !=0:
-                print(transcript, transcript.mrna_variable.primal, constr.primal)
-                print(transcript.f_min*transcript.mrna_variable.primal, transcript.f_max*transcript.mrna_variable.primal)
-                for enzyme in transcript.enzymes: print(enzyme.id, enzyme.concentration)
-                print(constr)
+
+    transcripts = tam.get_transcripts_associated_with_reaction('AKGDH')
+    for trans in transcripts:
+        print(trans)
+        print(trans._lumped_transcripts[0]._constraints.values())
+        print(trans.mrna_variable)
+    # for transcript in tam.transcripts:
+    #     for constr in transcript._constraints.values():
+    #         if constr.dual !=0:
+    #             print(transcript, transcript.mrna_variable.primal, constr.primal)
+    #             print(transcript.f_min*transcript.mrna_variable.primal, transcript.f_max*transcript.mrna_variable.primal)
+    #             for enzyme in transcript.enzymes: print(enzyme.id, enzyme.concentration)
+    #             print(constr)
     tam_fluxes = sol.fluxes
     return tam_fluxes
 

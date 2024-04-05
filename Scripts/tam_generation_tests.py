@@ -1,42 +1,19 @@
-import cobra
-import pandas as pd
 import os
+import pandas as pd
+import numpy as np
+import cobra
 from typing import Union
 import ast
-import numpy as np
 
-# load PAMpy modules
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.configuration import Config
 
 from src.TAModelpy import TAModel, ActivemRNASector
-from Scripts.toy_ec_tam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 
-'Function library for making Protein Allocation Models as described in the publication'
+AVERAGE_MRNA_LENGTH = 750 #nt
 
-
-def set_up_toy_tam(sensitivity =True):
-    config = Config()
-    #setting the configuration for the toy model
-    config.BIOMASS_REACTION = 'R7'
-    config.GLUCOSE_EXCHANGE_RXNID = 'R1'
-    config.CO2_EXHANGE_RXNID = 'R8'
-    config.ACETATE_EXCRETION_RXNID = 'R9'
-
-    Etot = 0.6*1e-3
-    model = build_toy_gem()
-    active_enzyme = build_active_enzyme_sector(config)
-    unused_enzyme = build_unused_protein_sector(config)
-    translation_enzyme = build_translational_protein_sector(config)
-    pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
-                      translational_sector=translation_enzyme,
-                      unused_sector=unused_enzyme, p_tot=Etot, sensitivity=sensitivity)
-    pamodel.objective = 'R7'
-    config.reset()
-    return pamodel
-
-def set_up_ecolicore_tam(total_protein:bool = True, total_mrna:bool =True,active_enzymes: bool = True,
+def set_up_ecolicore_tam_simple(total_protein:bool = True, total_mrna = True, active_enzymes: bool = True,
                          translational_enzymes:bool = True, unused_enzymes:bool = True,
                          sensitivity =True):
     # Setting the relative paths
@@ -67,18 +44,8 @@ def set_up_ecolicore_tam(total_protein:bool = True, total_mrna:bool =True,active
         enzyme_db = _parse_enzyme_information_from_file(TAM_DATA_FILE_PATH)
 
         # create enzyme objects for each gene-associated reaction
-        rxn2protein, protein2gene, gene2transcript = parse_reaction2protein2gene2transcript(enzyme_db, model)
+        rxn2protein, protein2gene, gene2transcript = parse_reaction2protein2gene2transcript_simple(enzyme_db, model)
 
-        # import random
-        # gene2transcript2 ={}
-        # for i in range(50):
-        #     gene, transcript = random.choice(list(gene2transcript.items()))
-        #     gene2transcript2 = {**gene2transcript2, gene:transcript}
-        # gene2, transcript2 = random.choice(list(gene2transcript.items()))
-        # gene3, transcript3 = random.choice(list(gene2transcript.items()))
-        #
-        # gene2transcript = {gene:transcript, gene2:transcript2, gene3:transcript3}
-        # create active enzymes sector
         active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein,
                                                   protein2gene = protein2gene,
                                                   configuration = config)
@@ -135,135 +102,95 @@ def set_up_ecolicore_tam(total_protein:bool = True, total_mrna:bool =True,active
                        unused_sector=unused_enzyme_sector, total_mrna_constraint = total_mrna)
     return ta_model
 
-def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: bool = True,
-                   translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True):
-
-    config = Config()
-    config.reset()
+def set_up_ecolicore_tam_specified_transcripts(num_transcripts:int = 0, total_protein:bool = True, total_mrna = True, active_enzymes: bool = True,
+                         translational_enzymes:bool = True, unused_enzymes:bool = True,
+                         sensitivity =True):
     # Setting the relative paths
-    MODEL_DIR = 'Models'
-    pam_info_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
+    DATA_DIR = os.path.join('Data')
+    MODEL_DIR = os.path.join('Models')
+    TAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'TAModel','2024-02-27_gene_enzyme_reaction_relation_Ecoli.xlsx')
+
 
     # some other constants
-    TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
+    BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
+    # TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+    TOTAL_PROTEIN_CONCENTRATION = 0.185  # [g_prot/g_cdw]
 
-    #setup the gem ecoli iML1515 model
-    model = cobra.io.read_sbml_model(os.path.join(MODEL_DIR, 'iML1515.xml'))
+    MRNA_MU = 0.00013049558330984208 # [g_mrna/g_cdw/h]
+    MRNA_0= 1.7750480089801658e-05 # [g_mrna/g_cdw]
 
-    #check if a different total protein concentration is given
-    if isinstance(total_protein, float):
-        TOTAL_PROTEIN_CONCENTRATION = total_protein
+    # MRNA_MU = 0.0036378316565569466
+    # MRNA_0= 10000000
+    config = Config()
+    config.reset()
+    config.BIOMASS_REACTION = BIOMASS_REACTION
 
-    # load example data for the E.coli iML1515 model
+    # load the genome-scale information
+    model = cobra.io.load_json_model(os.path.join(MODEL_DIR, 'e_coli_core.json'))
+
+    #load example data for the E.coli iML1515 model
     if active_enzymes:
-        # load active enzyme sector information
-        active_enzyme_info_old = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+        enzyme_db = _parse_enzyme_information_from_file(TAM_DATA_FILE_PATH)
 
-        # replace NaN values with unique identifiers
-        # select the NaN values
-        nan_values = active_enzyme_info_old['EC_nmbr'].isnull()
-        # make a list with unique ids
-        nan_ids = [f'E{i}' for i in range(nan_values.sum())]
-        # replace nan values by unique id
-        active_enzyme_info_old.loc[nan_values, 'EC_nmbr'] = nan_ids
+        # create enzyme objects for each gene-associated reaction
+        rxn2protein, protein2gene, gene2transcript = parse_reaction2protein2gene2transcript(enzyme_db, model, num_transcripts)
 
-        # parse the enzyme information (kcat values, identifiers and molmasses)
-        kcats_dict = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'kcat'].to_dict()
-        ec_dict = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'EC_nmbr'].to_dict()
-        molmass_dict = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'molMass'].to_dict()
+        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein,
+                                                  protein2gene = protein2gene,
+                                                  configuration = config)
 
-        kcats = {}
-        # save fwd and bckw kcats separately in the form of: {rxn_id: {'f': kcat_f, 'b': kcat_b}}
-        for rxn, kcat in kcats_dict.items():
-            # reversible reaction
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                direction = rxn[-1]
-                # check if the reaction already exists in the kcat dictionary
-                try:
-                    kcats[rxn[:-2]][direction] = kcat
-                except:
-                    kcats[rxn[:-2]] = {direction: kcat}
-            # irreversible reaction
-            else:
-                kcats[rxn] = {'f': kcat}
-
-        rxn2ec = {}
-        # parse the enzyme identifiers for the reactions
-        for rxn, ec in ec_dict.items():
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                rxn = rxn[:-2]
-            for enz in str(ec).split(','):
-                rxn2ec[rxn] = enz.strip()
-
-        molmass = {}
-        # parse the enzyme molmasses for the reactions
-        for rxn, mw in molmass_dict.items():
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                rxn = rxn[:-2]
-            molmass[rxn] = mw
-
-        rxn2protein = {}
-        for rxn, ec in rxn2ec.items():
-            ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn]}}
-            # add enzyme to enzymes related to reaction if these are already stored
-            if rxn in rxn2protein.keys():
-                rxn2protein[rxn] = {**rxn2protein[rxn], **{ec: ec_dict}}
-            # if not create new reaction entry
-            else:
-                rxn2protein[rxn] = {ec: ec_dict}
-
-        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, configuration = config)
+        # gene2transcript = {'gene_dummy': {'id': 'mRNA_gene_dummy', 'length': 750.0}}
+        active_mrna_sector = ActivemRNASector(mrnas_0 = MRNA_0,
+                                              mrnas_mu = MRNA_MU,
+                                              id_list = [BIOMASS_REACTION],
+                                              gene2transcript = gene2transcript,
+                                              configuration = config)
 
     else:
         active_enzyme_sector = None
+        active_mrna_sector = None
 
     if translational_enzymes:
-        translational_info = pd.read_excel(pam_info_file, sheet_name='Translational')
+        # translational protein sector parameter (substrate dependent)
+        id_list_tps = ['EX_glc__D_e']
+        tps_0 = [0.04992]  # g/gDW
+        tps_mu = [-0.002944]  # g h/gDW -> transformed to match glucose uptake variable
+        molmass_tps = [405903.94]  # g/mol
+
+        # translational protein sector
         translation_enzyme_sector = TransEnzymeSector(
-            id_list=[translational_info[translational_info.Parameter == 'id_list'].loc[0, 'Value']],
-            tps_0=[translational_info[translational_info.Parameter == 'tps_0'].loc[1, 'Value']],
-            tps_mu=[-translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
-            mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']],
-            configuration = config)
+            id_list=id_list_tps,
+            tps_0=tps_0,
+            tps_mu=tps_mu,
+            mol_mass=molmass_tps,
+            configuration = config
+        )
     else:
         translation_enzyme_sector = None
 
     if unused_enzymes:
-        unused_protein_info = pd.read_excel(pam_info_file, sheet_name='ExcessEnzymes')
+        id_list_ups = [BIOMASS_REACTION]
+        ups_0 = [0.0407]  # g/gDW
+        ups_mu = [-0.0214]  # g h/gDW -> negative relation with growth rate
+        molmass_ups = [405903.94]  # g/mol
 
-        ups_0 = unused_protein_info[unused_protein_info.Parameter == 'ups_0'].loc[2, 'Value']
-        smax = unused_protein_info[unused_protein_info.Parameter == 's_max_uptake'].loc[1, 'Value']
-
-        unused_protein_sector = UnusedEnzymeSector(
-            id_list=[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0, 'Value']],
-            ups_mu=[ups_0 / smax],
-            ups_0=[ups_0],
-            mol_mass=[unused_protein_info[unused_protein_info.Parameter == 'mol_mass'].loc[3, 'Value']],
-            configuration = config)
+        unused_enzyme_sector = UnusedEnzymeSector(
+            id_list=id_list_ups,
+            ups_0=ups_0,
+            ups_mu=ups_mu,
+            mol_mass=molmass_ups,
+            configuration = config
+        )
     else:
-        unused_protein_sector = None
+        unused_enzyme_sector = None
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
-    pamodel = PAModel(id_or_model=model, p_tot=total_protein,
-                       active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
-                       unused_sector=unused_protein_sector, sensitivity=sensitivity, configuration = config
-                      )
-    return pamodel
+    ta_model = TAModel(id_or_model=model, p_tot=total_protein, sensitivity=sensitivity, mrna_sector = active_mrna_sector,
+            configuration = config, active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
+                       unused_sector=unused_enzyme_sector, total_mrna_constraint = total_mrna)
+    return ta_model
 
-def parse_coefficients(pamodel):
-    Ccsc = list()
-
-    for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
-        Ccsc += pamodel.capacity_sensitivity_coefficients[
-            pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
-
-    Cesc = pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
-
-    return Ccsc, Cesc
-
-def parse_esc(pamodel):
-    return pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
 
 def _parse_enzyme_information_from_file(file_path:str):
     # load active enzyme sector information
@@ -293,11 +220,11 @@ def _parse_enzyme_information_from_file(file_path:str):
     return enzyme_db
 
 
-def parse_reaction2protein2gene2transcript(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
+def parse_reaction2protein2gene2transcript_simple(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
     # Initialize dictionaries
     rxn2protein = {}
     protein2gene = {}
-    gene2transcript = {'gene_dummy': {'id': 'mRNA_gene_dummy', 'length': 750.0}}
+    gene2transcript = {}
 
     # Iterate over each row in the DataFrame
     for index, row in enzyme_db.iterrows():
@@ -316,15 +243,13 @@ def parse_reaction2protein2gene2transcript(enzyme_db: pd.DataFrame, model:cobra.
         gene_id = row['gene_id']
         if len(rxn.genes)>0:
             if not isinstance(enzyme_id, str): enzyme_id = 'Enzyme_'+rxn_id
-            if not isinstance(gene_id, str): gene_id = 'gene_dummy'
-            mrna_length = row['mrna_length']
+            gene_id = 'gene_'+enzyme_id
+            mrna_length = AVERAGE_MRNA_LENGTH
 
-            #get the gene-protein-reaction-associations
-            gpr = parse_gpr_information_for_protein2genes(row['gpr'], enzyme_id)
 
             # Create gene-protein-reaction associations
             if enzyme_id not in protein2gene:
-                protein2gene[enzyme_id] = gpr
+                protein2gene[enzyme_id] = [[gene_id]]
 
             # Create gene2transcript dictionary
             if gene_id not in gene2transcript.keys():
@@ -357,16 +282,14 @@ def parse_reaction2protein2gene2transcript(enzyme_db: pd.DataFrame, model:cobra.
             # no enzyme information found
             print('No enzyme information found for reaction: ' + rxn.id)
             enzyme_id = 'Enzyme_'+rxn.id
+            gene_id = 'gene_'+enzyme_id
             rxn2protein[rxn.id] = {enzyme_id:{
                 **kcat_dict,
                 'molmass': 3.947778784340140e04}}
             #add geneinfo for unknown enzymes
-            gpr_info = parse_gpr_information_for_protein2genes(rxn.gpr, enzyme_id)
-            protein2gene[enzyme_id] = gpr_info
+            protein2gene[enzyme_id] =[[gene_id]]
 
-            for gene in [gene for sublist in gpr_info for gene in sublist]:
-                if gene not in gene2transcript.keys():
-                    gene2transcript[gene] = {'id': f'mRNA_{gene}', 'length': 750.0}
+            gene2transcript[gene_id] = {'id': f'mRNA_{gene_id}', 'length': 750.0}
 
     return rxn2protein, protein2gene, gene2transcript
 
@@ -421,38 +344,103 @@ def _check_reaction_reversibility(reaction):
         # reversible r
     return rev
 
-def get_kcat_info_for_reaction(enzyme_db: pd.DataFrame, rxn: cobra.Reaction) -> dict:
-    rev = 0  # bool to indicate reversibility
-    enzyme_db_for_reaction = enzyme_db[enzyme_db['rxnID'] == rxn.id]
-    kcat_dict = {}
-    if rxn.lower_bound >= 0:
-        # irreversible reaction (forward direction)
-        rev = 0
-        if rxn.id in enzyme_db.rxnID:
-            kcat_dict = {'f': enzyme_db_for_reaction.loc['kcat']}
-    elif rxn.upper_bound <= 0:
-        # irreversible reaction (reverse direction)
-        rev = 1
-        rxn_id = rxn.id + '_b'
-        if rxn_id in enzyme_db.rxnID:
-            kcat_dict = {'b': enzyme_db.loc[rxn_id, 'kcat']}
-    else:
-        rev = 2
-        # reversible reaction
-        rxn_id_f = rxn.id + '_f'
-        rxn_id_b = rxn.id + '_b'
-        if rxn_id_f in enzyme_db.rxnID and rxn_id_b in enzyme_db.rxnID:
-            kcat_dict = {'f': enzyme_db[enzyme_db['rxnID'] == rxn_id_f]['kcat'],
-                             'b': enzyme_db[enzyme_db['rxnID'] == rxn_id_b]['kcat']}
+def add_transcript_or_relation(tam):
+    index = np.random.randint(low=0, high=len(tam.enzymes))
+    enzyme_ut = tam.enzymes[index]
+    genes_ut = ['test1', 'test2']
+    gene_length = [10, 100]
+    # Act
+    enzyme_ut.add_genes(genes_ut, gene_length)
+    return tam
 
+def add_transcript_and_relation(tam):
+    index = np.random.randint(low=0,high=len(tam.enzymes))
+    enzyme_ut = tam.enzymes[index]
+    genes_ut = ['test3', 'test4']
+    gene_length = [10, 100]
+
+    # Act
+    enzyme_ut.add_genes(genes_ut, gene_length, relation='AND')
+    print(enzyme_ut)
+    return tam
+
+
+def parse_reaction2protein2gene2transcript(enzyme_db: pd.DataFrame, model:cobra.Model, num_transcripts: int = 1000) -> dict:
+    # Initialize dictionaries
+    rxn2protein = {}
+    protein2gene = {}
+    gene2transcript = {}
+
+    # Iterate over each row in the DataFrame
+    for index, row in enzyme_db.iterrows():
+        # Parse data from the row
+        rxn_id = row['rxnID']
+        rxn_id = _check_rxn_identifier_format(rxn_id)
+        #only parse those reactions which are in the model
+        kcat_f_b = _get_fwd_bckw_kcat(rxn_id, row['kcat'], model)
+        if kcat_f_b is None: continue
+        #check if there is a forward or backward string which needs to be removed from the rxn id
+        if any([rxn_id.endswith('_f'), rxn_id.endswith('_b')]): rxn_id = rxn_id[:-2]
+
+        rxn = model.reactions.get_by_id(rxn_id)
+        #get the identifiers and replace nan values by dummy placeholders
+        enzyme_id = row['EC_nmbr']
+        gene_id = row['gene_id']
+        if len(rxn.genes)>0:
+            if not isinstance(enzyme_id, str): enzyme_id = 'Enzyme_'+rxn_id
+            if not isinstance(gene_id, str): gene_id = 'gene_'+enzyme_id
+            mrna_length = row['mrna_length']
+
+            #get the gene-protein-reaction-associations
+            gpr = parse_gpr_information_for_protein2genes(row['gpr'], enzyme_id)
+
+            # Create gene-protein-reaction associations
+            if enzyme_id not in protein2gene:
+                protein2gene[enzyme_id] = gpr
+
+            # Create gene2transcript dictionary
+            if gene_id not in gene2transcript.keys() and len(gene2transcript) < num_transcripts:
+                gene2transcript[gene_id] = {'id': f'mRNA_{gene_id}', 'length': mrna_length}
+
+        # Create rxn2protein dictionary
+        if rxn_id not in rxn2protein:
+            rxn2protein[rxn_id] = {}
+        if enzyme_id not in rxn2protein[rxn_id]:
+            rxn2protein[rxn_id][enzyme_id] = {
+                'f': kcat_f_b[0],  # Forward kcat
+                'b': kcat_f_b[1],  # Backward kcat
+                'molmass': row['molMass'],
+                'genes': [gene_id],
+                'complex_with': None
+            }
         else:
-            # try if only forward reaction is in database
-            kcat_dict = {'f': enzyme_db_for_reaction['kcat'],
-                             'b': enzyme_db_for_reaction[
-                                      'kcat'] / 2}  # deduce backwards kcat from forward value
+            rxn2protein[rxn_id][enzyme_id]['genes'].append(gene_id)
 
-    return kcat_dict, rev
+    #if no enzyme info is found, add dummy enzyme with median kcat and molmass
+    for rxn in model.reactions:
+        if rxn.id not in rxn2protein.keys() and 'EX' not in rxn.id and 'BIOMASS' not in rxn.id and rxn.genes:
+            rev = _check_reaction_reversibility(rxn)
+            if rev == 0:
+                kcat_dict = {'f': 22}
+            elif rev ==1:
+                kcat_dict = {'b': 22}
+            else:
+                kcat_dict = {'f': 22,'b': 22}
+            # no enzyme information found
+            print('No enzyme information found for reaction: ' + rxn.id)
+            enzyme_id = 'Enzyme_'+rxn.id
+            rxn2protein[rxn.id] = {enzyme_id:{
+                **kcat_dict,
+                'molmass': 3.947778784340140e04}}
+            #add geneinfo for unknown enzymes
+            gpr_info = parse_gpr_information_for_protein2genes(rxn.gpr, enzyme_id)
+            protein2gene[enzyme_id] = gpr_info
 
+            for gene in [gene for sublist in gpr_info for gene in sublist]:
+                if gene not in gene2transcript.keys() and len(gene2transcript) < num_transcripts:
+                    gene2transcript[gene] = {'id': f'mRNA_{gene}', 'length': 750.0}
+
+    return rxn2protein, protein2gene, gene2transcript
 
 def parse_gpr_information_for_protein2genes(gpr_info:str, enzyme_id):
     #filter out nan entries
@@ -463,3 +451,33 @@ def parse_gpr_information_for_protein2genes(gpr_info:str, enzyme_id):
         return gpr_list[0]
     else:
         return [['gene_'+enzyme_id]]
+
+
+if __name__ == '__main__':
+    tam = set_up_ecolicore_tam_simple(total_mrna=True)
+    tam.optimize()
+    print('Predicted growth rate: ',tam.objective.value)
+    # OR
+    print('\nAdding a single OR relationship: test1 OR test2 to a random enzyme in the model')
+    tam = add_transcript_or_relation(tam)
+    tam.optimize()
+    print('Predicted growth rate: ',tam.objective.value)
+
+    #AND
+    print('\nAdding a single AND relationship: test3 AND test4 to a random enzyme in the model')
+    tam = add_transcript_and_relation(tam)
+    tam.optimize()
+    # for constr in tam.transcripts.get_by_id('mRNA_test3_test4')._constraints.values():
+    #     print(constr, 'primal: ', constr.primal, 'dual: ', constr.dual)
+    print('Predicted growth rate: ',tam.objective.value)
+
+    print('\n Building the wildtype ecolicore tam with a single transcript added to it')
+    tam = set_up_ecolicore_tam_specified_transcripts(num_transcripts = 100, total_mrna=True)
+    tam.optimize()
+    print('Predicted growth rate: ',tam.objective.value)
+    # trans = tam.transcripts.get_by_id('mRNA_b0720')
+    # for key, value in tam.constraints.items():
+    #     if 'mRNA' in key: print(value)
+    # for constr in tam.transcripts.get_by_id('mRNA_b0720')._constraints.values():
+    #     print(constr, 'primal: ', constr.primal, 'dual: ', constr.dual)
+    # print(tam.transcripts)

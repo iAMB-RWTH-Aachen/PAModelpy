@@ -1,6 +1,7 @@
 import warnings
 from typing import List, Optional, Union, Dict, Iterable
 
+import cobra
 import numpy as np
 from cobra import Object, DictList, Gene
 from optlang.symbolics import Zero
@@ -25,6 +26,7 @@ class TAModel(PAModel):
                  unused_sector: Optional[UnusedEnzymeSector] = None,
                  custom_sectors: Union[List, CustomSector] = [None],
                  mrna_sector: ActivemRNASector = None,
+                 total_mrna_constraint: bool = True,
                  configuration=Config):
         """ Transcript allocation model
 
@@ -58,6 +60,8 @@ class TAModel(PAModel):
                 gene2transcript (dict(dict)): nested dict containing information about the relation between a gene
                     and a transcript. It has gene_id, transcript_info, key, value pairs were the transcript_info is
                     again a dictionary with the `id` of the trasncript and the `length` in nucleotides as keys.
+            total_mrna_constraint (bool): boolean value to indicate if the total mRNA constraint (upperlimit to the
+                    amount of mNRA available for the modeled system) should be added.
             configuration: Config object, optional
                     Information about general configuration of the model including identifier conventions.
                     Default as defined in the `PAModelpy.configuration` script for the E.coli iML1515 model.
@@ -100,7 +104,7 @@ class TAModel(PAModel):
 
         print('Setting up the transcript allocation model, ', name)
 
-        self.add_mrna_sector(mrna_sector)
+        self.add_mrna_sector(mrna_sector, total_mrna_constraint)
 
     def init_tamodel_from_pamodel(self, pamodel: PAModel) -> None:
         """ Initializes TAModel from a fully parametrized PAModel
@@ -123,12 +127,13 @@ class TAModel(PAModel):
                          custom_sectors=custom_sectors,
                          configuration=pamodel.configuration)
 
-    def add_genes(self, genes:list, enzymes:list, gene_lengths:list) -> None:
+    def add_genes(self, genes:list[list[str]], enzymes:list[Enzyme, EnzymeComplex], gene_lengths:list[int]) -> None:
         """
           Add a gene to the model and connect to associated transcripts.
 
           Args:
-              gene (list): List of gene objects to be added
+              gene (list): List of lists with the gene objects to be added. The lists represent the OR/AND relations
+                    between the individual genes and the enzyme. AND: [[gene1, gene2]], OR: [[gene1], [gene2]]
               enzymes (list): A list of enzyme instances of class PAModelpy.Enzyme associated with the gene.
               gene_lengths (list): A list of lengths corresponding to each gene.
 
@@ -146,21 +151,21 @@ class TAModel(PAModel):
           """
         mrna_sector = self.sectors.get_by_id('ActivemRNASector')
         transcript_objects = []
-        for gene, length in zip(genes, gene_lengths):
-            # Add the gene to the gene2transcript in mrna sectir if not already present
-            if gene.id not in mrna_sector.gene2transcript.keys():
-                mrna_sector.gene2transcript[gene] = 'mRNA_' + gene.id
+        length_index = 0
+        for gene_list in genes:
+            for gene in gene_list:
+                # Add the gene to the model if not already present
+                length = gene_lengths[length_index]
+                length_index+=1
+                if gene not in self.genes:
+                    self.genes.append(gene)
 
-            # Add the gene to the model if not already present
-            if gene not in self.genes:
-                self.genes.append(gene)
-
-            # Create the transcript object
-            gene_object = self.genes.get_by_id(gene.id)
-            transcript_objects += [Transcript(id='mRNA_' + gene.id,
-                                           gene=[gene_object],
-                                           enzymes=enzymes,
-                                           length=length)]
+                # Create the transcript object
+                gene_object = self.genes.get_by_id(gene.id)
+                transcript_objects += [Transcript(id='mRNA_' + gene.id,
+                                               gene=[gene_object],
+                                               enzymes=enzymes,
+                                               length=length)]
 
         # Add the transcripts to the model
         for transcript in transcript_objects:
@@ -168,12 +173,15 @@ class TAModel(PAModel):
 
         # Establish relationships between the transcript and enzymes
         for enzyme in enzymes:
+            for gene_relation in genes:
+                if gene_relation not in enzyme.genes: enzyme.genes.append(genes)
             self.add_transcript_enzyme_relations(enzyme)
 
-    def add_mrna_sector(self, mrna_sector):
+    def add_mrna_sector(self, mrna_sector: ActivemRNASector, total_mrna_constraints: bool = True):
         print('Add the following mRNA sector: ', mrna_sector.id, '\n')
         self.sectors.append(mrna_sector)
-        self.add_total_mrna_constraint(mrna_sector)
+        if total_mrna_constraints:
+            self.add_total_mrna_constraint(mrna_sector)
         self.add_transcript_information(mrna_sector.gene2transcript,
                                         mrna_sector.f_min, mrna_sector.f_max)
 
@@ -196,7 +204,8 @@ class TAModel(PAModel):
             >>> gene2transcript = {gene: {'id': f'mRNA{gene.id[-1]}', 'length': 100} for gene in pamodel.genes}
             >>> tamodel.add_transcript_information(gene2transcript=gene2transcript)
         """
-        for gene, transcript_info in gene2transcript.items():
+        gene_transcript_info = gene2transcript.copy()
+        for gene, transcript_info in gene_transcript_info.items():
             if isinstance(gene, str): gene = Gene(gene)
             if not gene in self.genes: self.genes.append(gene)
             gene_object = self.genes.get_by_id(gene.id)
@@ -227,14 +236,16 @@ class TAModel(PAModel):
         if f_min is None: f_min = mrna_sector.f_min
         if f_max is None: f_max = mrna_sector.f_max
 
+        #add to mRNA sector:
+        mrna_sector.add_transcript(transcript_object)
+
         #adjust minimal and maximal protein/transcript ratios based
         transcript_object.f_min = f_min*pow(transcript_object.length,2)/3*1e6
         transcript_object.f_max = f_max*pow(transcript_object.length,2)/3*1e6
-
         # print('adding model to transcript ', transcript_object.id)
         transcript_object.model = self
-        self.transcripts.append(transcript_object)
-        self.add_transcripts_to_total_mrna_constraint(transcripts = [transcript_object])
+        if self.TOTAL_MRNA_CONSTRAINT_ID in self.constraints.keys():
+            self.add_transcripts_to_total_mrna_constraint(transcripts = [transcript_object])
 
     def add_transcript_enzyme_relations(self, enzyme: Union[Enzyme, EnzymeComplex]) -> None:
         """Adds constraints for mRNA abundance and enzyme concentration relations.
@@ -285,6 +296,16 @@ class TAModel(PAModel):
         self.constraints[self.TOTAL_MRNA_CONSTRAINT_ID].set_linear_coefficients(constraint_coefficients)
         self.solver.update()
 
+    def correct_unused_enzymes_for_measured_mrna(self, enzyme: Enzyme):
+        enzyme_variable = enzyme.enzyme_variable
+        coef = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients([enzyme_variable.forward_variable])
+
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
+            enzyme_variable.forward_variable: 0.5*enzyme.molmass * 1e-6,
+            enzyme_variable.reverse_variable: 0.5*enzyme.molmass * 1e-6,
+        })
+        coef2 = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients([enzyme_variable.forward_variable])
+        print(coef, coef2)
 
     def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
@@ -538,6 +559,14 @@ class TAModel(PAModel):
                                                 'mRNA_' + gene.id in self.transcripts]
             return transcripts
 
+    def get_transcripts_associated_with_reaction(self, reaction: Union[cobra.Reaction, str]):
+        if not isinstance(reaction, str): reaction = reaction.id
+        enzymes = self.get_enzymes_with_reaction_id(reaction)
+        transcripts = []
+        for enzyme in enzymes:
+            transcripts += self.get_transcripts_associated_with_enzyme(enzyme, output='list')
+        return transcripts
+
     def get_transcript_enzyme_associations(self, enzyme: Enzyme):
         mrna_relations_dict = {'and': [], 'or': []}
         for gene_list in enzyme.genes:
@@ -586,9 +615,10 @@ class TAModel(PAModel):
 
     def remove_transcripts(self, transcripts: list):
         for transcript in transcripts:
-            to_delete = [cons for cons in transcript._constraints.values()] + [transcript.mrna_variable]
+            to_delete = [cons for cons in transcript._constraints.values() if cons in self.constraints.values()] + [transcript.mrna_variable]
             self.remove_cons_vars(to_delete)
             self.transcripts.remove(transcript)
+            self.solver.update()
 
     def _gene_is_in_enzyme_complex(self, gene: Union[str, Gene], enzyme: Enzyme) -> bool:
         if not isinstance(gene, str): gene = gene.id

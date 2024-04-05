@@ -169,14 +169,15 @@ class Enzyme(Object):
         if not isinstance(gene_length, list): gene_length = [gene_length]
 
         if relation == 'OR':
-            genes_to_add = [[Gene(gene)] for gene in gene_list][0]
+            genes_to_add = [[Gene(gene)] for gene in gene_list]
         elif relation == 'AND':
-            genes_to_add = [Gene(gene) for gene in gene_list]
+            genes_to_add = [[Gene(gene) for gene in gene_list]]
         else:
             raise ValueError("Invalid relation. Supported values are 'OR' or 'AND'.")
-        self.genes.append(genes_to_add)
+        self.genes += genes_to_add
 
         if self._model is not None:
+            print(genes_to_add)
             self._model.add_genes(genes = genes_to_add, enzymes = [self], gene_lengths=gene_length)
 
 

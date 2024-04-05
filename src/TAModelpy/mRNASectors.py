@@ -3,6 +3,7 @@
 
 from src.PAModelpy.EnzymeSectors import EnzymeSector
 from src.PAModelpy.configuration import Config
+from src.TAModelpy.Transcript import Transcript
 
 class ActivemRNASector(EnzymeSector):
 
@@ -55,3 +56,7 @@ class ActivemRNASector(EnzymeSector):
     def set_intercept(self):
         self.intercept = self.mrnas_0 *1e3 # unit correction for efficient computing
 
+    def add_transcript(self, transcript_object: Transcript):
+        for gene in transcript_object.genes:
+            self.gene2transcript[gene.id] = {'id': transcript_object.id,
+                                             'lenght': transcript_object.length}
