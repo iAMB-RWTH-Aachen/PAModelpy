@@ -35,7 +35,9 @@ def parse_gpr_relationships_from_Ecocyc():
         if row['Accession-1'] in model.genes:
             gene = model.genes.get_by_id(row['Accession-1'])
             for rxn in gene.reactions:
-                gpr_info = parse_and_or_gpr_relations_from_string(rxn.gpr.to_string())
+                # gpr_info = parse_and_or_gpr_relations_from_string(rxn.gpr.to_string())
+                gpr_info = rxn.gpr.to_string()
+
 
                 enzyme_gene_reaction_relation.loc[len(enzyme_gene_reaction_relation)] = row.to_list() + [rxn.id] + [gpr_info]
 
@@ -57,6 +59,10 @@ def parse_gpr_relationships_from_Ecocyc():
 
     #Append the information of each gene with information from the 'GeneList'
     tam_info_merged = parse_ecoli_genome_information(tam_info_merged)
+
+    # tam_info_merged = make_all_ec_numbers_unique_proteins(tam_info_merged)
+    # #make sure each Ecnumber relates to a unique enzyme. If there is overlap, add a suffix
+
 
     #write to excel
     with pd.ExcelWriter(TAM_DATA_FILE) as writer:
@@ -96,6 +102,29 @@ def parse_ecoli_genome_information(tam_info_merged):
         tam_info_gene['mrna_length'] = row.start - row.end
 
     return tam_info_merged
+
+def append_suffix(row, group_df):
+    # Function to append suffix to EC_nmbr based on gpr_count
+    gpr_count = group_df[group_df.EC_nmbr == row['EC_nmbr']]
+    if len(gpr_count) > 1:
+        return f"{row['EC_nmbr']}_{row['rxnID']}"
+    else:
+        return row['EC_nmbr']
+
+def make_all_ec_numbers_unique_proteins(df):
+    # Group by EC_nmbr and gpr, count unique gpr entries
+    grouped = df.groupby(['EC_nmbr', 'gpr', 'rxnID']).size().reset_index(name='gpr_count')
+
+    # Apply the function to create the new column
+    df['EC_nmbr_with_suffix'] = df.apply(append_suffix,group_df =grouped, axis=1)
+
+    # Merge back with the original dataframe
+    # df = pd.merge(df, grouped[['EC_nmbr', 'EC_nmbr_with_suffix']], on='EC_nmbr', how='left')
+
+    # Drop the original EC_nmbr column and rename the new one
+    df.drop(columns=['EC_nmbr'], inplace=True)
+    df.rename(columns={'EC_nmbr_with_suffix': 'EC_nmbr'}, inplace=True)
+    return df
 
 if __name__ == '__main__':
     parse_gpr_relationships_from_Ecocyc()

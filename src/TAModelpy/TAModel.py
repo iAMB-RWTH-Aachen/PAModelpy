@@ -263,7 +263,40 @@ class TAModel(PAModel):
         # check the gpr relations: is an additional gene required or is there 'competition' with another gene?
         transcript_associated_with_enzyme = self.get_transcripts_associated_with_enzyme(enzyme)
         for relation, transcripts in transcript_associated_with_enzyme.items():
-            self.make_mrna_min_max_constraint(enzyme, transcripts, relation)
+            self.make_mrna_max_constraint(enzyme, transcripts)
+
+    def set_transcript_enzyme_min_relation(self, transcript: Transcript):
+        transcripts = [transcript]
+        if len(transcript._lumped_transcripts) > 0:
+            transcripts = transcript._lumped_transcripts
+        for transcript in transcripts:
+            if f'{transcript.id}_min' not in self.constraints.keys():
+                min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
+
+                self.add_cons_vars([min_constraint])
+
+                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
+                    transcript.mrna_variable: transcript.f_min
+                })
+
+            for enz in transcript.enzymes:
+                # make separate constraints for forward and reverse enzyme variables
+                fwd_var = self.enzyme_variables.get_by_id(enz.id).forward_variable
+                rev_var = self.enzyme_variables.get_by_id(enz.id).reverse_variable
+
+                if f'{transcript.id}_min' not in self.constraints.keys():
+                    min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
+                    self.add_cons_vars([min_constraint])
+
+                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
+                    fwd_var: -1,
+                    rev_var: -1
+                })
+
+            # save the constraints in the transcript object
+            transcript._constraints = {**transcript._constraints,
+                                       **{f'{transcript.id}_min': self.constraints[f'{transcript.id}_min']
+                                          }}
 
 
     def add_total_mrna_constraint(self, mrna_sector:ActivemRNASector) -> None:
@@ -305,7 +338,7 @@ class TAModel(PAModel):
             enzyme_variable.reverse_variable: 0.5*enzyme.molmass * 1e-6,
         })
         coef2 = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients([enzyme_variable.forward_variable])
-        print(coef, coef2)
+        # print(coef, coef2)
 
     def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
@@ -326,9 +359,8 @@ class TAModel(PAModel):
                     return True
         return False
 
-    def make_mrna_min_max_constraint(self, enz: Enzyme,
-                                     transcripts:Union[Transcript, list],
-                                     relation = 'or') -> Union[Transcript, list]:
+    def make_mrna_max_constraint(self, enz: Enzyme,
+                                 transcripts:Union[Transcript, list]) -> Union[Transcript, list]:
         """
         Adding variables and constraints for the lower and upperbounds of an Enzyme to a model. The bounds are
         related to the mRNA content present in the cell.
@@ -365,54 +397,32 @@ class TAModel(PAModel):
         fwd_var = self.enzyme_variables.get_by_id(enz.id).forward_variable
         rev_var = self.enzyme_variables.get_by_id(enz.id).reverse_variable
 
-        #
-        # if f'{self.id}_{enz.id}_max' in m.constraints.keys():
-        #     m.constraints[f'{enz.id}_max'].ub = upper_bound
-        # if f'{self.id}_{enz.id}_min' in m.constraints.keys():
-        #     m.constraints[f'{enz.id}_min'].ub = -lower_bound
-        # else:
         transcripts_ids = "_".join([transcript.id for transcript in transcripts])
-        # max_constraint = self.problem.Constraint(Zero, name=f'{transcripts_ids}_{enz.id}_max', lb=0, ub=1e6) #TODO check relationships
-        # min_constraint = self.problem.Constraint(Zero, name=f'{transcripts_ids}_{enz.id}_min', lb=0, ub=1e6)
+
         if f'{transcripts_ids}_max' not in self.constraints.keys():
             max_constraint = self.problem.Constraint(Zero, name=f'{transcripts_ids}_max', lb=-1e6,
-                                                 ub=0)  # TODO check relationships
-            min_constraint = self.problem.Constraint(Zero, name=f'{transcripts_ids}_min', lb=-1e6, ub=0)
-            self.add_cons_vars([max_constraint, min_constraint])
+                                                 ub=0)
+            self.add_cons_vars([max_constraint])
 
-        # for key, var in self.variables.iteritems():
-        #     print(key,var)
-        # self.variables[transcript.id]
         # # setting up the constraints
         self.constraints[f'{transcripts_ids}_max'].set_linear_coefficients({
             fwd_var: 1,
             rev_var: 1
         })
-        self.constraints[f'{transcripts_ids}_min'].set_linear_coefficients({
-            fwd_var: -1,
-            rev_var: -1
-        })
 
         for transcript in transcripts:
-            self.set_mrna_enzyme_minmax_constraint_or_relation(enz, transcript, transcripts_ids)
+            self.set_mrna_enzyme_max_constraint_relation(enz, transcript, transcripts_ids)
             if transcript not in enz.transcripts: enz.transcripts.append(transcript)
 
             #save the constraints in the transcript object
             transcript._constraints = {**transcript._constraints,
-                                        **{f'{transcripts_ids}_max':self.constraints[f'{transcripts_ids}_max'],
-                                    f'{transcripts_ids}_min':self.constraints[f'{transcripts_ids}_min']
-                                    }}
-            # transcript.mrna_variable.ub =0
+                                        **{f'{transcripts_ids}_max':self.constraints[f'{transcripts_ids}_max']}}
         return transcripts
 
-    def _create_mrna_minmax_constraints(self, enzyme: Enzyme, transcript_ids: str,
-                                        min_variable, max_variable,
-                                        f_min: float, f_max: float) -> None:
+    def _create_mrna_max_constraints(self, transcript_ids: str,max_variable,
+                                     f_max: float) -> None:
         self.constraints[f'{transcript_ids}_max'].set_linear_coefficients({
             max_variable: -f_max
-        })
-        self.constraints[f'{transcript_ids}_min'].set_linear_coefficients({
-            min_variable: f_min
         })
 
     def set_mrna_enzyme_minmax_constraint_and_relation(self, enzyme: Enzyme,
@@ -467,16 +477,13 @@ class TAModel(PAModel):
                 f'{transcript.id}_{enzyme.id}_max_aux': self.constraints[f'{transcript.id}_{enzyme.id}_max_aux']
                 }}
 
-        self._create_mrna_minmax_constraints(enzyme = enzyme,
-                                             transcript_ids = transcript_ids,
-                                             min_variable= transcript_aux_min_variable,
-                                             max_variable = transcript_aux_max_variable,
-                                             f_min = 1,
-                                             f_max = 1
-                                             )
+        self._create_mrna_max_constraints(transcript_ids = transcript_ids,
+                                          max_variable = transcript_aux_max_variable,
+                                          f_max = 1
+                                          )
 
-    def set_mrna_enzyme_minmax_constraint_or_relation(self, enzyme: Enzyme,
-                                                           transcript: Transcript, transcript_id: str):
+    def set_mrna_enzyme_max_constraint_relation(self, enzyme: Enzyme,
+                                                transcript: Transcript, transcript_id: str):
         """Sets constraints for mRNA abundance and enzyme concentration based on 'or' relationship.
             This is in the following format:
             ```
@@ -492,13 +499,10 @@ class TAModel(PAModel):
            Returns:
                None
            """
-        self._create_mrna_minmax_constraints(enzyme = enzyme,
-                                             transcript_ids = transcript_id,
-                                             min_variable= transcript.mrna_variable,
-                                             max_variable=transcript.mrna_variable,
-                                             f_min = transcript.f_min,
-                                             f_max = transcript.f_max
-                                             )
+        self._create_mrna_max_constraints(transcript_ids = transcript_id,
+                                          max_variable=transcript.mrna_variable,
+                                          f_max = transcript.f_max
+                                          )
 
 
     def get_genes_associated_with_enzyme(self, enzyme: Enzyme) -> dict:
@@ -590,7 +594,6 @@ class TAModel(PAModel):
         transcript_list = [self.transcripts.get_by_id('mRNA_' + gene) for gene in gene_list if
                            'mRNA_' + gene in self.transcripts]
         new_transcript_length = np.nansum([trans.length for trans in transcript_list]) # need to translate all mRNAs to get enzyme complex
-
         new_transcript_id = 'mRNA_'+ '_'.join(gene_list)
         if new_transcript_id in self.transcripts:
             new_transcript = self.transcripts.get_by_id(new_transcript_id)

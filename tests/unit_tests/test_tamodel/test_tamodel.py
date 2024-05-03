@@ -62,7 +62,7 @@ def test_if_tam_makes_mrna_min_max_constraint_correctly():
     sut.add_cons_vars(transcript.mrna_variable)
 
     # Act
-    sut.make_mrna_min_max_constraint(enzymes[0], transcript)
+    sut.make_mrna_max_constraint(enzymes[0], transcript)
 
     # Assert
     assert_correct_min_max_mrna_constraint(sut, transcript, enzymes[0])
@@ -148,6 +148,7 @@ def build_toy_tam():
     active_mrna_sector = build_active_mrna_sector(pam, config)
     tamodel = TAModel(id_or_model = pam,
                       mrna_sector = active_mrna_sector)
+    tamodel.objective = 'R7'
     return tamodel
 
 def assert_transcript_is_in_model(tamodel, transcript):

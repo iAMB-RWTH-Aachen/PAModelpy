@@ -44,7 +44,7 @@ class ActivemRNASector(EnzymeSector):
         self.set_intercept()
 
         self.gene2transcript = gene2transcript
-        self.elongation_rates = [12,25] #nt/s
+        self.elongation_rates = [0.5,25] #nt/s
         self.ribosome_spacing = [1000,40]#nt
         #minimal and maximal translation factors per aa in the enzyme
         self.f_min = self.elongation_rates[0]/self.ribosome_spacing[0]

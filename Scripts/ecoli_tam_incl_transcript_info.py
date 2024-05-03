@@ -3,8 +3,12 @@ import pandas as pd
 import os
 import cobra
 
-from Scripts.tam_generation import set_up_toy_tam, set_up_ecolicore_tam
-from Scripts.pam_generation import set_up_ecolicore_pam
+from Scripts.tam_generation import set_up_ecoli_tam
+from Scripts.pam_generation import set_up_ecoli_pam
+
+from src.PAModelpy import Enzyme
+from src.TAModelpy import Transcript
+from src.flux_analysis.recombinant_protein_expression import add_recombinant_protein_to_pam
 
 sinha_ref_conditions = {
     'Holm et al': ['REF', 'NOX', 'ATP'], #WT and NADH  overexpression conditions, mu 0.72, 0.65,0.58 h-1 respectively
@@ -13,11 +17,44 @@ sinha_ref_conditions = {
 }
 TRANSCRIPT_FILE_PATH = os.path.join('Data', 'TAModel', 'Sinha-etal_2021_transcript-data.xlsx')
 FLUX_FILE_PATH = os.path.join('Data', 'TAModel', 'Sinha-etal_2021_flux-data.xlsx')
+NOX_AA_COMPOSITION = "MSKIVVVGANHAGTACINTMLDNFGNENEIVVFDQNSNISFLGC\
+                     GMALWIGEQIDGAEGLFYSDKEKLEAKGAKVYMNSPVLSIDYDNKVVTAEVEGKEHKE\
+                     SYEKLIFATGSTPILPPIEGVEIVKGNREFKATLENVQFVKLYQNAEEVINKLSDKSQ\
+                     HLDRIAVVGGGYIGVELAEAFERLGKEVVLVDIVDTVLNGYYDKDFTQMMAKNLEDHN\
+                     IRLALGQTVKAIEGDGKVERLITDKESFDVDMVILAVGFRPNTALADGKIELFRNGAF\
+                     LVDKKQETSIPGVYAVGDCATVYDNARKDTSYIALASNAVRTGIVGAYNACGHELEGI\
+                     GVQGSNGISIYGLHMVSTGLTLEKAKAAGYNATETGFNDLQKPEFMKHDNHEVAIKIV\
+                     FDKDSREILGAQMVSHDIAISMGIHMFSLAIQEHVTIDKLALTDLFFLPHFNKPYNYI\
+                     TMAALTAEK"
 
 
-mrna_vs_mu_slope = 0.00013049558330984208
-mrna_vs_mu_intercept = 1.7750480089801658e-05
+mrna_vs_mu_slope = 0.0019274475344656643 # [g_mrna/g_cdw/h]
+mrna_vs_mu_intercept = 0.00026217836816312917 # [g_mrna/g_cdw]
 
+def add_nox_protein_to_model(model):
+    nox_rxn = cobra.Reaction(id='NADH_oxidase_reaction')
+    nox_rxn.add_metabolites({
+        model.metabolites.nad_c: 1,
+        model.metabolites.nadh_c: -1,
+        model.metabolites.h20: 1,
+        model.metabolites.o2: 0.5
+    })
+    model.add_reaction(nox_rxn)
+    nox_protein = Enzyme(id='NOX',
+                         rxn2kcat={nox_rxn.id: {'f': 43.4, 'b': 1}},
+                         molmass=50000)  # fwd kcat and molmass from BRENDA
+    add_recombinant_protein_to_pam(model, protein=nox_protein, aa_seq=NOX_AA_COMPOSITION)
+
+def add_nox_transcript_to_model(model):
+    nox_protein = model.enzymes.get_by_id('NOX')
+    nox_gene = cobra.Gene('nox')
+    nox_transcript = Transcript(
+        id = 'mRNA_nox',
+        gene = nox_gene,
+        enzymes = [nox_protein],
+        length = 1380 #from genebank https://www.ncbi.nlm.nih.gov/nuccore/AF014458?report=genbank
+    )
+    model.add_transcripts([nox_transcript])
 
 def get_transcript_data(transcript_file_path:str = TRANSCRIPT_FILE_PATH, mmol = True,
                         reference: str = 'Holm et al', growth_rates = [0.72, 0.65,0.58]):
@@ -26,7 +63,7 @@ def get_transcript_data(transcript_file_path:str = TRANSCRIPT_FILE_PATH, mmol = 
     expression_data_normalized = expression_data.div(expression_data.sum(axis=0), axis=1)
     if mmol:
         mrna_conc = [mrna_vs_mu_intercept + mrna_vs_mu_slope*mu for mu in growth_rates]
-        expression_data_mmol = expression_data_normalized.apply(lambda row: row * mrna_conc, axis=1) #TODO: need to find the percentage of mRNA which is never translated
+        expression_data_mmol = expression_data_normalized.apply(lambda row: row * mrna_conc, axis=1)
         return expression_data_mmol
     else:
         return expression_data_normalized
@@ -39,37 +76,43 @@ def get_flux_data(flux_file_path:str = FLUX_FILE_PATH,
         expression_data.index = expression_data.index.str.replace('R_', '')
     return expression_data
 
-def get_pam_fluxes(substrate_uptake_rate):
-    pam = set_up_ecolicore_pam()
+def get_pam_fluxes(substrate_uptake_rate, strain ='REF'):
+    pam = set_up_ecoli_pam()
     pam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
-
+    if strain == 'NOX':
+        add_nox_protein_to_model(pam)
     sol = pam.optimize()
     pam_fluxes = sol.fluxes
     return pam_fluxes,pam
 
 def set_up_tamodel(substrate_uptake_rate, strain ='REF'):
-    tam = set_up_ecolicore_tam()
+    tam = set_up_ecoli_tam()
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
+    if strain == 'NOX':
+        add_nox_protein_to_model(tam)
+        add_nox_transcript_to_model(tam)
+        tam.transcripts.get_by_id('mRNA_nox').change_concentration(1e-3, 1e-5)
+
     transcript_data_mmol = get_transcript_data()
     for gene, expression_data in transcript_data_mmol.iterrows():
         transcript_id = 'mRNA_' + gene
         if not transcript_id in tam.transcripts: continue
         transcript = tam.transcripts.get_by_id('mRNA_' + gene)
-        # testing wildtype condition
-        transcript.change_concentration(concentration=expression_data[strain],
-                                        error=expression_data[strain] * 0.01)
+        # # testing wildtype condition
+        # transcript.change_concentration(concentration=expression_data[strain],
+        #                                 error=expression_data[strain] * 0.01)
 
         if strain == 'ATP' and transcript_id =='mRNA_b3731':
             tam.set_transcript_enzyme_min_relation(transcript)
-        tam.optimize()
-        if tam.solver.status != 'optimal':
-            transcript.reset_concentration()
-            transcript.change_concentration(concentration=expression_data[strain],
-                                            error=expression_data[strain] * 0.25)
-            print(transcript_id)
-            tam.optimize()
-            print(tam.objective.value)
-            print(expression_data[strain])
+        # tam.optimize()
+        # if tam.solver.status != 'optimal':
+        #     transcript.reset_concentration()
+        #     transcript.change_concentration(concentration=expression_data[strain],
+        #                                     error=expression_data[strain] * 0.25)
+        #     print(transcript_id)
+        #     tam.optimize()
+        #     print(tam.objective.value)
+        #     print(expression_data[strain])
     return tam
 
 def get_tam_fluxes(tam,substrate_uptake_rate):
@@ -88,7 +131,7 @@ def get_tam_fluxes(tam,substrate_uptake_rate):
 
 def get_tam_fluxes_fixed_mu(tam,mu):
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-1e6, upper_bound=0)
-    tam.change_reaction_bounds('BIOMASS_Ecoli_core_w_GAM', lower_bound=mu, upper_bound=mu)
+    tam.change_reaction_bounds('BIOMASS_Ec_iML1515_core_75p37M', lower_bound=mu, upper_bound=mu)
     tam.objective = 'EX_glc__D_e'
     tam.objective.direction = 'max'
 
@@ -104,8 +147,8 @@ def compare_flux_data(flux_data, pam_fluxes, tam_fluxes, strain ='REF', abs=True
         glc_upt_tam = 1
     else:
         glc_upt_ref = flux_data[strain]['GLCptspp']
-        glc_upt_pam = pam_fluxes['GLCpts']
-        glc_upt_tam = tam_fluxes['GLCpts']
+        glc_upt_pam = pam_fluxes['GLCptspp']
+        glc_upt_tam = tam_fluxes['GLCptspp']
 
     flux_results = flux_data[[strain]]
     flux_results_percentage = flux_results.assign(
@@ -114,8 +157,8 @@ def compare_flux_data(flux_data, pam_fluxes, tam_fluxes, strain ='REF', abs=True
     flux_results_percentage['TAM'] = 0
     for rxn in flux_data.index:
         ori_rxn = rxn
-        if 'pp' in rxn: rxn = rxn.replace('pp', '')
-        if 'biomass' in rxn: rxn = 'BIOMASS_Ecoli_core_w_GAM'
+        # if 'pp' in rxn: rxn = rxn.replace('pp', '')
+        if 'biomass' in rxn: rxn = 'BIOMASS_Ec_iML1515_core_75p37M'
         if 'EX_glc' in rxn: rxn = 'EX_glc__D_e'
         if 'EX_ac' in rxn: rxn = 'EX_ac_e'
         flux_results_percentage['PAM'][ori_rxn] = pam_fluxes[rxn] / glc_upt_pam
@@ -128,7 +171,7 @@ def compare_fluxes_holm_reference(strain = 'REF', plot = True):
     flux_data =get_flux_data()
     substrate_uptake_rate = flux_data[strain]['GLCptspp']
     mu = flux_data[strain]['Ec_biomass_iAF1260_core_59p81M']
-    pam_fluxes, pam = get_pam_fluxes(substrate_uptake_rate=substrate_uptake_rate)
+    pam_fluxes, pam = get_pam_fluxes(substrate_uptake_rate=substrate_uptake_rate, strain=strain)
 
     tam = set_up_tamodel(substrate_uptake_rate,strain)
     # tam_fluxes = get_tam_fluxes(tam, substrate_uptake_rate=substrate_uptake_rate)
@@ -176,7 +219,7 @@ def plot_flux_comparison(flux_df_abs, flux_df_rel, strain):
 if __name__ == '__main__':
 
     print('Reference condition')
-    compare_fluxes_holm_reference(strain = 'ATP', plot =False)
+    compare_fluxes_holm_reference(strain = 'REF', plot =True)
     print('\n-------------------------------------------------------------------------------------------------')
     # print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
     # compare_fluxes_holm_reference('NOX', plot=False)

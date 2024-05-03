@@ -1094,7 +1094,7 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
-    def get_enzymes_with_reaction_id(self, rxn_id:str):
+    def get_enzymes_with_reaction_id(self, rxn_id:str) -> DictList:
         """
         Returns Enzyme objects associated with the reaction id through CatalyticEvent objects
         :param rxn_id: str

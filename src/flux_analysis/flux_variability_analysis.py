@@ -5,13 +5,12 @@ from typing import List, Optional, Union, Tuple
 
 import logging
 from optlang.symbolics import Zero
-from optlang import Variable
+from optlang import Variable, interface
 
 from cobra.core import Configuration, Model, Reaction
 from cobra.util import solver as sutil
 from cobra.util import ProcessPool
 from cobra.flux_analysis.parsimonious import add_pfba
-from cobra.flux_analysis.variability import _init_worker
 from cobra.flux_analysis.loopless import loopless_fva_iter
 
 from ..PAModelpy.Enzyme import Enzyme, EnzymeVariable
@@ -22,7 +21,26 @@ from ..TAModelpy.Transcript import Transcript
 logger = logging.getLogger(__name__)
 configuration = Configuration()
 
-def _fva_step(variable: str) -> Tuple[str, float]:
+def _init_worker(model: "Model", loopless: bool, sense: str) -> None:
+    """Initialize a global model object for multiprocessing.
+
+    Parameters
+    ----------
+    model: cobra.Model
+        The model to operate on.
+    loopless: bool
+        Whether to use loopless version.
+    sense: {"max", "min"}
+        Whether to maximise or minimise objective.
+
+    """
+    global _model
+    global _loopless
+    _model = model
+    _model.solver.objective.direction = sense
+    _loopless = loopless
+
+def _fva_step(variable: Union[Variable, Transcript, EnzymeVariable, Reaction]) -> Tuple[str, float]:
     """Take a step for calculating FVA.
 
     Parameters
@@ -43,13 +61,17 @@ def _fva_step(variable: str) -> Tuple[str, float]:
     # in the history manager which can take longer than the actual
     # FVA for small models
     if isinstance(variable, Variable):
-        coeff = {variable:1}
+        model_var = _model.variables[variable.name]
+        coeff = {model_var:1}
     else:
-        coeff = {variable.forward_variable:1, variable.reverse_variable:-1}
-    _model.solver.objective.set_linear_coefficients(
-        coeff
-    )
+        model_var_f = _model.variables[variable.forward_variable.name]
+        model_var_r = _model.variables[variable.reverse_variable.name]
+        coeff = {model_var_f:1, model_var_r:-1}
+    #set the fva objective
+    _model.solver.objective.set_linear_coefficients(coeff)
+
     _model.slim_optimize()
+
     sutil.check_solver_status(_model.solver.status)
     if _loopless and isinstance(variable, Reaction):
         value = loopless_fva_iter(_model, variable)
@@ -57,6 +79,7 @@ def _fva_step(variable: str) -> Tuple[str, float]:
         warn('variable is not a reaction, thus cannot perform loopless FVA')
     else:
         value = _model.solver.objective.value
+
     # handle infeasible case
     if value is None:
         value = float("nan")
@@ -70,6 +93,36 @@ def _fva_step(variable: str) -> Tuple[str, float]:
     )
     return variable, value
 
+def _get_variables(model, variable_type, variable_list):
+    variable_mapping = {
+        Enzyme: model.enzyme_variables,
+        EnzymeVariable: model.enzyme_variables,
+        Reaction: model.reactions,
+        Transcript: [trans.mrna_variable for trans in model.transcripts]
+    }
+    variables = {}
+    if variable_type is None or variable_type == Transcript:
+        if variable_list is not None:
+            for var_id in variable_list:
+                if isinstance(var_id, str):
+                    variables = {**variables, **{var_id:model.variables[var_id]}}
+                else:
+                    variables = {**variables, **{var_id.name: model.variables[var_id.name]}}
+        elif variable_type is None:
+            variables = model.variables
+        else: #TODO does not work for some reason
+            mrna_ids = [trans.mrna_variable.name for trans in model.transcripts]
+            variables = dict(zip(mrna_ids, model.transcripts))
+    else:
+        variables = {var.id: var for var in variable_mapping[variable_type]}
+        if variable_list is not None:
+            vars = variables.copy()
+            variables = {}
+            for var_id, var in vars.items():
+                if var_id in variable_list:
+                    variables[var_id] = var
+            # variables = {var: var.id for var in variable_mapping[variable_type]}
+    return variables
 
 def flux_variability_analysis(
     model: Model,
@@ -150,26 +203,7 @@ def flux_variability_analysis(
        doi: 10.1093/bioinformatics/btv096.
 
     """
-    variable_mapping = {
-        Enzyme: model.enzyme_variables,
-        EnzymeVariable: model.enzyme_variables,
-        Reaction: model.reactions,
-        Transcript: [trans.mrna_variable for trans in model.transcripts]
-    }
-    if variable_type is None:
-        if variable_list is not None:
-            variables = [model.variables[var] if isinstance(var, str) else model.variables[var.name] for var in variable_list]
-            variable_ids = [var.name for var in variables]
-        else:
-            variables = list(model.variables.values())
-            variable_ids = [var.name for var in variables]
-    else:
-        variables = variable_mapping[variable_type]
-        variable_ids = [var.id for var in variables]
-        if variable_list is not None:
-            variables = [var for var in variables.get_by_any(variable_list)]
-            variable_ids = [var.id for var in variables]
-
+    variables = _get_variables(model, variable_type, variable_list)
     if processes is None:
         processes = configuration.processes
 
@@ -181,7 +215,7 @@ def flux_variability_analysis(
             "minimum": np.zeros(num_variables, dtype=float),
             "maximum": np.zeros(num_variables, dtype=float),
         },
-        index=variable_ids,
+        index=variables,
     )
     prob = model.problem
     with model:
@@ -241,13 +275,17 @@ def flux_variability_analysis(
                     initializer=_init_worker,
                     initargs=(model, loopless, what[:3]),
                 ) as pool:
-                    for rxn_id, value in pool.imap_unordered(
-                        _fva_step, variables, chunksize=chunk_size
+                    for var, value in pool.imap_unordered(
+                        _fva_step, variables.values(), chunksize=chunk_size
                     ):
-                        fva_result.at[rxn_id, what] = value
+                        try: var_id = var.id
+                        except: var_id = var.name
+                        fva_result.at[var_id, what] = value
             else:
                 _init_worker(model, loopless, what[:3])
-                for rxn_id, value in map(_fva_step, variables):
-                    fva_result.at[rxn_id, what] = value
+                for var, value in map(_fva_step, variables):
+                    try: var_id = var.id
+                    except: var_id = var.name
+                    fva_result.at[var_id, what] = value
 
     return fva_result[["minimum", "maximum"]]

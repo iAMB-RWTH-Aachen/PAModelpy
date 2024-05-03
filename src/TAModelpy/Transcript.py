@@ -38,15 +38,18 @@ class Transcript(Object):
             if not enzyme in model.enzymes: model.add_enzyme(enzyme)
             if not isinstance(self, LumpedTranscript):
                 transcript_associated_with_enzyme = model.get_transcripts_associated_with_enzyme(enzyme)
-                for relation, transcripts in transcript_associated_with_enzyme.items():
-                    model.make_mrna_min_max_constraint(enzyme, transcripts, relation)
-            else:
-                model.make_mrna_min_max_constraint(enzyme, [self])
-            # print(self.mrna_variable.lb)
-            # for key, value in self._constraints.items():
-            #     print(value)
+                #if none of the associated transcripts is in the model, need to add a single relation
+                if len(transcript_associated_with_enzyme) == 0: transcript_associated_with_enzyme['or'] = [self]
 
-    def change_concentration(self, concentration:float, error: float = 0) -> None:
+                for relation, transcripts in transcript_associated_with_enzyme.items():
+
+                    model.make_mrna_max_constraint(enzyme, transcripts)
+                    model.set_transcript_enzyme_min_relation(self)
+            else:
+                model.make_mrna_max_constraint(enzyme, [self])
+                model.set_transcript_enzyme_min_relation(self)
+
+    def change_concentration(self, concentration:float, error: float = 0, reset_min_constraint:bool = True) -> None:
         """ Setting the concentration of an mRNA species
 
         Changes the mRNA concentration and thereby influencing the enzyme concentration and reaction rate. The bounds
@@ -55,21 +58,31 @@ class Transcript(Object):
         :param concentration:
         :return:
         """
+
         if len(self._lumped_transcripts)>0:
             # if there is an and relationship, the lumped transcript should be adjusted instead of the individual transcript
             for lumped_transcript in self._lumped_transcripts:
+                if reset_min_constraint:
+                    self._model.constraints[f'{lumped_transcript.id}_min'].set_linear_coefficients({
+                        lumped_transcript.mrna_variable: 0
+                    })
                 if lumped_transcript.mrna_variable.lb > concentration-error: #only if this transcript is the limiting transcript
                     print(f'changing lumped transcript concentration from {lumped_transcript.mrna_variable.lb} to {concentration-error}')
                     lumped_transcript.mrna_variable.ub = concentration + error
                     lumped_transcript.mrna_variable.lb = concentration - error
         else:
+            if reset_min_constraint:
+                self._model.constraints[f'{self.id}_min'].set_linear_coefficients({
+                    self.mrna_variable: 0
+                })
             self.mrna_variable.ub = concentration+error
             self.mrna_variable.lb = concentration-error
-        for enzyme in self.enzymes:
-            self._model.correct_unused_enzymes_for_measured_mrna(enzyme)
+        # for enzyme in self.enzymes:
+        #     self._model.correct_unused_enzymes_for_measured_mrna(enzyme)
         self._model.solver.update()
 
     def reset_concentration(self):
+        # self._model.set_transcript_enzyme_min_relation(self)
         if len(self._lumped_transcripts)>0:
             # if there is an and relationship, the lumped transcript should be adjusted instead of the individual transcript
             for lumped_transcript in self._lumped_transcripts:
@@ -79,6 +92,8 @@ class Transcript(Object):
             self.mrna_variable.ub = 1e6
             self.mrna_variable.lb = -1e6
         self._model.solver.update()
+
+
 
 class LumpedTranscript(Transcript):
     def __init__(self, id: str, gene:Union[Gene, list], enzymes: DictList, length: int):
