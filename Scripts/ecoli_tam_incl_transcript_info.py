@@ -36,10 +36,10 @@ def add_nox_protein_to_model(model):
     nox_rxn.add_metabolites({
         model.metabolites.nad_c: 1,
         model.metabolites.nadh_c: -1,
-        model.metabolites.h20: 1,
-        model.metabolites.o2: 0.5
+        model.metabolites.h2o_c: 1,
+        model.metabolites.o2_c: 0.5
     })
-    model.add_reaction(nox_rxn)
+    model.add_reactions([nox_rxn])
     nox_protein = Enzyme(id='NOX',
                          rxn2kcat={nox_rxn.id: {'f': 43.4, 'b': 1}},
                          molmass=50000)  # fwd kcat and molmass from BRENDA
@@ -54,7 +54,7 @@ def add_nox_transcript_to_model(model):
         enzymes = [nox_protein],
         length = 1380 #from genebank https://www.ncbi.nlm.nih.gov/nuccore/AF014458?report=genbank
     )
-    model.add_transcripts([nox_transcript])
+    model.add_transcript(nox_transcript)
 
 def get_transcript_data(transcript_file_path:str = TRANSCRIPT_FILE_PATH, mmol = True,
                         reference: str = 'Holm et al', growth_rates = [0.72, 0.65,0.58]):
@@ -223,8 +223,6 @@ if __name__ == '__main__':
     print('\n-------------------------------------------------------------------------------------------------')
     # print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
     # compare_fluxes_holm_reference('NOX', plot=False)
-    # TODO print mRNA and protein concentrations to compare with lb
-    # TODO print shadowprices of mRNA (are lbs hit? how far can I constrain?)
 
 
 

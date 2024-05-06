@@ -49,6 +49,7 @@ def match_aminoacid_to_model_identifiers_and_frequency(aa_seq:str) -> dict:
         else:
             bigg_id = f'{threeletter}_c'
         aa_biggid_freq[bigg_id] = freq
+    return aa_biggid_freq
 
 def add_aminoacid_sequence(model: PAModel, seq:dict, protein:EnzymeVariable):
     """
@@ -57,6 +58,7 @@ def add_aminoacid_sequence(model: PAModel, seq:dict, protein:EnzymeVariable):
     protein: enzyme variable
     """
     for aa, freq in seq.items():
+        if aa not in model.constraints.keys(): continue
         model.constraints[aa].set_linear_coefficients({
             protein.forward_variable: -freq / protein.molmass,
             protein.reverse_variable: -freq / protein.molmass
@@ -65,6 +67,6 @@ def add_aminoacid_sequence(model: PAModel, seq:dict, protein:EnzymeVariable):
 
 def add_recombinant_protein_to_pam(pam:PAModel, protein:Enzyme, aa_seq: str) -> PAModel:
     pam.add_enzymes(protein)
-    aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq)
+    aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq.replace(' ', ''))
     add_aminoacid_sequence(pam, aa_to_freq, protein.enzyme_variable)
     return pam
