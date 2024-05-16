@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 import numpy as np
 from cobra.io import load_json_model
@@ -63,6 +64,7 @@ def test_if_tam_makes_mrna_min_max_constraint_correctly():
 
     # Act
     sut.make_mrna_max_constraint(enzymes[0], transcript)
+    sut.set_transcript_enzyme_min_relation(transcript)
 
     # Assert
     assert_correct_min_max_mrna_constraint(sut, transcript, enzymes[0])
@@ -99,6 +101,40 @@ def test_if_tamodel_adds_genes_with_and_relations_to_the_model_correctly():
     # Assert
     assert np.sum(gene_length) == lumped_transcript.length
     assert_correct_min_max_mrna_constraint(sut, lumped_transcript, enzyme_ut)
+
+def test_if_tamodel_capacity_sensitivity_coefficients_add_up_to_1():
+    #all csc should by definition of the csc add up to one, see van den Bogaard, et al.
+    # Arrange
+    sut = build_toy_tam()
+    sut.change_reaction_bounds(rxn_id='R1',
+                               lower_bound=0, upper_bound=1e-3)
+    # Act
+    sut.optimize()
+
+    # Assert
+    assert 1 == pytest.approx(sut.capacity_sensitivity_coefficients.coefficient.sum(), abs = 1e-3)
+
+def test_if_tamodel_capacity_sensitivity_coefficients_are_calculated_correctly_for_transcripts():
+    # Arrange
+    sut = build_toy_tam()
+    sut.change_reaction_bounds(rxn_id='R1',
+                               lower_bound=0, upper_bound=1e-3)
+    sut.capacity_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
+
+    mu_mrna_max = pd.DataFrame({'index': ['mRNA1_max', 'mRNA2_max'], 'shadow_prices':[0,0.5],
+                                'rxn_id':['E1', 'E2'], 'direction':['max', 'max']})
+    mu_mrna_min = pd.DataFrame({'index': ['mRNA1_min', 'mRNA2_min'], 'shadow_prices': [0.1, 0],
+                                'rxn_id': ['E1', 'E2'], 'direction': ['min', 'min']})
+    obj_value = 1
+
+    # Act
+    # sut.optimize()
+    for transcript in [sut.transcripts.mRNA1, sut.transcripts.mRNA2]:
+        sut.calculate_mrna_csc(transcript = transcript,
+                               mu_mrna_max=mu_mrna_max, mu_mrna_min=mu_mrna_min,
+                               obj_value = obj_value)
+    print(sut.capacity_sensitivity_coefficients.to_markdown())
+    assert False
 
 ############################################################################################################################
 # HELPER FUNCTIONS

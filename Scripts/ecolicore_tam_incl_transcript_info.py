@@ -192,7 +192,7 @@ def plot_flux_comparison(flux_df_abs, flux_df_rel, strain):
 if __name__ == '__main__':
 
     print('Reference condition')
-    compare_fluxes_holm_reference(strain = 'NOX', plot =False)
+    compare_fluxes_holm_reference(strain = 'REF', plot =False)
     print('\n-------------------------------------------------------------------------------------------------')
     # print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
     # compare_fluxes_holm_reference('NOX', plot=False)

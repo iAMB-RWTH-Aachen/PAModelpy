@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Dict, Iterable
 
 import cobra
 import numpy as np
+import pandas as pd
 from cobra import Object, DictList, Gene
 from optlang.symbolics import Zero
 import re
@@ -265,39 +266,6 @@ class TAModel(PAModel):
         for relation, transcripts in transcript_associated_with_enzyme.items():
             self.make_mrna_max_constraint(enzyme, transcripts)
 
-    def set_transcript_enzyme_min_relation(self, transcript: Transcript):
-        transcripts = [transcript]
-        if len(transcript._lumped_transcripts) > 0:
-            transcripts = transcript._lumped_transcripts
-        for transcript in transcripts:
-            if f'{transcript.id}_min' not in self.constraints.keys():
-                min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
-
-                self.add_cons_vars([min_constraint])
-
-                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
-                    transcript.mrna_variable: transcript.f_min
-                })
-
-            for enz in transcript.enzymes:
-                # make separate constraints for forward and reverse enzyme variables
-                fwd_var = self.enzyme_variables.get_by_id(enz.id).forward_variable
-                rev_var = self.enzyme_variables.get_by_id(enz.id).reverse_variable
-
-                if f'{transcript.id}_min' not in self.constraints.keys():
-                    min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
-                    self.add_cons_vars([min_constraint])
-
-                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
-                    fwd_var: -1,
-                    rev_var: -1
-                })
-
-            # save the constraints in the transcript object
-            transcript._constraints = {**transcript._constraints,
-                                       **{f'{transcript.id}_min': self.constraints[f'{transcript.id}_min']
-                                          }}
-
 
     def add_total_mrna_constraint(self, mrna_sector:ActivemRNASector) -> None:
         """Adds a constraint to limit the total mRNA abundance.
@@ -358,6 +326,39 @@ class TAModel(PAModel):
                 if gene.id == gene_id:
                     return True
         return False
+
+    def set_transcript_enzyme_min_relation(self, transcript: Transcript):
+        transcripts = [transcript]
+        if len(transcript._lumped_transcripts) > 0:
+            transcripts = transcript._lumped_transcripts
+        for transcript in transcripts:
+            if f'{transcript.id}_min' not in self.constraints.keys():
+                min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
+
+                self.add_cons_vars([min_constraint])
+
+                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
+                    transcript.mrna_variable: transcript.f_min
+                })
+
+            for enz in transcript.enzymes:
+                # make separate constraints for forward and reverse enzyme variables
+                fwd_var = self.enzyme_variables.get_by_id(enz.id).forward_variable
+                rev_var = self.enzyme_variables.get_by_id(enz.id).reverse_variable
+
+                if f'{transcript.id}_min' not in self.constraints.keys():
+                    min_constraint = self.problem.Constraint(Zero, name=f'{transcript.id}_min', lb=-1e6, ub=0)
+                    self.add_cons_vars([min_constraint])
+
+                self.constraints[f'{transcript.id}_min'].set_linear_coefficients({
+                    fwd_var: -1,
+                    rev_var: -1
+                })
+
+            # save the constraints in the transcript object
+            transcript._constraints = {**transcript._constraints,
+                                       **{f'{transcript.id}_min': self.constraints[f'{transcript.id}_min']
+                                          }}
 
     def make_mrna_max_constraint(self, enz: Enzyme,
                                  transcripts:Union[Transcript, list]) -> Union[Transcript, list]:
@@ -630,31 +631,40 @@ class TAModel(PAModel):
         else:
             return False
 
-    def calculate_csc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+    def calculate_csc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b) -> None:
         """
         Calculates the capacity sensitivity coefficient for all inequality constraints in the model.
         The sum of all capacity sensitivity coefficients should equal 1 for growth maximization.
 
         Definition: constraint_UB*shadowprice/obj_value.
 
-        Inherits from the PAModel calculate_csc function and adds the calculation of the csc for the total rna
-        constraint.
+        Inherits from the PAModel calculate_csc function and adds the calculation of the csc for the total mrna
+        and individual transcript-enzyme constraint
 
-        :param obj_value: Float
-        :param mu: DataFrame
-            Shadowprices for all constraints
-        :param mu_ub: DataFrame
-            Shadowprices for the reaction UB constraints
-        :param mu_lb: DataFrame
-            Shadowprices for the reaction LB constraints
-        :param mu_ec_f: DataFrame
-            Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
-        :param mu_ec_b: DataFrame
-            Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+        Args:
+            obj_value: Float: optimal objective value, commonly maximal growth rate under specific conditions
+            mu: DataFrame: shadowprices for all constraints
+            mu_ub: DataFrame: Shadowprices for the reaction UB constraints
+            mu_lb: DataFrame: Shadowprices for the reaction LB constraints
+            mu_ec_f: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward
+                reaction.This also includes the maximal transcript constraints (representing the maximal number of
+                proteins which can be translated from a single mRNA)
+            mu_ec_b: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward
+                reaction.This also includes the minimal transcript constraints (representing the minimal number of
+                proteins which can be translated from a single mRNA).
 
         Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
         """
+        #split enzyme and mrna constraints
+        mu_mrna_max = mu_ec_f[mu_ec_f['rxn_id'].str.contains('mRNA')]
+        mu_ec_f = mu_ec_f[~mu_ec_f['rxn_id'].str.contains('mRNA')]
+
+        mu_mrna_min = mu_ec_b[mu_ec_b['rxn_id'].str.contains('mRNA')]
+        mu_ec_b = mu_ec_b[~mu_ec_b['rxn_id'].str.contains('mRNA')]
+
         super().calculate_csc(obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b)
+
+        #TAModel specific constraints
         if self.TOTAL_MRNA_CONSTRAINT_ID in self.constraints.keys():
             constraint = 'mRNA'
             rxn_id = self.TOTAL_MRNA_CONSTRAINT_ID
@@ -665,5 +675,30 @@ class TAModel(PAModel):
             new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             #  add new_row to dataframe
             self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
+        for transcript in self.transcripts:
+            self.calculate_mrna_csc(transcript, mu_mrna_min, mu_mrna_max, obj_value)
 
-        #TODO sensitivity analysis for transcripts
+    def calculate_mrna_csc(self, transcript:Transcript,
+                           mu_mrna_min:pd.DataFrame, mu_mrna_max:pd.DataFrame,
+                           obj_value:float) -> None:
+        """
+        Calculate the capacity sensitivity coefficients (CSCs) for constraints related to transcripts. These coefficients
+        reflect the effect of infitesmal changes in the constraint bounds on the objective function. The coefficients
+        and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+        The function makes use of the abstracted function calculate_csc_for_molecule in the PAModel object
+
+        Args:
+            transcript:Transcript: transcript object to calculate CSC for
+            mu_mrna_min: pd.DataFrame: Shadowprices for the constraint related to the maximal number of
+                proteins which can be translated from a single mRNA.
+            mu_mrna_max: pd.DataFrame: Shadowprices for the constraint related to the minimal number of
+                proteins which can be translated from a single mRNA.
+            obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
+        """
+        # only calculate csc if the transcript is actually associated with a constraint
+        if not transcript.id in mu_mrna_max.rxn_id: return
+
+        reactions = ','.join(
+            [','.join(self.get_reactions_with_enzyme_id(enzyme.id)) for enzyme in transcript.enzymes])
+        self.calculate_csc_for_molecule(transcript, mu_mrna_min, mu_mrna_max, obj_value, 'transcript', reactions)

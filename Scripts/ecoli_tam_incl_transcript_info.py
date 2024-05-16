@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import os
 import cobra
 
@@ -68,6 +69,24 @@ def get_transcript_data(transcript_file_path:str = TRANSCRIPT_FILE_PATH, mmol = 
     else:
         return expression_data_normalized
 
+def get_differentially_expressed_transcript_data(strain):
+    transcript_data = get_transcript_data()
+    transcript_data_diff = transcript_data.assign(logfc = lambda x: np.log10(x[strain]/x['REF']))
+    # transcript_data_diff = transcript_data_diff.sort_values('logfc', ascending=False)
+    # plot histogram
+    bins = 100
+
+    # plt.hist(transcript_data_diff.logfc, bins=bins)
+    # plt.xlabel('logfc')
+    # plt.ylabel('number of genes')
+    # plt.show()
+    transcript_data_diff = transcript_data_diff[transcript_data_diff.logfc.abs()>0.05]
+    # print(transcript_data_diff)
+    # print(len(transcript_data_diff))
+
+    return transcript_data_diff
+
+
 def get_flux_data(flux_file_path:str = FLUX_FILE_PATH,
                         reference: str = 'Holm et al'):
     expression_data = pd.read_excel(flux_file_path, sheet_name=reference, index_col=0)
@@ -79,8 +98,8 @@ def get_flux_data(flux_file_path:str = FLUX_FILE_PATH,
 def get_pam_fluxes(substrate_uptake_rate, strain ='REF'):
     pam = set_up_ecoli_pam()
     pam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
-    if strain == 'NOX':
-        add_nox_protein_to_model(pam)
+    # if strain == 'NOX':
+    #     add_nox_protein_to_model(pam)
     sol = pam.optimize()
     pam_fluxes = sol.fluxes
     return pam_fluxes,pam
@@ -88,12 +107,13 @@ def get_pam_fluxes(substrate_uptake_rate, strain ='REF'):
 def set_up_tamodel(substrate_uptake_rate, strain ='REF'):
     tam = set_up_ecoli_tam()
     tam.change_reaction_bounds('EX_glc__D_e', lower_bound=-substrate_uptake_rate, upper_bound=0)
-    if strain == 'NOX':
-        add_nox_protein_to_model(tam)
-        add_nox_transcript_to_model(tam)
-        tam.transcripts.get_by_id('mRNA_nox').change_concentration(1e-3, 1e-5)
+    # if strain == 'NOX':
+    #     add_nox_protein_to_model(tam)
+    #     add_nox_transcript_to_model(tam)
+    #     tam.transcripts.get_by_id('mRNA_nox').change_concentration(1e-3, 1e-5)
 
-    transcript_data_mmol = get_transcript_data()
+    # transcript_data_mmol = get_transcript_data()
+    transcript_data_mmol = get_differentially_expressed_transcript_data(strain)
     for gene, expression_data in transcript_data_mmol.iterrows():
         transcript_id = 'mRNA_' + gene
         if not transcript_id in tam.transcripts: continue
@@ -219,7 +239,7 @@ def plot_flux_comparison(flux_df_abs, flux_df_rel, strain):
 if __name__ == '__main__':
 
     print('Reference condition')
-    compare_fluxes_holm_reference(strain = 'REF', plot =True)
+    compare_fluxes_holm_reference(strain = 'NOX', plot =True)
     print('\n-------------------------------------------------------------------------------------------------')
     # print('mutation 1: NOX strain (overexpression of NADH oxidase)\n')
     # compare_fluxes_holm_reference('NOX', plot=False)
