@@ -5,7 +5,7 @@
 import PAModelpy.Enzyme
 import cobra.core
 import cobra
-from cobra import Reaction, Object
+from cobra import Reaction, Object, Gene
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from copy import copy, deepcopy
@@ -46,6 +46,7 @@ class Enzyme(Object):
         self,
         id: str,
         rxn2kcat: Dict,
+        genes: list = [],
         upper_bound: Union[int, float] = 1000.0,
         lower_bound: Union[int, float] = 0,
         name: Optional[str] = None,
@@ -75,6 +76,8 @@ class Enzyme(Object):
         )  # dict with constraint_id:optlang.Constraint, key:value pairs.
         self._model = None
         self.enzyme_complex = []  # is the enzyme in a complex?
+        self.genes = genes
+        self.transcripts = DictList()
         self.annotation = {
             "type": "Constraint"
         }  # you can add an annotation for an enzyme
@@ -103,16 +106,24 @@ class Enzyme(Object):
         """
 
         # sum up concentrations (aka fluxes) of all enzyme objects
-        concentration = 0.0
-        for catalytic_event in self.catalytic_events:
-            concentration += catalytic_event.flux()
-        if units == "g/gDW":
-            # converting mmol to grams of protein:
+        concentration = self.enzyme_variable.concentration
+        if units == 'g/gDW':
+            #converting mmol to grams of protein:
             # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol]
             concentration = concentration * 1e-3 * self.molmass
         if return_units:
             return concentration, units
         return concentration
+
+    @concentration.setter
+    def concentration(self, conc):
+        self.enzyme_variable.concentration = conc
+
+    def set_forward_concentration(self, conc):
+        self.enzyme_variable.set_forward_concentration(conc)
+
+    def set_reverse_concentration(self, conc):
+        self.enzyme_variable.set_reverse_concentration(conc)
 
     def create_constraint(self, extension: str = None):
         if extension is None:
@@ -134,6 +145,41 @@ class Enzyme(Object):
         """
         self.catalytic_events += [ce]
         self.enzyme_variable.add_catalytic_events([ce], [kcats])
+
+    def add_genes(self, gene_list: list, gene_length:list, relation:str = 'OR') -> None:
+        """
+            Add genes to the enzyme and the model related to the enzyme if applicable
+
+            Args:
+                gene_list (list): A list of gene identifiers to be added.
+                gene_length (list): A list of lengths corresponding to each gene.
+                relation (str, optional): The relationship between genes in gene_list.
+                    Defaults to 'OR'. Possible values: 'OR' or 'AND'.
+
+            Raises:
+                ValueError: If an invalid relation is provided.
+
+            Note:
+                If relation is 'OR', each gene in gene_list will be treated as coding for an individual isozyme
+                If relation is 'AND', all genes in gene_list will be treated as coding for peptides in an enzyme complex
+
+            """
+        # check/correct type of arguments
+        if isinstance(gene_list, str): gene_list = [gene_list]
+        if not isinstance(gene_length, list): gene_length = [gene_length]
+
+        if relation == 'OR':
+            genes_to_add = [[Gene(gene)] for gene in gene_list]
+        elif relation == 'AND':
+            genes_to_add = [[Gene(gene) for gene in gene_list]]
+        else:
+            raise ValueError("Invalid relation. Supported values are 'OR' or 'AND'.")
+        self.genes += genes_to_add
+
+        if self._model is not None:
+            print(genes_to_add)
+            self._model.add_genes(genes = genes_to_add, enzymes = [self], gene_lengths=gene_length)
+
 
     def create_catalytic_event(self, rxn_id: str, kcats: Dict):
         """Creates enzyme variables that link to reactions.
@@ -432,6 +478,51 @@ class EnzymeVariable(Reaction):
             float: Enzyme concentration in mmol/gDW."""
         return self.flux
 
+    @concentration.setter
+    def concentration(self, conc:Union[float,int]) -> None:
+        """
+        Sets the concentration of the enzyme by creating or updating a constraint
+        that enforces the concentration to be equal to the sum of the forward and reverse
+        variable primals.
+
+        Args:
+        conc : float, int
+            The concentration value to be set for the enzyme. This value will be used
+            as both the lower and upper bound for the constraint, effectively fixing the
+            concentration to this value.
+
+        Notes
+        -----
+        - If a concentration constraint for the enzyme does not already exist in the model,
+          this function creates a new constraint named '<enzyme_id>_conc'.
+        - The concentration constraint is defined as:
+          concentration = forward_variable.primal + reverse_variable.primal
+        - If the constraint already exists, the linear coefficients for the forward and reverse
+          variables are updated to ensure the constraint remains valid.
+
+        Raises
+        ------
+        ValueError
+            If `conc` is not a valid numerical value.
+        """
+
+        # Ensure `conc` is a valid numerical value
+        if not isinstance(conc, (int, float)):
+            raise ValueError("The concentration must be a numerical value.")
+
+        # Make the constraint: concentration = forward_variable + reverse_variable
+        if self.id + '_conc' not in self._model.constraints.keys():
+            concentration_constraint = self._model.problem.Constraint(
+                Zero, name=self.id + '_conc', lb=conc, ub=conc)
+            self._model.add_cons_vars(concentration_constraint)
+
+        self._model.constraints[self.id + '_conc'].set_linear_coefficients({
+            self.forward_variable: 1,
+            self.reverse_variable: 1
+        })
+        self.enzyme._constraints[self.id+'_conc'] = self._model.constraints[self.id + '_conc']
+
+
     @property
     def model(self):
         return self._model
@@ -443,7 +534,10 @@ class EnzymeVariable(Reaction):
         # add enzyme instance
         enzyme_ids = [enz.id for enz in self._model.enzymes]
         if self.id not in enzyme_ids:
-            enzyme = Enzyme(id=self.id, rxn2kcat=self.kcat, molmass=self.molmass)
+            enzyme = Enzyme(id =self.id,
+                            rxn2kcat = self.kcat,
+                            molmass=self.molmass
+                            )
             self._model.add_enzymes([enzyme])
         self.enzyme = self._model.enzymes.get_by_id(self.id)
         self.constraints = self.enzyme._constraints
@@ -494,17 +588,82 @@ class EnzymeVariable(Reaction):
         if self._model is not None:
             return self._model.variables[self.id]
         else:
-            return self.variables["forward_variable"]
+            return None
 
     @property
     def reverse_variable(self):
         if self._model is not None:
             return self._model.variables[self.reverse_id]
         else:
-            return self.variables["reverse_variable"]
+            return None
 
-    def add_catalytic_events(self, catalytic_events: list, kcats: list):
-        """Adding catalytic events to an enzyme variable.
+    def set_forward_concentration(self, conc: Union[float, int]) -> None:
+        """
+        Sets the concentration of the enzyme by creating or updating a constraint
+        that enforces the concentration to be equal to the sum of only the forward
+        variable primals. This forces a reaction to be active in the forward direction.
+        It used the concentration setter functionality and subsequently sets the
+        coefficient for the reverse variable in the constraint to 0.
+
+        Args:
+        conc : float, int
+            The concentration value to be set for the enzyme. This value will be used
+            as both the lower and upper bound for the constraint, effectively fixing the
+            concentration to this value.
+
+        Notes
+        -----
+        - If a concentration constraint for the enzyme does not already exist in the model,
+          this function creates a new constraint named '<enzyme_id>_conc'.
+        - The concentration constraint is defined as:
+          concentration = forward_variable.primal
+
+        Raises
+        ------
+        ValueError
+            If `conc` is not a valid numerical value.
+        """
+        self.concentration = conc
+        self._model.constraints[self.id + '_conc'].set_linear_coefficients({
+            self.forward_variable: 1,
+            self.reverse_variable: 0
+        })
+
+    def set_reverse_concentration(self, conc: Union[float, int]) -> None:
+        """
+        Sets the concentration of the enzyme by creating or updating a constraint
+        that enforces the concentration to be equal to the sum of only the reverse
+        variable primals. This forces a reaction to be active in the reverse direction.
+        It used the concentration setter functionality and subsequently sets the
+        coefficient for the forward variable in the constraint to 0.
+
+        Args:
+        conc : float, int
+            The concentration value to be set for the enzyme. This value will be used
+            as both the lower and upper bound for the constraint, effectively fixing the
+            concentration to this value.
+
+        Notes
+        -----
+        - If a concentration constraint for the enzyme does not already exist in the model,
+          this function creates a new constraint named '<enzyme_id>_conc'.
+        - The concentration constraint is defined as:
+          concentration = reverse_variable.primal
+
+        Raises
+        ------
+        ValueError
+            If `conc` is not a valid numerical value.
+        """
+        self.concentration = conc
+        self._model.constraints[self.id + '_conc'].set_linear_coefficients({
+            self.forward_variable: 0,
+            self.reverse_variable: 1
+        })
+
+    def add_catalytic_events(self, catalytic_events:list, kcats:list):
+        """
+        Adding a catalytic event to an enzyme variable
 
         Args:
             catalytic_events (list): A list of catalytic events to add.
@@ -570,22 +729,20 @@ class EnzymeVariable(Reaction):
 
             # add enzyme to catalytic event and the related variable
             for direction, kcatvalue in kcat.items():
-                coeff = kcatvalue * 3600 * 1e-6
+                self._model._change_kcat_in_enzyme_constraint(rxn, self.id,
+                                                              direction, kcatvalue)
                 # add enzyme to the associated reaction with kinetic constants
                 # and relate enzyme to the catalytic event
-                if direction == "f":
-                    self.constraints[
-                        f"EC_{self.id}_{direction}"
-                    ].set_linear_coefficients(
-                        {rxn.forward_variable: 1 / coeff, self.forward_variable: -1}
-                    )
+                if direction == 'f':
+                    self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
+                        self.forward_variable: -1
+                    })
 
-                elif direction == "b":
-                    self.constraints[
-                        f"EC_{self.id}_{direction}"
-                    ].set_linear_coefficients(
-                        {rxn.reverse_variable: 1 / coeff, self.reverse_variable: -1}
-                    )
+                elif direction == 'b':
+                    self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
+                        self.reverse_variable: -1
+                    })
+
 
     def remove_catalytic_event(self, catalytic_event: Union[CatalyticEvent, str]):
         """Remove a catalytic event from an enzyme.
@@ -678,19 +835,8 @@ class EnzymeVariable(Reaction):
                 warn(f"Catalytic event {self.id} is not integrated into a model!")
 
             for direction, kcat in kcats_change.items():
-                # get constraint
-                constraint_id = f"EC_{self.id}_{direction}"
-                constraint = self.enzyme._constraints[constraint_id]
-                # change kcat value in the constraint
-                coeff = kcat * 3600 * 1e-6
-                if direction == "f":
-                    self._model.constraints[constraint_id].set_linear_coefficients(
-                        {rxn.forward_variable: 1 / coeff}
-                    )
-                elif direction == "b":
-                    self._model.constraints[constraint_id].set_linear_coefficients(
-                        {rxn.reverse_variable: 1 / coeff}
-                    )
+                self._model._change_kcat_in_enzyme_constraint(rxn, self.id,
+                                                              direction, kcat)
             self._model.solver.update()
 
     def __copy__(self) -> "PAModelpy.Enzyme.EnzymeVariable":
@@ -715,3 +861,27 @@ class EnzymeVariable(Reaction):
 
         cop = deepcopy(super(EnzymeVariable, self), memo)
         return cop
+
+
+class EnzymeComplex(Enzyme):
+
+    DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
+
+    def __init__(
+        self,
+        id: str,
+        rxn2kcat: Dict,
+        genes: list = [],
+        upper_bound: Union[int, float] = 1000.0,
+        lower_bound: Union[int, float] = 0,
+        name: Optional[str] = None,
+        molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,):
+
+        super().__init__(
+        id = id,
+        rxn2kcat = rxn2kcat,
+        genes = genes,
+        upper_bound = upper_bound,
+        lower_bound = lower_bound,
+        name = name,
+        molmass=molmass)

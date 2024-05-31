@@ -69,18 +69,15 @@ class PAModel(Model):
     GLUCOSE_EXCHANGE_RXNID = Config.GLUCOSE_EXCHANGE_RXNID
     BIOMASS_REACTION = Config.BIOMASS_REACTION
 
-    def __init__(
-        self,
-        id_or_model: Union[str, "Model", None] = None,
-        name: Optional[str] = None,
-        p_tot: Optional[float] = Config.P_TOT_DEFAULT,
-        sensitivity: bool = True,
-        active_sector: Optional[ActiveEnzymeSector] = None,
-        translational_sector: Optional[TransEnzymeSector] = None,
-        unused_sector: Optional[UnusedEnzymeSector] = None,
-        custom_sectors: Union[List, CustomSector] = None,
-        configuration=Config,
-    ):
+    def __init__(self, id_or_model: Union[str, "Model", None] = None,
+                 name: Optional[str] = None,
+                 p_tot: Optional[float] = Config.P_TOT_DEFAULT,
+                 sensitivity: bool = True,
+                 active_sector: Optional[ActiveEnzymeSector]=None,
+                 translational_sector: Optional[TransEnzymeSector]=None,
+                 unused_sector: Optional[UnusedEnzymeSector]=None,
+                 custom_sectors: Optional[CustomSector] =[None],
+                 configuration = Config):
         """Constants"""
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
         self.P_TOT_DEFAULT = configuration.P_TOT_DEFAULT  # g_protein/g_cdw
@@ -129,12 +126,8 @@ class PAModel(Model):
         if sensitivity:  # perform sensitivity analysis when the model is run
             self.add_lb_ub_constraints()
 
-        for sector in [
-            active_sector,
-            translational_sector,
-            unused_sector,
-            custom_sectors,
-        ]:
+        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
         print(f"Done with setting up the proteome allocation model {self.id}\n")
@@ -426,26 +419,16 @@ class PAModel(Model):
 
                     # kcat is used as a coefficient for the enzyme concentration
                     # Get existent forward/reverse variables
-                    coeff = (
-                        kcat * 3600 * 1e-6
-                    )  # 3600 to convert to /h to /s *1e-6 to make calculations more accurate
-                    if direction == "f":
+                    self._change_kcat_in_enzyme_constraint(rxn, enzyme.id,
+                                                           direction, kcat)
+                    if direction == 'f':
                         self.constraints[constraint_id].set_linear_coefficients(
-                            {
-                                enzyme_var_model.forward_variable: -1,
-                                self.reactions.get_by_id(rxn).forward_variable: 1
-                                / coeff,
-                            }
-                        )
-                    elif direction == "b":
+                            {enzyme_var_model.forward_variable: -1,
+                            })
+                    elif direction == 'b':
                         self.constraints[constraint_id].set_linear_coefficients(
-                            {
-                                enzyme_var_model.reverse_variable: -1,
-                                self.reactions.get_by_id(rxn).reverse_variable: 1
-                                / coeff,
-                            }
-                        )
-
+                            {enzyme_var_model.reverse_variable: -1,
+                            })
                     # make reaction-enzyme interface and the enzyme variable aware of its participation in the constraint
                     catalytic_event_model.constraints[enzyme.id] = self.constraints[
                         constraint_id
@@ -454,6 +437,12 @@ class PAModel(Model):
                         constraint_id
                     ]
                     self.solver.update()
+
+            #check if all genes are in the model
+            for genes_or in enzyme.genes:
+                    for gene_and in genes_or:
+                        if not gene_and in self.genes:
+                            self.genes.append(gene_and)
 
     def add_sectors(self, sectors: List = None):
         """
@@ -992,46 +981,55 @@ class PAModel(Model):
             ] = new_row_LB
 
         for enzyme in self.enzymes:
-            # get reactions associated with this enzyme
-            reactions = ",".join(self.get_reactions_with_enzyme_id(enzyme.id))
-            # get the right row from the shadow price dataframes
-            # min constraints can be skipped as they always equal to 0 (the enzymes cannot have a concentration lower than 0)
-            mu_ec_max_row = mu_ec_f[mu_ec_f["index"] == f"{enzyme.id}_max"]
-            mu_ec_min_row = mu_ec_b[mu_ec_b["index"] == f"{enzyme.id}_min"]
+            self.calculate_enzyme_csc(enzyme, mu_ec_f, mu_ec_b, obj_value)
 
-            # max Enzyme constraint
-            ca_coefficient_EC_max = (
-                self.constraints[f"{enzyme.id}_max"].ub
-                * mu_ec_max_row["shadow_prices"].iloc[0]
-                / obj_value
-            )
-            new_enzyme_row_EC_max = [
-                reactions,
-                enzyme.id,
-                "enzyme_max",
-                ca_coefficient_EC_max,
-            ]
-            # add new_row to dataframe
-            self.capacity_sensitivity_coefficients.loc[
-                len(self.capacity_sensitivity_coefficients)
-            ] = new_enzyme_row_EC_max
+    def calculate_csc_for_molecule(self, molecule: Union[Enzyme],
+                                   mu_min:pd.DataFrame, mu_max:pd.DataFrame, obj_value:float,
+                                   constraint_type:str, associated_reactions:str):
+        """
+        Calculate the capacity sensitivity coefficients (CSCs) for constraints related to a biomolecule,
+        such as enzymes. These coefficients reflect the effect of infitesmal changes in the constraint bounds
+        on the objective function.
 
-            # min Enzyme constraint
-            ca_coefficient_EC_min = (
-                self.constraints[f"{enzyme.id}_min"].ub
-                * mu_ec_min_row["shadow_prices"].iloc[0]
-                / obj_value
-            )
-            new_enzyme_row_EC_min = [
-                reactions,
-                enzyme.id,
-                "enzyme_min",
-                ca_coefficient_EC_min,
-            ]
-            # add new_row to dataframe
-            self.capacity_sensitivity_coefficients.loc[
-                len(self.capacity_sensitivity_coefficients)
-            ] = new_enzyme_row_EC_min
+        The coefficients and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+        Args:
+           enzyme:Enzyme: enzyme object to calculate CSC for
+           mu_min: DataFrame: Shadowprices for the constraint related to a lower bound/minimum
+           mu_max: DataFrame: Shadowprices for the constraint related to an upper bound/maximum
+           obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
+        """
+        # get the right row from the shadow price dataframes
+        mu_max_row = mu_max[mu_max['index'] == f'{molecule.id}_max']
+        mu_min_row = mu_min[mu_min['index'] == f'{molecule.id}_min']
+
+        # Calculate sensitivity coefficients for maximum constraint
+        ca_coefficient_max = self.constraints[f'{molecule.id}_max'].ub * mu_max_row['shadow_prices'].iloc[0] / obj_value
+        new_row_max = [associated_reactions, molecule.id, f'{constraint_type}_max', ca_coefficient_max]
+        self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_max
+
+        # Calculate sensitivity coefficients for minimum constraint
+        ca_coefficient_min = self.constraints[f'{molecule.id}_min'].ub * mu_min_row['shadow_prices'].iloc[0] / obj_value
+        new_row_min = [associated_reactions, molecule.id, f'{constraint_type}_min', ca_coefficient_min]
+        self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_min
+
+
+    def calculate_enzyme_csc(self, enzyme:Enzyme, mu_ec_f:pd.DataFrame, mu_ec_b:pd.DataFrame, obj_value:float):
+        """
+        Calculate the capacity sensitivity coefficients (CSCs) for constraints related to enzyme. These coefficients
+        reflect the effect of infitesmal changes in the constraint bounds on the objective function. The coefficients
+        and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+        The function makes use of the abstracted function calculate_csc_for_molecule
+
+        Args:
+            enzyme:Enzyme: enzyme object to calculate CSC for
+            mu_ec_f: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+            mu_ec_b: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+            obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
+        """
+        reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
+        self.calculate_csc_for_molecule(enzyme, mu_ec_b, mu_ec_f, obj_value, 'enzyme', reactions)
 
     def calculate_esc(self, obj_value, mu_ec_f, mu_ec_b):
         """
@@ -1252,8 +1250,10 @@ class PAModel(Model):
         Returns:
             DictList: A DictList of Enzyme objects associated with the reaction.
         """
-
-        catalytic_event_id = "CE_" + rxn_id
+        if rxn_id not in self.reactions:
+            warnings.warn(f'Reaction {rxn_id} is not in the model')
+            return DictList()
+        catalytic_event_id = 'CE_' + rxn_id
         catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id)
         enzymes = catalytic_event.enzymes
         return enzymes
@@ -1273,7 +1273,7 @@ class PAModel(Model):
         rxn_ids = list(enzyme.rxn2kcat.keys())
         return rxn_ids
 
-    def change_kcat_value(self, enzyme_id: str, kcats: dict):
+    def change_kcat_value(self, enzyme_id:str, kcats:dict):
         """
         Change the turnover number (kcat) of the enzyme for a specific reaction.
 
@@ -1298,9 +1298,27 @@ class PAModel(Model):
             for rxn, kcat_f_b in kcats.items():
                 active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
         else:
-            warnings.warn(
-                f"The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed."
-            )
+            warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
+
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
+                                                direction: str, kcat: float):
+        constraint_id = f'EC_{enzyme_id}_{direction}'
+        if isinstance(rxn, str):
+            rxn = self.reactions.get_by_id(rxn)
+        # change kcat value in the constraint
+        if kcat == 0:
+            coeff = 0
+        else:
+            coeff = 1 / (kcat * 3600 * 1e-6) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
+        if direction == 'f':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.forward_variable: coeff
+            })
+        elif direction == 'b':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.reverse_variable: coeff
+            })
+        self.solver.update()
 
     def remove_enzymes(
         self, enzymes: Union[str, Enzyme, List[Union[str, Enzyme]]]

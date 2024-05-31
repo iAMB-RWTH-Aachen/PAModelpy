@@ -1,8 +1,8 @@
 from warnings import warn
 from copy import copy, deepcopy
-from cobra import Object
+from cobra import Object, Gene, Model
 
-from .Enzyme import Enzyme
+from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 
 
@@ -63,9 +63,8 @@ class EnzymeSector(Sector):
 
 class ActiveEnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
-
-    # class with all the information on enzymes related to metabolic reactions
-    def __init__(self, rxn2protein: dict, configuration: Config = Config):
+    #class with all the information on enzymes related to metabolic reactions
+    def __init__(self, rxn2protein: dict, protein2gene:dict = {},configuration:Config =Config):
         """
         _summary_
 
@@ -75,6 +74,11 @@ class ActiveEnzymeSector(Sector):
                 with information about the enzyme as values. The information included in this dict includes the turnover number for
                 the forward and backward reaction (1/s), molar mass of the enzyme (mol/g), gene identifiers related to the enzyme,
                 and with which other enzymes it forms a complex.
+            protein2gene: dict
+            enzyme_id, gene_list key, value pairs for each enzyme.The gene_list value is a list of lists which indicates
+            'and' or 'or' relationships between the genes which code for the enzyme(complex).
+
+
             configuration (Config object, optional): Information about the general configuration of the model, including identifier conventions.
                 Default is as defined in the `PAModelpy.configuration` script for the E.coli iML1515 model.
 
@@ -90,12 +94,23 @@ class ActiveEnzymeSector(Sector):
                                'complex_with': 'E1'}
                     }
             }
+
+            For the Parameter protein2gene a dictionary may look like this:
+            {E1:
+                    [[gene1], [gene2, gene3]],
+            E2:
+                    [[gene4]]
+            }
+            where the gene-protein-reaction associations are the following:
+            E1: gene1 or (gene2 and gene3)
+            E2: gene4
             ```
         """
 
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
 
         self.rxn2protein = rxn2protein
+        self.protein2gene = protein2gene
         # ID of the sector
         self.id = "ActiveEnzymeSector"
         self.model = None
@@ -172,8 +187,17 @@ class ActiveEnzymeSector(Sector):
                             [enzyme.catalytic_events.get_by_id(f"CE_{rxn_id}")]
                         )
                 else:
-                    enzyme = Enzyme(
-                        id=enzyme_id, rxn2kcat={rxn_id: kcat}, molmass=molmass
+                    enzyme_obj = Enzyme
+                    if self.protein2gene != {}:
+                        gene_list = self._get_model_genes_from_enzyme(enzyme_id, model)
+                        if any([len(gene)>1 for gene in gene_list]): enzyme_obj = EnzymeComplex
+                    else:
+                        gene_list = []
+                    enzyme = enzyme_obj(
+                        id = enzyme_id,
+                        rxn2kcat= {rxn_id: kcat},
+                        molmass = molmass,
+                        genes = gene_list
                     )
                     # in the add enzymes function the enzyme with corresponding catalytic events will be added to the model
                     # and connected to the reaction and total protein constraint
@@ -186,17 +210,17 @@ class ActiveEnzymeSector(Sector):
                 self.variables.append(enzyme.enzyme_variable)
         return model
 
-    def check_kcat_values(self, model, reaction, kcat):
+    def check_kcat_values(self, model, reaction, enzyme_dict):
         """
         Function to check if the kcat values provided for an enzyme are consistent with the direction of the reaction.
 
         Parameters:
             model (cobra.Model or PAModel): Model to which the kcat values should be added.
             reaction (cobra.Reaction): Reaction that is catalyzed with the enzyme related to the kcats.
-            kcat (dict): A dictionary with the turnover values for the forward and/or backward reaction for different enzymes [/s].
+            enzyme_dict (dict): A dictionary with the turnover values for the forward and/or backward reaction for different enzymes [/s].
         
         Example:
-            Example dictionary for the `kcat` parameter
+            Example dictionary for the `enzyme_dict` parameter
             ```
             {'E1': {'f': forward kcat, 'b': backward kcat}}
             ```
@@ -213,11 +237,13 @@ class ActiveEnzymeSector(Sector):
 
         # check consistency between provided kcat values and reaction direction
         directions = []
-        for val in kcat.values():  # get all directions from the kcat dict
-            directions += list(val.keys())
         kcats = []
-        for val in kcat.values():  # get all directions from the kcat dict
-            kcats += list(val.values())
+        for enzyme_info in enzyme_dict.values():
+            # get all directions from the kcat dict
+            for key, value in enzyme_info.items():
+                if key == 'f' or key =='b':
+                    directions += [key]
+                    kcats += [value]
 
         rxn_dir = "consistent"
         if reaction.lower_bound >= 0 and reaction.upper_bound > 0:
@@ -256,6 +282,35 @@ class ActiveEnzymeSector(Sector):
 
         return rxn_dir == "consistent"
 
+    def _get_model_genes_from_enzyme(self, enzyme_id: str, model: Model) -> list:
+        """
+           Retrieves genes associated with the specified enzyme from the model.
+
+           Args:
+               enzyme_id (str): The identifier of the enzyme.
+               model (Model): The model containing gene information.
+
+           Returns:
+               list: A nested list of gene objects associated with the enzyme.
+           """
+        if enzyme_id not in self.protein2gene.keys(): return []
+        gene_id_list = self.protein2gene[enzyme_id]
+        gene_list = []
+        for genes_or in gene_id_list:
+            genes_and_list = []
+            for gene_and in genes_or:
+                #check if there is an and relation (then gene and should be a list and not a string)
+                if isinstance(gene_and, list):
+                    for gene in gene_and:
+                        if gene not in model.genes:
+                            model.genes.append(Gene(gene))
+                else:
+                    gene = gene_and
+                    if gene not in model.genes:
+                        model.genes.append(Gene(gene))
+                genes_and_list.append(model.genes.get_by_id(gene))
+            gene_list.append(genes_and_list)
+        return gene_list
 
 class TransEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 4.0590394e05  # default E. coli ribosome molar mass [g/mol]
@@ -331,6 +386,7 @@ class UnusedEnzymeSector(EnzymeSector):
             self.ups_mu = ups_mu
         # *1000 to convert units from g/g_cdw to mg/g_cdw
         self.ups_0_coeff = self.ups_0[0] * 1e3
+        self.id = 'UnusedEnzymeSector'
 
         self.slope = self.ups_mu * 1e3
         self.intercept = self.ups_0_coeff

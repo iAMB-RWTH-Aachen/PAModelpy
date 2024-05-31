@@ -1,7 +1,7 @@
 """
 CatalyticEvent object which relates Reaction variables to the EnzymeVariable and Enzyme objects.
 It contains multiple functions which enable easy mapping and handling of one Event of catalysis
-(e.g. one conversion of substrate to product, can be catalyzed by multiple enzymes.)
+(e.g. one conversion of substrate to product, can be catalyzed by multiple enzymes)
 """
 import cobra
 from cobra import DictList, Object
@@ -15,8 +15,9 @@ from copy import copy, deepcopy
 
 class CatalyticEvent(Object):
     """
-    CatalyticEvent is a class for holding information regarding the catalysis of a Reaction in a cobra.Model object.
-    It serves as an interface between the metabolic reaction and the associated enzyme constraints and variables.
+   CatalyticEvent is a class for holding information regarding the
+        catalysis of a Reaction in a cobra.Model object. It serves as an interface
+        between the metabolic reaction and the associated enzyme constraints and variables.
 
     Notes:
         There are three different scenarios:
@@ -55,9 +56,7 @@ class CatalyticEvent(Object):
         self.enzyme_variables = DictList()
 
         # other attributes
-        self.constraints = (
-            {}
-        )  # store IDs of constraint the catalytic event is associated with
+        self.constraints = {} # store IDs of constraint the catalytic event is associated with
         self.variables = dict()
         self._model = None
         self.annotation = {"type": "Constraint"}
@@ -221,28 +220,20 @@ class CatalyticEvent(Object):
 
             # connect the enzyme variable to the enzyme in the model and the reaction
             for direction, kcatvalue in kcat.items():
-                coeff = kcatvalue * 3600 * 1e-6
-                # add enzyme to the associated reaction with kinetic constants
-                # and relate enzyme to the catalytic event
-                if direction == "f":
-                    self.constraints[
-                        f"EC_{enzyme.id}_{direction}"
-                    ].set_linear_coefficients(
-                        {
-                            self.rxn.forward_variable: 1 / coeff,
-                            enzyme_var.forward_variable: -1,
-                        }
-                    )
+                self._model._change_kcat_in_enzyme_constraint(self.rxn, enzyme.id,
+                                                              direction, kcatvalue)
+                #add enzyme to the associated reaction with kinetic constants
+                #and relate enzyme to the catalytic event
+                if direction == 'f':
+                    self.constraints[f'EC_{enzyme.id}_{direction}'].set_linear_coefficients({
+                        enzyme_var.forward_variable: -1
+                        })
 
-                elif direction == "b":
-                    self.constraints[
-                        f"EC_{enzyme.id}_{direction}"
-                    ].set_linear_coefficients(
-                        {
-                            self.rxn.reverse_variable: 1 / coeff,
-                            enzyme_var.reverse_variable: -1,
-                        }
-                    )
+                elif direction == 'b':
+                    self.constraints[f'EC_{enzyme.id}_{direction}'].set_linear_coefficients({
+                        enzyme_var.reverse_variable: -1
+                        })
+
 
     def remove_enzymes(self, enzyme_list: list):
         """
@@ -359,20 +350,7 @@ class CatalyticEvent(Object):
             for direction, kcat in kcats_change.items():
                 # change enzyme variable
                 enzyme_var.kcats[self.rxn_id][direction] = kcat
-                # get constraint
-                constraint_id = f"EC_{enzyme}_{direction}"
-                constraint = enzyme_obj._constraints[constraint_id]
-                # change kcat value in the constraint
-                coeff = kcat * 3600 * 1e-6
-                if direction == "f":
-                    self._model.constraints[constraint_id].set_linear_coefficients(
-                        {self.rxn.forward_variable: 1 / coeff}
-                    )
-                elif direction == "b":
-                    self._model.constraints[constraint_id].set_linear_coefficients(
-                        {self.rxn.reverse_variable: 1 / coeff}
-                    )
-            self._model.solver.update()
+                self._model._change_kcat_in_enzyme_constraint(self.rxn, enzyme,direction, kcat)
 
     def __copy__(self) -> "CatalyticEvent":
         """
