@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'PAModelpy'
-version = '0.0.3.3'
+version = '0.0.3.10'
 authors = [{name='Samira van den Bogaard', email = 'samira.vandenbogaard@rwth-aachen.de'}]
 description = 'Python framework for building and analysing protein allocation models'
 readme = 'README.md'

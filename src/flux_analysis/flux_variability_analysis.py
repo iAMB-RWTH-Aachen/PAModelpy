@@ -13,8 +13,7 @@ from cobra.util import ProcessPool
 from cobra.flux_analysis.parsimonious import add_pfba
 from cobra.flux_analysis.loopless import loopless_fva_iter
 
-from ..PAModelpy.Enzyme import Enzyme, EnzymeVariable
-from ..TAModelpy.Transcript import Transcript
+from PAModelpy.src.PAModelpy.Enzyme import Enzyme, EnzymeVariable
 
 #TODO add test functions!
 
@@ -40,7 +39,7 @@ def _init_worker(model: "Model", loopless: bool, sense: str) -> None:
     _model.solver.objective.direction = sense
     _loopless = loopless
 
-def _fva_step(variable: Union[Variable, Transcript, EnzymeVariable, Reaction]) -> Tuple[str, float]:
+def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str, float]:
     """Take a step for calculating FVA.
 
     Parameters
@@ -98,10 +97,9 @@ def _get_variables(model, variable_type, variable_list):
         Enzyme: model.enzyme_variables,
         EnzymeVariable: model.enzyme_variables,
         Reaction: model.reactions,
-        Transcript: [trans.mrna_variable for trans in model.transcripts]
-    }
+        }
     variables = {}
-    if variable_type is None or variable_type == Transcript:
+    if variable_type is None:
         if variable_list is not None:
             for var_id in variable_list:
                 if isinstance(var_id, str):
@@ -126,8 +124,8 @@ def _get_variables(model, variable_type, variable_list):
 
 def flux_variability_analysis(
     model: Model,
-    variable_type: Optional[Union[Enzyme, EnzymeVariable, Reaction, Transcript]] = None,
-    variable_list: Optional[List[Union[Enzyme, EnzymeVariable, Reaction, Transcript, str]]] = None,
+    variable_type: Optional[Union[Enzyme, EnzymeVariable, Reaction]] = None,
+    variable_list: Optional[List[Union[Enzyme, EnzymeVariable, Reaction, str]]] = None,
     loopless: bool = False,
     fraction_of_optimum: float = 1.0,
     pfba_factor: Optional[float] = None,
@@ -137,7 +135,7 @@ def flux_variability_analysis(
 
     Adjusted from cobra.flux_analysis.variability.flux_variability_analysis
 
-    Args
+    Args:
     model : cobra.Model
         The model for which to run the analysis. It will *not* be modified.
     variable_type: type of variable to perform FVA on
@@ -168,29 +166,26 @@ def flux_variability_analysis(
         will be set from the global configuration singleton (default None).
 
     Returns
-    -------
     pandas.DataFrame
         A data frame with variable identifiers as the index and two columns:
         - maximum: indicating the highest possible flux
         - minimum: indicating the lowest possible flux
 
-    Notes
-    -----
-    This implements the fast version as described in [1]_. Please note that
-    the flux distribution containing all minimal/maximal fluxes does not have
-    to be a feasible solution for the model. Fluxes are minimized/maximized
-    individually and a single minimal flux might require all others to be
-    sub-optimal.
+    Notes:
+        - This implements the fast version as described in [1]_. Please note that
+        the flux distribution containing all minimal/maximal fluxes does not have
+        to be a feasible solution for the model. Fluxes are minimized/maximized
+        individually and a single minimal flux might require all others to be
+        sub-optimal.
 
-    Using the loopless option will lead to a significant increase in
-    computation time (about a factor of 100 for large models). However, the
-    algorithm used here (see [2]_) is still more than 1000x faster than the
-    "naive" version using `add_loopless(model)`. Also note that if you have
-    included constraints that force a loop (for instance by setting all fluxes
-    in a loop to be non-zero) this loop will be included in the solution.
+        - Using the loopless option will lead to a significant increase in
+        computation time (about a factor of 100 for large models). However, the
+        algorithm used here (see [2]_) is still more than 1000x faster than the
+        'naive' version using `add_loopless(model)`. Also note that if you have
+        included constraints that force a loop (for instance by setting all fluxes
+        in a loop to be non-zero) this loop will be included in the solution.
 
-    References
-    ----------
+    References:
     .. [1] Computationally efficient flux variability analysis.
        Gudmundsson S, Thiele I.
        BMC Bioinformatics. 2010 Sep 29;11:489.
