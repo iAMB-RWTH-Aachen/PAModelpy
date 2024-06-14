@@ -57,6 +57,13 @@ This repository contains not only the source code, but also examples and scripts
 - **CatalyticEvent**: A class which serves as an interface between reactions and enzyme. This allows for easy lookup of Protein-Reaction assocations.
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
 
+For the technical users, the following UML diagram gives an overview of the model structure and the software architecture. Please be aware that the Config object is not shown in this UML diagram,
+as this object is merely used to transfer identifiers from one object to another in the software.
+
+![PAModelUML](PAModelpy_UML.svg)
+
+*UML diagram of the PAModelpy software. Not all attributes and functions are shown. Those who are shown are assumes to be most descriptive for the objects function.*
+
 ## Dependencies
 Dependencies for the scripts in this repository, not included in the PAModelpy package:
 - `PAModelpy`
