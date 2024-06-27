@@ -8,11 +8,7 @@ sys.path.append(os.path.abspath(os.path.dirname(
             os.path.dirname( #testing dir
                 os.path.dirname(__file__))))) #this dir
 
-from src.PAModelpy.PAModel import PAModel
-from src.PAModelpy.configuration import Config
-from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-
-
+from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
@@ -132,6 +128,39 @@ def test_if_pamodel_enzyme_get_kcat_values_correctly():
     # assert
     assert kcat_to_return == kcat_returned['f']
 
+def test_if_pamodel_remove_sectors_can_remove_active_enzyme_sector():
+    # Arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+
+    # Act
+    toy_pam.remove_sectors('ActiveEnzymeSector')
+
+    # Assert
+    assert len(toy_pam.enzymes) == 0
+    assert all('EC_' not in key for key in toy_pam.constraints.keys())
+    assert toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID not in toy_pam.constraints.keys()
+
+def test_if_pamodel_remove_sectors_can_remove_translational_protein_sector():
+    # Arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    sector = toy_pam.sectors.get_by_id('TranslationalProteinSector')
+    lin_rxn = toy_pam.reactions.get_by_id(sector.id_list[0])
+
+    # get the old upperbound for the total protein constraint
+    tpc_ub = toy_pam.constraints[toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID].ub
+
+    # Act
+    toy_pam.remove_sectors('TranslationalProteinSector')
+
+    #make sure the linear coefficients associated to the sector in the total protein constriant are 0
+    lin_coeff = toy_pam.constraints[toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients([
+        lin_rxn.forward_variable,
+        lin_rxn.reverse_variable,
+    ])
+
+    # Assert
+    assert toy_pam.constraints[toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID].ub == tpc_ub + sector.intercept
+    assert all(coeff == 0 for coeff in lin_coeff.values())
 
 #######################################################################################################
 #HELPER METHODS
