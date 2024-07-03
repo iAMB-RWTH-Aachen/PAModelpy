@@ -865,14 +865,17 @@ class PAModel(Model):
             #treat sectors separately if there is not a total protein constraint
         else:
             for sector in self.sectors:
-                constraint = 'sector'
-                rxn_id = 'R_' + sector.id
-                enzyme_id = sector.id
-                ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
+                try:
+                    constraint = 'sector'
+                    rxn_id = 'R_' + sector.id
+                    enzyme_id = sector.id
+                    ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
 
-                new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
-                # add new_row to dataframe
-                self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
+                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+                    # add new_row to dataframe
+                    self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
+                except:
+                    continue
 
         for rxn in self.reactions:
             # LB
