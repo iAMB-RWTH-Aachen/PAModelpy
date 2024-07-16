@@ -982,17 +982,22 @@ class PAModel(Model):
         self.p_tot = p_tot
         self.solver.update()
 
-    def change_sector_parameters(self, sector, slope:float, intercept:float, lin_rxn_id:str):
+    def change_sector_parameters(self, sector, slope:float, intercept:float, lin_rxn_id:str = None, print_progress:bool = True):
         # input in g/gDW
-        print(f'Changing the slope and intercept of the {sector.id}')
-        print(f'Changing slope from {sector.slope} to {slope*1e3} mg/gcdw/h')
-        print(f'Changing intercept from {sector.intercept} to {intercept*1e3} mg/gcdw')
+        if print_progress:
+            print(f'Changing the slope and intercept of the {sector.id}')
+            print(f'Changing slope from {sector.slope} to {slope*1e3} mg/gcdw/h')
+            print(f'Changing intercept from {sector.intercept} to {intercept*1e3} mg/gcdw')
 
         prev_intercept = sector.intercept
         #*1e3 to convert g to mg
         sector.slope = slope * 1e3
         sector.intercept = intercept * 1e3
-        lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+        if lin_rxn_id is not None:
+            lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+            sector.id_list = [lin_rxn_id]
+        else:
+            lin_rxn = self.reactions.get_by_id(sector.id_list[0])
 
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             intercept_diff = sector.intercept - prev_intercept

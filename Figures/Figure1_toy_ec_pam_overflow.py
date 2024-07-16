@@ -107,7 +107,7 @@ S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
     return model
 
 def build_active_enzyme_sector(Config):
-    kcat_fwd = [1, 0.5, 1, 1, 0.5 ,0.45, 1.5]  # High turnover for exchange reactions [1, 0.5, 1, 1, 0.5 ,0.45, 1.5]
+    kcat_fwd = [1, 0.5, 5, 0.1, 0.25 ,0.45, 1.5]  # High turnover for exchange reactions [1, 0.5, 1, 1, 0.5 ,0.45, 1.5]
     kcat_rev = [kcat for kcat in kcat_fwd]
     rxn2kcat = {}
     for i in range(n-3): # all reactions have an enzyme, except excretion reactions
@@ -130,6 +130,9 @@ def run_simulations(pamodel, substrate_axis):
     Cesc = list()
     x_axis_csc = list()
     mu_list = list()
+    substrate_consumption = list()
+    byproduct_formation = list()
+    total_active_protein = list()
 
     for substrate in substrate_rates:
         pamodel.change_reaction_bounds(rxn_id='R1',
@@ -139,6 +142,10 @@ def run_simulations(pamodel, substrate_axis):
             print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
             substrate_axis += [substrate]
             mu_list += [pamodel.objective.value]
+            substrate_consumption += [pamodel.reactions.R1.flux]
+            byproduct_formation += [pamodel.reactions.R3.flux]
+            #phi_active = total_protein - translational_protein - unused_enzymes
+            total_active_protein += [Etot*1e3 - (0.01 + 0.01*pamodel.reactions.R7.flux) - (0.1-0.01*pamodel.reactions.R1.flux)]
 
             Ccsc_new = list()
             for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
@@ -159,41 +166,49 @@ def run_simulations(pamodel, substrate_axis):
     x_axis_esc = pamodel.enzyme_sensitivity_coefficients.enzyme_id.to_list()
 
     return {'substrate_axis': substrate_axis, 'mu_list': mu_list,
+            'byproduct_formation': byproduct_formation, 'substrate_consumption':substrate_consumption,
+            'total_active_protein': total_active_protein,
             'Ccsc':Ccsc, 'Cesc':Cesc,
             'x_axis_csc': x_axis_csc,'x_axis_esc': x_axis_esc}
 
-def plot_sensitivities(fig, grdspec, glc_rates, mu_list, tot_prot_csc, substrate_csc, e1_esc, pie_data, pie_labels):
+def plot_sensitivities(fig, grdspec, glc_rates, mu_list, substrate, byproduct, total_active_protein,
+                       tot_prot_csc, substrate_csc, e1_esc, pie_data, pie_labels):
     gs = gridspec.GridSpecFromSubplotSpec(2, 1,
-                                          height_ratios=[1,2], hspace=0, subplot_spec=grdspec)
+                                          height_ratios=[1,1], hspace=0, subplot_spec=grdspec)
     sens_ax = fig.add_subplot(gs[1, 0])  # sensitivity coefficient linegraph
     mu_ax = fig.add_subplot(gs[0, 0], sharex=sens_ax) # mu vs v_s linegraph
 
-
-
-
     mu = mu_ax.plot(glc_rates, mu_list, color = 'black', linewidth= 3)#(35/255,158/255,137/255)
+    sub = mu_ax.plot(glc_rates, substrate, color='orange', linewidth=3)
+    byp = mu_ax.plot(glc_rates, byproduct, color='purple', linewidth=3)
+    prot_ax = mu_ax.twinx()
+    etotact = prot_ax.plot(glc_rates, total_active_protein, color = 'darkred', linewidth = 3, linestyle = 'dotted')
+    prot_ax.set_ylabel('active enzyme sector (AES) ($g/g_{protein}$)')
+    prot_ax.set_ylim([0.49,0.4902])
+    prot_ax.set_yticks([0.49,0.4901,0.4902])
+    mu_ax.legend([sub, byp, mu, etotact], labels = ['R1', 'R9', 'R7', 'AES'], handles=sub+byp+mu+etotact,loc = 'upper left')
     mu_ax.xaxis.set_visible(False)
     # mu_ax.legend([mu], labels=['growth rate'], loc='center left')
-    mu_ax.set_ylabel('$v_{biomass} $ $(h^{-1})$', fontsize = FONTSIZE*3/4)
+    mu_ax.set_ylabel('flux rate', fontsize = FONTSIZE*3/4)
     # add B panel annotation
     mu_ax.annotate('B', xy=(-0.1, 0.1), xycoords='figure fraction',
-                   xytext=(-0.1, 1.5), textcoords='axes fraction',
+                   xytext=(-0.1, 1.1), textcoords='axes fraction',
                    va='top', ha='left', fontsize=FONTSIZE*1.5, weight='bold')
-    mu_ax.set_ylim([0.03,0.07])
+    mu_ax.set_ylim([-0.001,0.07])
 
     # plot the sensitivity coefficients
     vs = sens_ax.plot(glc_rates, substrate_csc, color ='orange', linewidth= 3) #(62/255,174/255, 137/255)
     e1 = sens_ax.plot(glc_rates, e1_esc, color =(0.00,0.45,0.81), linewidth= 3, linestyle ='dashed')
     e_tot = sens_ax.plot(glc_rates, tot_prot_csc, color ='darkred', linewidth= 3, linestyle ='dotted')#(62/255, 64/255, 137/255)
 
-    sens_ax.legend([vs, e1, e_tot], labels=['$FCSC_{v_{1}}$','$ESC_{E_{1}}$','$PCSC$'], loc='center left')
-    sens_ax.set_ylim([-0.1,1.3])
-    sens_ax.set_xlim([0.04,0.1])
+    sens_ax.legend([vs, e1, e_tot], labels=['$FCSC_{R1}$','$ESC_{E_{1}}$','$PCSC$'], loc='center left')
+    sens_ax.set_ylim([-0.01,1.1])
+    sens_ax.set_xlim([0,0.1])
     sens_ax.set_ylabel('Sensitivity Coefficients', fontsize = FONTSIZE*3/4)
     sens_ax.set_xlabel('$v_{substrate,max}$ $(mmol_{substrate}/g_{CDW}/h)$', fontsize = FONTSIZE*3/4)
 
     # Add a pie chart showing the enzyme sensitivities as an inset in the sensitivity linegraph
-    inset_ax = inset_axes(sens_ax, width="50%", height="50%", loc='center right')
+    inset_ax = inset_axes(sens_ax, width="100%", height="100%",  loc=3, bbox_to_anchor=(0.5, 0.15, 0.7, 0.7),  bbox_transform=sens_ax.transAxes) #TODO
     inset_ax.pie(pie_data, labels=pie_labels,  textprops={'fontweight': 'bold'}, startangle=90, labeldistance = 0.6)
 
     return fig
@@ -227,7 +242,7 @@ if __name__ == "__main__":
     gs_toymodel = gs0[0]
     gs_sensitivities = gs0[1]
 
-    image_path = 'Figures/Figure1_toy-model.png'
+    image_path = 'Figures/Figure1_toy-model_overflow.png'
     toy_model = np.asarray(Image.open(image_path))
     ax_fig = fig.add_subplot(gs_toymodel)
     ax_fig.imshow(toy_model, aspect='equal')
@@ -248,17 +263,18 @@ if __name__ == "__main__":
     for index, id in enumerate(simulation_results['x_axis_esc']):
         if 'E1' in id:
             e1_esc = [row[index] for row in simulation_results['Cesc']]
-        if 'E3' in id:
+        if 'E4' in id:
             pielabels.append('')
         else:
             pielabels.append(id)
 
-
     fig = plot_sensitivities(fig, gs_sensitivities, simulation_results['substrate_axis'], simulation_results['mu_list'],
+                             simulation_results['substrate_consumption'],simulation_results['byproduct_formation'],
+                             simulation_results['total_active_protein'],
                              tot_prot_csc, substrate_csc, e1_esc, simulation_results['Cesc'][-1], pielabels)
     fig.set_figwidth(width)
     fig.set_figheight(height)
     plt.tight_layout()
 
-    fig.savefig('Figures/Figure1_toy_model-sensitivities.png',bbox_inches='tight')
+    fig.savefig('Figures/Figure1_toy_model-sensitivities_overflow.png',bbox_inches='tight')
     plt.show()

@@ -75,7 +75,7 @@ S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
     r1.add_metabolites({Metabolite('Substrate'): 1})
     # R2:
     r2 = model.reactions.get_by_id('R2')
-    r2.add_metabolites({Metabolite('Substrate'): -1, Metabolite('Intermediate'): 1, Metabolite('CO2'): 1})
+    r2.add_metabolites({Metabolite('Substrate'): -1, Metabolite('Intermediate'): 1, Metabolite('ATP'): 0.5})
     # R3:
     r3 = model.reactions.get_by_id('R3')
     r3.add_metabolites({Metabolite('Intermediate'): -1, Metabolite('Byproduct'):1, Metabolite('ATP'):1})
