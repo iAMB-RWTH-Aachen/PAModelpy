@@ -2,7 +2,6 @@
  - Enzyme: Constraints relating enzymes to reactions. Including upper and lower bound enzyme constraints
  - EnzymeVariable: Variable related to an enzyme. The value of this variable represent the concentration.
 """
-import PAModelpy.Enzyme
 import cobra.core
 import cobra
 from cobra import Reaction, Object, Gene
