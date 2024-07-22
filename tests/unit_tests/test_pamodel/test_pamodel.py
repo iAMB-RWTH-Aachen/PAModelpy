@@ -1,12 +1,5 @@
-import unittest
 import pytest
 from cobra.io import load_json_model
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.dirname(
-            os.path.dirname( #testing dir
-                os.path.dirname(__file__))))) #this dir
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 
@@ -15,7 +8,7 @@ def test_if_pamodel_change_kcat_function_works():
     sut = build_toy_pam()
     input_kcat = 10
     enzyme_id = 'E1'
-    rxn= sut.reactions.get_by_id('R1')
+    rxn= sut.reactions.get_by_id('CE_R1_'+enzyme_id)
     constraint_name = 'EC_E1_'
 
     #act
@@ -170,13 +163,20 @@ def build_active_enzyme_sector(Config):
     kcat_fwd = [1, 0.5, 1, 1, 0.5 ,0.45, 1.5]  # High turnover for exchange reactions
     kcat_rev = [kcat for kcat in kcat_fwd]
     rxn2kcat = {}
+    protein2gene = {}
     for i in range(n-3): # all reactions have an enzyme, except excretion reactions
         rxn_id = f'R{i+1}'
         # 1e-6 to correct for the unit transformation in the model (meant to make the calculations preciser for different unit dimensions)
         #dummy molmass like in MATLAB script
-        rxn2kcat = {**rxn2kcat, **{rxn_id: {f'E{i+1}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6), 'molmass': 1e6}}}}
+        rxn2kcat = {**rxn2kcat, **{rxn_id:
+                                       {f'E{i + 1}':
+                                            {'f': kcat_fwd[i] / (3600 * 1e-6),
+                                             'b': kcat_rev[i] / (3600 * 1e-6),
+                                             'molmass': 1e6,
+                                             'protein_reaction_association': [[f'E{i + 1}']]}}}}
+        protein2gene = {**protein2gene, **{f'E{i + 1}': [[f'g{i + 1}']]}}
 
-    return ActiveEnzymeSector(rxn2protein = rxn2kcat, configuration=Config)
+    return ActiveEnzymeSector(rxn2protein=rxn2kcat, protein2gene=protein2gene, configuration=Config)
 
 def build_unused_protein_sector(Config):
     return UnusedEnzymeSector(id_list = ['R1'], ups_mu=[-0.01*1e-3], ups_0=[0.1*1e-3], mol_mass= [1], configuration=Config)

@@ -273,7 +273,7 @@ class Enzyme(Object):
                     warn("No reaction {0} found".format(rxn_id))
                 else:
                     # get kcat values
-                    rxn2kcat[rxn_id] = self.rxn2kcat[rxn_id]
+                    rxn2kcat[rxn_id] = self.rxn2kcat[catalytic_event_id+'_'+self.id]
 
         if len(rxn_ids) == 1:
             return rxn2kcat[rxn_id]

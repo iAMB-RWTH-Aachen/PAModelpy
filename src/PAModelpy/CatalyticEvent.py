@@ -247,7 +247,7 @@ class CatalyticEvent(Object):
                         })
 
     def add_enzyme_reaction_association(self, enzyme):
-        catalytic_reaction = Reaction(self.id + "_" + enzyme.id)
+        catalytic_reaction = Reaction(self.id + "_" + enzyme.id, lower_bound=-1e3, upper_bound=1e3)
         self._model.add_reactions([catalytic_reaction])
         self.catalytic_reactions.append(catalytic_reaction)
         self._model.constraints[self.id].set_linear_coefficients({
@@ -332,10 +332,10 @@ class CatalyticEvent(Object):
 
     def change_kcat_values(self, enzyme_kcat_dict : dict):
         """changes kcat values for the enzyme variable
-        Parameters
-        ----------
+
+        Args:
         enzyme_kcat_dict: nested Dict
-            A Dict with enzyme, kcat key, value pairs to connect the
+            A Dict with enzyme_id, kcat key, value pairs to connect the
             enzyme with the associated reaction the kcat is another dict with 'f' and 'b'
             for the forward and backward reactions respectively.
         
@@ -359,12 +359,12 @@ class CatalyticEvent(Object):
 
             enzyme_var = self._model.enzyme_variables.get_by_id(enzyme)
             if enzyme_var not in self.enzyme_variables: self.enzyme_variables.add(enzyme_var)
-            ce_reaction = self._model.reactions.get_by_id(self.rxn_id+"_"+enzyme.id)
+            ce_reaction = self._model.reactions.get_by_id('CE_'+self.rxn_id+"_"+enzyme)
             enzyme_var.change_kcat_values({ce_reaction: kcat_dict})
             for direction, kcat in kcats_change.items():
                 #change enzyme variable
                 enzyme_var.kcats[ce_reaction.id][direction] = kcat
-                self._model._change_kcat_in_enzyme_constraint(ce_reaction, enzyme,direction, kcat)
+                self._model._change_kcat_in_enzyme_constraint(ce_reaction, enzyme, direction, kcat)
 
     def __copy__(self) -> 'CatalyticEvent':
         """ Copy the CatalyticEvent

@@ -1,14 +1,16 @@
 import cobra
 import pandas as pd
+import numpy as np
 import os
 from typing import Union
 
 # load PAMpy modules
-from PAModelpy.PAModel import PAModel
-from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from PAModelpy.configuration import Config
+from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from src.PAModelpy.configuration import Config
 
 from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
+import ast
 
 'Function library for making Protein Allocation Models as described in the publication'
 
@@ -35,121 +37,27 @@ def set_up_toy_pam(sensitivity =True):
 
 def set_up_ecolicore_pam(total_protein:bool = True, active_enzymes: bool = True, translational_enzymes:bool = True, unused_enzymes:bool = True, sensitivity =True):
     # Setting the relative paths
-    DATA_DIR = os.path.join(os.path.split(os.getcwd())[0], 'Data')
-    MODEL_DIR = os.path.join(os.path.split(os.getcwd())[0], 'Models')
-    PAM_DATA_FILE_PATH = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
+    PAM_DATA_FILE_PATH = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx')
+
+    config = Config()
+    config.reset()
 
     # some other constants
     BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
     TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
 
     # load the genome-scale information
-    model = cobra.io.load_json_model(os.path.join(MODEL_DIR, 'e_coli_core.json'))
+    model = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
 
     #load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
         enzyme_db = pd.read_excel(PAM_DATA_FILE_PATH, sheet_name='ActiveEnzymes')
-        enzyme_db = enzyme_db.set_index('rxnID')
-        # correct reaction IDS
-        for idx in enzyme_db.index.to_list():
-            # transprt reactions<
-
-            if 'pp' in idx:
-                idx_new = idx.replace('pp', '')
-                if idx_new not in enzyme_db.index:
-                    enzyme_db.rename(index={idx: idx_new}, inplace=True)
-            if 'ex' in idx:
-                idx_new = idx.replace('ex', '')
-                if idx_new not in enzyme_db.index:
-                    enzyme_db.rename(index={idx: idx_new}, inplace=True)
-
-                    # replace NaN values with unique identifiers
-        # replace NaN enzyme ids with a dummy enzyme identifier
-        # select the NaN values
-        nan_values = enzyme_db['EC_nmbr'].isnull()
-        # make a list with unique ids
-        nan_ids = [f'E{i}' for i in range(nan_values.sum())]
-        # replace nan values by unique id
-        enzyme_db.loc[nan_values, 'EC_nmbr'] = nan_ids
-
         # create enzyme objects for each gene-associated reaction
-        kcats = {}
-        rxn2ec = {}
-        molmass = {}
-        for rxn in model.reactions:
-            if rxn.genes:
-                # correct transport reactions
-                if 't' in rxn.id:
-                    rxn.id = rxn.id
-                # are enzyme information in the PAM database?
-                rev = 0  # denotes reversibility
-                if rxn.lower_bound >= 0:
-                    # irreversible reaction (forward direction)
-                    rev = 0
-                    rxn_id = rxn.id  # save reaction ID for retrieveing molar masses/enzyme information later
-                    if rxn.id in enzyme_db.index:
-                        kcats[rxn.id] = {'f': enzyme_db.loc[rxn.id, 'kcat']}
-                elif rxn.upper_bound <= 0:
-                    # irreversible reaction (reverse direction)
-                    rev = 1
-                    rxn_id = rxn.id + '_b'
-                    if rxn_id in enzyme_db.index:
-                        kcats[rxn.id] = {'b': enzyme_db.loc[rxn_id, 'kcat']}
-                else:
-                    rev = 2
-                    # reversible reaction
-                    rxn_id_f = rxn.id + '_f'
-                    rxn_id_b = rxn.id + '_b'
-                    if rxn_id_f in enzyme_db.index and rxn_id_b in enzyme_db.index:
-                        rxn_id = rxn_id_f  # save reaction ID for retrieveing molar masses/enzyme information later
-                        kcats[rxn.id] = {'f': enzyme_db.loc[rxn_id_f, 'kcat'],
-                                         'b': enzyme_db.loc[rxn_id_b, 'kcat']}
+        rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
 
-                    else:
-                        # try if only forward reaction is in database
-                        rxn_id = rxn.id  # save reaction ID for retrieveing molar masses/enzyme information later
-                        kcats[rxn.id] = {'f': enzyme_db.loc[rxn.id, 'kcat'],
-                                         'b': enzyme_db.loc[
-                                                  rxn.id, 'kcat'] / 2}  # deduce backwards kcat from forward value
-
-                # where enzyme information found?
-                if rxn.id in kcats.keys():
-                    # save molmass
-                    molmass[rxn.id] = enzyme_db.loc[rxn_id, 'molMass']
-                    # save enzyme information
-                    # is enzyme information NaN?
-                    if pd.isna(enzyme_db.loc[rxn_id, 'EC_nmbr']):
-                        rxn2ec[rxn.id] = ''
-                    else:
-                        rxn2ec[rxn.id] = enzyme_db.loc[rxn_id, 'EC_nmbr']
-
-
-                else:
-                    # no enzyme information found
-                    print('No enzyme information found for reaction: ' + rxn.id)
-                    # Create generic Enzyme with mean molar masses and kcat
-                    if rev == 0:
-                        kcats[rxn.id] = {'f': 22}
-                    elif rev == 1:
-                        kcats[rxn.id] = {'b': 22}
-                    else:
-                        kcats[rxn.id] = {'f': 22, 'b': 22}
-
-                    molmass[rxn.id] = 3.947778784340140e04
-
-        rxn2protein = {}
-        for rxn, ec in rxn2ec.items():
-            ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn]}}
-            # add enzyme to enzymes related to reaction if these are already stored
-            if rxn in rxn2protein.keys():
-                rxn2protein[rxn] = {**rxn2protein[rxn], **{ec: ec_dict}}
-            # if not create new reaction entry
-            else:
-                rxn2protein[rxn] = {ec: ec_dict}
-
-        # create active enzymes sector
-        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein)
+        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
+                                                  configuration=config)
 
     else:
         active_enzyme_sector = None
@@ -197,21 +105,14 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
 
     config = Config()
     config.reset()
-    # Setting the relative paths
-    cwd = os.getcwd()
-    if os.path.split(cwd)[1] != 'Scripts':
-        BASE_DIR = cwd
-    else:
-        BASE_DIR = os.path.split(os.getcwd())[0]
-    MODEL_DIR = os.path.join(BASE_DIR, 'Models')
-    DATA_DIR = os.path.join(BASE_DIR, 'Data')
-    pam_info_file = os.path.join(DATA_DIR, 'proteinAllocationModel_iML1515_EnzymaticData_py.xls')
+
+    pam_info_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx')
 
     # some other constants
     TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
 
     #setup the gem ecoli iML1515 model
-    model = cobra.io.read_sbml_model(os.path.join(MODEL_DIR, 'iML1515.xml'))
+    model = cobra.io.read_sbml_model(os.path.join('Models', 'iML1515.xml'))
 
     #check if a different total protein concentration is given
     if isinstance(total_protein, float):
@@ -220,62 +121,13 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
     # load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
-        active_enzyme_info_old = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+        enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
 
-        # replace NaN values with unique identifiers
-        # select the NaN values
-        nan_values = active_enzyme_info_old['EC_nmbr'].isnull()
-        # make a list with unique ids
-        nan_ids = [f'E{i}' for i in range(nan_values.sum())]
-        # replace nan values by unique id
-        active_enzyme_info_old.loc[nan_values, 'EC_nmbr'] = nan_ids
+        # create enzyme objects for each gene-associated reaction
+        rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
 
-        # parse the enzyme information (kcat values, identifiers and molmasses)
-        kcats_dict = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'kcat'].to_dict()
-        ec_dict = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'EC_nmbr'].to_dict()
-        molmass_dict = mol_mass = active_enzyme_info_old.set_index(keys='rxnID').loc[:, 'molMass'].to_dict()
-
-        kcats = {}
-        # save fwd and bckw kcats separately in the form of: {rxn_id: {'f': kcat_f, 'b': kcat_b}}
-        for rxn, kcat in kcats_dict.items():
-            # reversible reaction
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                direction = rxn[-1]
-                # check if the reaction already exists in the kcat dictionary
-                try:
-                    kcats[rxn[:-2]][direction] = kcat
-                except:
-                    kcats[rxn[:-2]] = {direction: kcat}
-            # irreversible reaction
-            else:
-                kcats[rxn] = {'f': kcat}
-
-        rxn2ec = {}
-        # parse the enzyme identifiers for the reactions
-        for rxn, ec in ec_dict.items():
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                rxn = rxn[:-2]
-            for enz in str(ec).split(','):
-                rxn2ec[rxn] = enz.strip()
-
-        molmass = {}
-        # parse the enzyme molmasses for the reactions
-        for rxn, mw in molmass_dict.items():
-            if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-                rxn = rxn[:-2]
-            molmass[rxn] = mw
-
-        rxn2protein = {}
-        for rxn, ec in rxn2ec.items():
-            ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn]}}
-            # add enzyme to enzymes related to reaction if these are already stored
-            if rxn in rxn2protein.keys():
-                rxn2protein[rxn] = {**rxn2protein[rxn], **{ec: ec_dict}}
-            # if not create new reaction entry
-            else:
-                rxn2protein[rxn] = {ec: ec_dict}
-
-        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, configuration = config)
+        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
+                                                  configuration=config)
 
     else:
         active_enzyme_sector = None
@@ -314,17 +166,272 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
                       )
     return pamodel
 
-def parse_coefficients(pamodel):
-    Ccsc = list()
 
-    for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']:
-        Ccsc += pamodel.capacity_sensitivity_coefficients[
-            pamodel.capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
+def _parse_enzyme_information_from_file(file_path:str):
+    # load active enzyme sector information
+    enzyme_db = pd.read_excel(file_path, sheet_name='enzyme-gene-reaction')
+    # enzyme_db = enzyme_db.set_index('rxnID')
+    # correct reaction IDS
+    for idx in enzyme_db.rxnID.to_list():
+        # transport reactions
+        if 'pp' in idx:
+            idx_new = idx.replace('pp', '')
+            if idx_new not in enzyme_db.index:
+                enzyme_db.rename(index={idx: idx_new}, inplace=True)
+        if 'ex' in idx:
+            idx_new = idx.replace('ex', '')
+            if idx_new not in enzyme_db.index:
+                enzyme_db.rename(index={idx: idx_new}, inplace=True)
 
-    Cesc = pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
+                # replace NaN values with unique identifiers
+    # replace NaN enzyme ids with a dummy enzyme identifier
+    # select the NaN values
+    nan_values = enzyme_db['EC_nmbr'].isnull()
+    # make a list with unique ids
+    nan_ids = [f'E{i}' for i in range(nan_values.sum())]
+    # replace nan values by unique id
+    enzyme_db.loc[nan_values, 'EC_nmbr'] = nan_ids
 
-    return Ccsc, Cesc
+    return enzyme_db
 
-def parse_esc(pamodel):
-    return pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
 
+def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
+    # Initialize dictionaries
+    rxn2protein = {}
+    protein2gpr = {}
+
+    # replace NaN values with unique identifiers
+    # select the NaN values
+    nan_values = enzyme_db['uniprotID'].isnull()
+    # make a list with unique ids
+    nan_ids = [f'E{i}' for i in range(nan_values.sum())]
+    # replace nan values by unique id
+    enzyme_db.loc[nan_values, 'uniprotID'] = nan_ids
+
+    protein2gene, gene2protein = _get_genes_for_proteins(enzyme_db, model)
+
+    # Iterate over each row in the DataFrame
+    for index, row in enzyme_db.iterrows():
+        # Parse data from the row
+        rxn_id = row['rxnID']
+        if rxn_id not in model.reactions: continue
+        # only parse those reactions which are in the model
+        kcat_f_b = [row['kcat_f'], row['kcat_b']]
+        kcat_f_b = [kcat if not np.isnan(kcat) else 0 for kcat in kcat_f_b]
+        if all([np.isnan(kcat) for kcat in kcat_f_b]): continue
+
+        rxn = model.reactions.get_by_id(rxn_id)
+        # get the identifiers and replace nan values by dummy placeholders
+        enzyme_id = row['uniprotID']
+        gene_id = row['m_gene']
+
+        # check if there are genes associates with the reaction
+        if len(rxn.genes) > 0 or isinstance(gene_id, str):
+            if not isinstance(enzyme_id, str):
+                enzyme_id = 'Enzyme_' + rxn_id
+                row['molMass'] = 39959.4825  # default molmass
+            if not isinstance(gene_id, str):
+                gene_id = [gene.id for gene in rxn.genes][0]  # TODO
+
+            # get the gene-protein-reaction-associations for this specific enzyme
+            gr, pr = parse_gpr_information_for_rxn2protein(row['m_gene_reaction_rule'],
+                                                           gene2protein, protein2gene,enzyme_id)
+
+            if pr is None: pr = [[enzyme_id]]
+
+            if enzyme_id not in protein2gpr:
+                protein2gpr[enzyme_id] = gr
+            else:
+                protein2gpr[enzyme_id].append(gr)
+
+            # Create rxn2protein dictionary
+            if rxn_id not in rxn2protein:
+                rxn2protein[rxn_id] = {}
+            if enzyme_id not in rxn2protein[rxn_id]:
+                rxn2protein[rxn_id][enzyme_id] = {
+                    'f': kcat_f_b[0],  # Forward kcat
+                    'b': kcat_f_b[1],  # Backward kcat
+                    'molmass': row['molMass'],
+                    'genes': gr,
+                    'protein_reaction_association': pr
+                }
+            else:
+                rxn2protein[rxn_id][enzyme_id]['genes'].append(gene_id)
+
+    # if no enzyme info is found, add dummy enzyme with median kcat and molmass
+    for rxn in model.reactions:
+        if rxn.id not in rxn2protein.keys() and 'EX'.lower() not in rxn.id.lower() and 'BIOMASS' not in rxn.id and len(
+                rxn._genes) > 0 and list(rxn._genes)[0].id != 's0001':
+            rev = _check_reaction_reversibility(rxn)
+            if rev == 0:
+                kcat_dict = {'f': 22}
+            elif rev == 1:
+                kcat_dict = {'b': 22}
+            else:
+                kcat_dict = {'f': 22, 'b': 22}
+            # no enzyme information found
+            print('No enzyme information found for reaction: ' + rxn.id)
+            enzyme_id = 'Enzyme_' + rxn.id
+            gpr_info = parse_gpr_information_for_protein2genes(rxn.gpr, rxn_id)
+
+            rxn2protein[rxn.id] = {enzyme_id: {
+                **kcat_dict,
+                'molmass': 3.947778784340140e04,
+                'genes': gpr_info
+            }}
+            # add geneinfo for unknown enzymes
+            protein2gpr[enzyme_id] = gpr_info
+
+        return rxn2protein, protein2gpr
+
+def _get_genes_for_proteins(enzyme_db: pd.DataFrame, model) -> dict:
+    protein2gene = {}
+    gene2protein = {}
+    for index, row in enzyme_db.iterrows():
+        # Parse data from the row
+        rxn_id = row['rxnID']
+        if rxn_id not in model.reactions:continue
+        rxn = model.reactions.get_by_id(rxn_id)
+        # get the identifiers and replace nan values by dummy placeholders
+        enzyme_id = row['uniprotID']
+        gene_id = row['m_gene']
+
+        # check if there are genes associates with the reaction
+        if len(rxn.genes) > 0 or isinstance(gene_id, str):
+            if not isinstance(enzyme_id, str):
+                enzyme_id = 'Enzyme_' + rxn_id
+                row['molMass'] = 39959.4825  # default molmass
+            if not isinstance(gene_id, str):
+                gene_id = [gene.id for gene in rxn.genes][0]  # TODO
+
+            gene2protein[gene_id] = enzyme_id
+
+            # Create gene-protein-reaction associations
+            if enzyme_id not in protein2gene:
+                protein2gene[enzyme_id] = [gene_id]
+            elif enzyme_id in protein2gene:
+                # assume that there is a single protein if the previous relation was not assigned a gene
+                if 'gene_' in protein2gene[enzyme_id][0]:
+                    protein2gene[enzyme_id] = [gene_id]
+                else:
+                    protein2gene[enzyme_id].append(gene_id)
+
+    return protein2gene, gene2protein
+
+
+def _check_rxn_identifier_format(rxn_id:str) -> str:
+    if 'pp' in rxn_id:
+        idx_new = rxn_id.replace('pp', '')
+    elif 'ex' in rxn_id:
+        idx_new = rxn_id.replace('ex', '')
+    else:
+        idx_new = rxn_id
+    return idx_new
+
+def _get_fwd_bckw_kcat(rxn_id: str, kcat:float, model:PAModel) -> Union[list, None]:
+    #skip exchange and biomass reaction
+    if 'EX' in rxn_id or 'BIOMASS' in rxn_id:
+        return None
+
+    # Extract the base identifier without any suffixes
+    base_id = rxn_id.split('_')[0]
+
+    # Iterate over each identifier in the input
+    if base_id in model.reactions:
+        # Determine the form of the identifier
+        if rxn_id.endswith('_f'):
+            kcat_fwd = kcat
+            kcat_rev = 0
+        elif rxn_id.endswith('_b'):
+            kcat_fwd = 0
+            kcat_rev = kcat
+        # identifier has no suffix
+        elif base_id == rxn_id:
+            kcat_fwd = kcat
+            kcat_rev = kcat
+        else:
+            return None
+    elif rxn_id in model.reactions:
+        kcat_fwd = kcat
+        kcat_rev = kcat
+    else:
+        return None
+    return [kcat_fwd, kcat_rev]
+
+def _check_reaction_reversibility(reaction):
+    if reaction.lower_bound >= 0:
+        # irreversible reaction (forward direction)
+        rev = 0
+    elif reaction.upper_bound <= 0:
+        # irreversible reaction (reverse direction)
+        rev = 1
+    else:
+        rev = 2
+        # reversible r
+    return rev
+
+def parse_gpr_information_for_protein2genes(gpr_info:str):
+    #filter out nan entries
+    if isinstance(gpr_info, str):
+        gpr_list = parse_gpr(gpr_info)
+        # Extracting the inner lists and removing parentheses
+        # gpr_list = [[[item.strip("(')")] + sublist[1:] for item in sublist[0].split(" or ")] for sublist in nested_list]
+        return gpr_list
+    else:
+        return [['gene_dummy']]
+
+def parse_gpr_information_for_rxn2protein(gpr_info:str, gene2protein: dict,protein2gene:dict, enzyme_id:str):
+    #filter out nan entries
+    if isinstance(gpr_info, str):
+        gpr_list = parse_gpr(gpr_info)
+        # Extracting the inner lists and removing parentheses
+        gene = protein2gene[enzyme_id]
+        if isinstance(protein2gene[enzyme_id], list):
+            gene = gene[0]
+        gpr_list = filter_sublists(gpr_list, gene)
+        #convert the genes to the associated proteins
+        enzyme_relations = []
+        for sublist in gpr_list:
+            enz_sublist = []
+            for item in sublist:
+                if item in gene2protein.keys():
+                    enz_sublist.append(gene2protein[item])
+            enzyme_relations += [enz_sublist]
+        enzyme_relations = filter_sublists(enzyme_relations, enzyme_id)
+        return gpr_list, enzyme_relations
+    else:
+        return [['gene_dummy']], None
+
+def parse_gpr(gpr_info):
+    # Split the string by 'or' first
+    or_groups = gpr_info.split(' or ')
+    parsed_gpr = []
+
+    for group in or_groups:
+        # Within each 'or' group, split by 'and'
+        and_genes = group.split(' and ')
+        # Clean up each gene string
+        and_genes = [gene.strip(' ()') for gene in and_genes]
+        parsed_gpr.append(and_genes)
+
+    return parsed_gpr
+
+def filter_sublists(nested_list, target_string):
+    """
+    Filters out all sublists from a nested list that contain the target string.
+
+    Args:
+        nested_list (list of list of str): The nested list to filter.
+        target_string (str): The string to filter out sublists that contain it.
+
+    Returns:
+        list of list of str: A new nested list with the filtered sublists.
+    """
+    return [sublist for sublist in nested_list if target_string in sublist]
+
+if __name__ == '__main__':
+    ecoli_pam = set_up_ecoli_pam(sensitivity=False)
+    # ecoli_pam.objective = ecoli_pam.BIOMASS_REACTION
+    ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
+    ecoli_pam.optimize()
+    print(ecoli_pam.objective.value)

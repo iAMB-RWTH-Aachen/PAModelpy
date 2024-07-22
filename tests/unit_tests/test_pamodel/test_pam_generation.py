@@ -4,7 +4,7 @@ from src.PAModelpy.PAModel import PAModel
 
 
 from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
-from Scripts.pam_generation_new import (set_up_ecolicore_pam, set_up_ecoli_pam, set_up_toy_pam,
+from Scripts.pam_generation import (set_up_ecolicore_pam, set_up_ecoli_pam, set_up_toy_pam,
                                         parse_gpr_information_for_protein2genes,
                                         parse_gpr_information_for_rxn2protein)
 
