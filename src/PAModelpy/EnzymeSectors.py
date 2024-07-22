@@ -1,8 +1,9 @@
 from warnings import warn
 from copy import copy, deepcopy
-from cobra import Object
+from cobra import Object, Gene, Model
+from typing import Union
 
-from .Enzyme import Enzyme
+from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 
 
@@ -58,7 +59,7 @@ class EnzymeSector(Sector):
 class ActiveEnzymeSector(Sector):
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
     #class with all the information on enzymes related to metabolic reactions
-    def __init__(self, rxn2protein: dict, configuration:Config =Config):
+    def __init__(self, rxn2protein: dict, protein2gene:dict = {},configuration:Config =Config):
         """_summary_
 
         Parameters
@@ -72,10 +73,19 @@ class ActiveEnzymeSector(Sector):
               example: {R1:
                             {E1:
                                 {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'genes': [G1, G2],
+                                'protein_reaction_association': [[E1, E2]],
                                  'complex_with': 'E2'},
                             E2:
                                 {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'genes': [G3, G4],
-                                 'complex_with': 'E1'}}
+                                 'protein_reaction_association': [[E1, E2]], 'complex_with': 'E1'}}
+        protein2gene: dict
+            enzyme_id, gene_list key, value pairs for each enzyme.The gene_list value is a list of lists which indicates
+            'and' or 'or' relationships between the genes which code for the enzyme(complex).
+
+            example: {E1: [[gene1], [gene2, gene3]], E2: [[gene4]]}
+            where the gene-protein-reaction associations are the following:
+            E1: gene1 or (gene2 and gene3)
+            E2: gene4
 
         configuration: Config object, optional
                     Information about general configuration of the model including identifier conventions.
@@ -84,6 +94,7 @@ class ActiveEnzymeSector(Sector):
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
 
         self.rxn2protein = rxn2protein
+        self.protein2gene = protein2gene
         # ID of the sector
         self.id = 'ActiveEnzymeSector'
         self.model = None
@@ -129,6 +140,7 @@ class ActiveEnzymeSector(Sector):
 
             for enzyme_id, enzyme_dict in enzymes.items():
                 kcat = dict((k, v) for k, v in enzyme_dict.items() if k == 'f' or k == 'b')
+                protein_reaction = enzyme_dict['protein_reaction_association']
 
                 # get molar mass of enzyme or replace with default value
                 if 'molmass' in enzyme_dict.keys():
@@ -138,36 +150,57 @@ class ActiveEnzymeSector(Sector):
 
                 # check if there already exists an Enzyme object for the EC numbers associated to this reaction,
                 # otherwise create one and store all information
-                if enzyme_id in model.enzymes:
+                if enzyme_id in model.enzyme_variables and not self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                     enzyme = model.enzymes.get_by_id(enzyme_id)
-
-                    #check if catalytic event already exists:
-                    catal_event_id = f'CE_{rxn_id}'
-
-                    if catal_event_id in model.catalytic_events:
-                        ce = model.catalytic_events.get_by_id(catal_event_id)
-                        enzyme.add_catalytic_event(ce, kcat)
-                    else:
-                        enzyme.create_catalytic_event(rxn_id=rxn_id, kcats=kcat)
-                        model.add_catalytic_events([enzyme.catalytic_events.get_by_id(f'CE_{rxn_id}')])
+                    self._add_reaction_to_enzyme(model, enzyme, rxn_id, kcat)
                 else:
+                    if self.protein2gene != {}:
+                        gene_list = self._get_model_genes_from_enzyme(enzyme_id, model)
+                    else:
+                        gene_list = []
+
                     enzyme = Enzyme(
-                        id = enzyme_id,
-                        rxn2kcat= {rxn_id: kcat},
-                        molmass = molmass
+                        id=enzyme_id,
+                        rxn2kcat={rxn_id: kcat},
+                        rxn2pr={rxn_id: protein_reaction},
+                        molmass=molmass,
+                        genes=gene_list
                     )
+
+                    if self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
+                        for pr in protein_reaction:
+                            if len(pr) > 1:
+                                enzyme_complex_id = '_'.join(pr)
+                                if enzyme_complex_id not in model.enzymes:
+                                    enzyme = EnzymeComplex(
+                                        id=enzyme_complex_id,
+                                        rxn2kcat={rxn_id: kcat},
+                                        molmass=0,
+                                        genes=gene_list,
+                                        enzymes=[enzyme]
+                                    )
+                                    model.add_enzymes([enzyme])
+                                    self.constraints += [enzyme]
+                                    self.variables.append(enzyme.enzyme_variable)
+                                else:
+                                    enz_complex = model.enzymes.get_by_id(enzyme_complex_id)
+                                    self._add_reaction_to_enzyme(model, enz_complex, rxn_id, kcat)
+                                    enz_complex.reactions.append(rxn_id)
+                                    enz_complex.add_enzymes([enzyme])
+                    else:
+                        model.add_enzymes([enzyme])
+
+                        self.constraints += [enzyme]
+                        self.variables.append(enzyme.enzyme_variable)
                     #in the add enzymes function the enzyme with corresponding catalytic events will be added to the model
                     #and connected to the reaction and total protein constraint
 
-                    model.add_enzymes([enzyme])
 
                     #adding to the enzyme sector object for easy removal
-                    self.constraints += [enzyme]
                     model.tpc += 1
-                self.variables.append(enzyme.enzyme_variable)
         return model
 
-    def check_kcat_values(self, model, reaction, kcat):
+    def check_kcat_values(self, model, reaction, enzyme_dict):
         """
         Function to check if the kcat values provided for an enzyme are consistent with the direction of the reaction
         Parameters
@@ -176,7 +209,7 @@ class ActiveEnzymeSector(Sector):
             model to which the kcat values should be added
         reaction: cobra.Reaction
             reaction which is catalyzed with the enzyme related to the kcats
-        kcat: dict
+        enzyme_dict: dict
             a dict with the turnover values for the forward and/or backward reaction for different enzymes [/s]
             {'E1':{'f': forward kcat, 'b': backward kcat}}
 
@@ -193,11 +226,14 @@ class ActiveEnzymeSector(Sector):
 
          # check consistency between provided kcat values and reaction direction
         directions = []
-        for val in kcat.values():# get all directions from the kcat dict
-            directions += list(val.keys())
         kcats = []
-        for val in kcat.values():# get all directions from the kcat dict
-            kcats += list(val.values())
+        for enzyme_info in enzyme_dict.values():
+            # get all directions from the kcat dict
+            for key, value in enzyme_info.items():
+                if key == 'f' or key =='b':
+                    directions += [key]
+                    kcats += [value]
+
 
         rxn_dir = 'consistent'
         if reaction.lower_bound >= 0 and reaction.upper_bound > 0:
@@ -226,6 +262,52 @@ class ActiveEnzymeSector(Sector):
                 return False
 
         return rxn_dir == 'consistent'
+
+    def _add_reaction_to_enzyme(self, model, enzyme:Union[Enzyme, EnzymeComplex], rxn_id:str, kcat:dict):
+        # check if catalytic event already exists:
+        catal_event_id = f'CE_{rxn_id}'
+        if catal_event_id in enzyme.catalytic_events:
+            return
+
+        if catal_event_id in model.catalytic_events:
+            ce = model.catalytic_events.get_by_id(catal_event_id)
+            enzyme.add_catalytic_event(ce, kcat)
+        else:
+            enzyme.create_catalytic_event(rxn_id=rxn_id, kcats=kcat)
+            model.add_catalytic_events([enzyme.catalytic_events.get_by_id(f'CE_{rxn_id}')])
+
+    def _enzyme_is_enzyme_complex(self, protein_reaction, enzyme_id):
+        return any([((enzyme_id in pr) & (len(pr) > 1)) for pr in protein_reaction])
+
+    def _get_model_genes_from_enzyme(self, enzyme_id: str, model: Model) -> list:
+        """
+           Retrieves genes associated with the specified enzyme from the model.
+
+           Args:
+               enzyme_id (str): The identifier of the enzyme.
+               model (Model): The model containing gene information.
+
+           Returns:
+               list: A nested list of gene objects associated with the enzyme.
+           """
+        if enzyme_id not in self.protein2gene.keys(): return []
+        gene_id_list = self.protein2gene[enzyme_id]
+        gene_list = []
+        for genes_or in gene_id_list:
+            genes_and_list = []
+            for gene_and in genes_or:
+                #check if there is an and relation (then gene and should be a list and not a string)
+                if isinstance(gene_and, list):
+                    for gene in gene_and:
+                        if gene not in model.genes:
+                            model.genes.append(Gene(gene))
+                else:
+                    gene = gene_and
+                    if gene not in model.genes:
+                        model.genes.append(Gene(gene))
+                genes_and_list.append(model.genes.get_by_id(gene))
+            gene_list.append(genes_and_list)
+        return gene_list
 
 class TransEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 4.0590394e05  # default E. coli ribosome molar mass [g/mol]
@@ -289,6 +371,7 @@ class UnusedEnzymeSector(EnzymeSector):
             self.ups_mu = ups_mu
         # *1000 to convert units from g/g_cdw to mg/g_cdw
         self.ups_0_coeff = self.ups_0[0]*1e3
+        self.id = 'UnusedEnzymeSector'
 
         self.slope = self.ups_mu*1e3
         self.intercept = self.ups_0_coeff

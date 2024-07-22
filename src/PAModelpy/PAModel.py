@@ -6,7 +6,7 @@ from cobra.util.context import get_context
 #type checking
 from optlang.symbolics import Zero
 from optlang.interface import Objective
-from typing import List, Optional, Union, Dict, Iterable
+from typing import List, Optional, Union, Dict, Iterable, Tuple
 #other
 from functools import partial
 import warnings
@@ -18,7 +18,7 @@ import inspect
 from .EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, UnusedEnzymeSector, CustomSector, Sector
 from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
-from .Enzyme import Enzyme
+from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 
 
@@ -95,7 +95,7 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
-                 custom_sectors: Union[List, CustomSector] =None,
+                 custom_sectors: Union[List, CustomSector] =[None],
                  configuration = Config):
         """Constants"""
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
@@ -132,7 +132,8 @@ class PAModel(Model):
         if sensitivity: #perform sensitivity analysis when the model is run
             self.add_lb_ub_constraints()
 
-        for sector in [active_sector, translational_sector, unused_sector, custom_sectors]:
+        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
         print(f'Done with setting up the proteome allocation model {self.id}\n')
@@ -151,7 +152,7 @@ class PAModel(Model):
         return self.sectors.get_by_id('TranslationalEnzymeSector')
 
     @translational_enzymes.setter
-    def tranlational_enzymes(self, slope:float, intercept:float, lin_rxn_id: str = 'BIOMASS_Ec_iML1515_WT_75p37M'):
+    def translational_enzymes(self, slope:float, intercept:float, lin_rxn_id: str = 'BIOMASS_Ec_iML1515_WT_75p37M'):
         #input is in g/gDW
         self.change_sector_parameters(self.translational_enzymes, slope, intercept, lin_rxn_id)
 
@@ -195,6 +196,8 @@ class PAModel(Model):
                 False if enzyme exists, True if it doesn't.
                 If the enzyme exists, will log a warning.
             """
+            if isinstance(enz, EnzymeComplex):
+                return False
             if enz.id in self.enzymes:
                 warnings.warn(f"Ignoring enzyme '{enz.id}' since it already exists.")
                 return False
@@ -273,6 +276,9 @@ class PAModel(Model):
         if not hasattr(enzyme_list, "__iter__"):
             enzyme_list = [enzyme_list]
         for enz in enzyme_list:
+            # if the enzyme is an enzyme complex, pass it on to the specialized add enzyme complex method
+            if isinstance(enz, EnzymeComplex):
+                self.add_enzyme_complex(enz)
             if not isinstance(enz, Enzyme):
                 raise AttributeError('The input was neither an Iterable nor an Enzyme. Please provide only (lists of) Enzyme objects.')
 
@@ -299,100 +305,120 @@ class PAModel(Model):
 
         # populate solver
         for enzyme in pruned:
-            #add constraint related to the enzyme
-            self.add_enzyme_constraints([f'EC_{enzyme.id}_f', f'EC_{enzyme.id}_b'])
-            #store the constraints connected to the model in the enzyme object
-            new_constraints = {}
-            new_constraints[f'EC_{enzyme.id}_f'] = self.enzyme_constraints[f'EC_{enzyme.id}_f']
-            new_constraints[f'EC_{enzyme.id}_b'] = self.enzyme_constraints[f'EC_{enzyme.id}_b']
-            enzyme._constraints = new_constraints
+            self._add_enzyme(enzyme)
 
-            #add enzyme variable
-            enzyme_variable = enzyme.enzyme_variable
-            if enzyme_variable.id not in self.variables:
-                    # make enzyme variable aware of the model.
-                    # The enzyme variable will be added as variable to the model in the model.setter magic function
-                    enzyme_variable.model = self
-                    # self.enzyme_variables.append(enzyme_variable)
-                    if context:
-                        context(partial(setattr, enzyme_variable, "_model", None))
+    def add_enzyme_complex(self, enzyme_complex: EnzymeComplex):
+        if enzyme_complex not in self.enzymes:
+            enzyme_complex.model = self
+            self.enzymes.append(enzyme_complex)
+            self._add_enzyme(enzyme_complex)
+        for enzyme in enzyme_complex.enzymes:
+            if enzyme not in self.enzymes:
+                self.enzymes.append(enzyme)
 
-            # connect the enzyme to total protein constraint
-            enzyme_variable = self.enzyme_variables.get_by_id(enzyme.id)
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                { #*1e-6 to make calculations more accurate (solver accuracy)
+    def _add_enzyme(self, enzyme: Union[Enzyme, EnzymeComplex]):
+        # add context manager
+        context = get_context(self)
+        # add constraint related to the enzyme
+        self.add_enzyme_constraints([f'EC_{enzyme.id}_f', f'EC_{enzyme.id}_b'])
+        # store the constraints connected to the model in the enzyme object
+        new_constraints = {}
+        new_constraints[f'EC_{enzyme.id}_f'] = self.enzyme_constraints[f'EC_{enzyme.id}_f']
+        new_constraints[f'EC_{enzyme.id}_b'] = self.enzyme_constraints[f'EC_{enzyme.id}_b']
+        enzyme._constraints = new_constraints
+
+        # add enzyme variable
+        enzyme_variable = enzyme.enzyme_variable
+        if enzyme_variable.id not in self.variables:
+            # make enzyme variable aware of the model.
+            # The enzyme variable will be added as variable to the model in the model.setter magic function
+            enzyme_variable.model = self
+            # self.enzyme_variables.append(enzyme_variable)
+            if context:
+                context(partial(setattr, enzyme_variable, "_model", None))
+
+        # connect the enzyme to total protein constraint
+        enzyme_variable = self.enzyme_variables.get_by_id(enzyme.id)
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
+            {  # *1e-6 to make calculations more accurate (solver accuracy)
                 enzyme_variable.forward_variable: enzyme.molmass * 1e-6,
                 enzyme_variable.reverse_variable: enzyme.molmass * 1e-6,
-                }
-            )
-            self.tpc+=1
+            }
+        )
+        self.tpc += 1
 
-            # add enzyme constraints to the model and link to enzyme and reaction variables
-            #get the enzyme variable
-            enzyme_var_model = self.enzyme_variables.get_by_id(enzyme.id)
-            #connect enzyme variable to its upper and lower bound
-            if enzyme.upper_bound > self.p_tot*1e3:
-                ub = enzyme.upper_bound
+        # add enzyme constraints to the model and link to enzyme and reaction variables
+        # get the enzyme variable
+        enzyme_var_model = self.enzyme_variables.get_by_id(enzyme.id)
+        # connect enzyme variable to its upper and lower bound
+        if enzyme.upper_bound > self.p_tot * 1e3:
+            ub = enzyme.upper_bound
+        else:
+            ub = self.p_tot * 1e3
+        self, enzyme = self.make_enzyme_min_max_constraint(self, enzyme, lower_bound=enzyme.lower_bound, upper_bound=ub)
+
+        # add the enzyme to the interface between the enzyme constraints, enzyme variables and the reaction
+        for catalytic_event in enzyme.catalytic_events:
+            if catalytic_event not in self.catalytic_events:
+                # make catalytic event aware of the model.
+                # The catalytic event will be added configured in the model.setter magic function
+                catalytic_event.model = self
+                self.catalytic_events += [catalytic_event]
+                if context:
+                    context(partial(setattr, catalytic_event, "_model", None))
             else:
-                ub = self.p_tot*1e3
-            self, enzyme = self.make_enzyme_min_max_constraint(self, enzyme, lower_bound=enzyme.lower_bound, upper_bound=ub)
+                # add enzyme to the catalytic event
+                catalytic_event_model = self.catalytic_events.get_by_id(catalytic_event.id)
+                # remove block on the reaction of no enzyme constraint if this is present
+                ce_constraints = catalytic_event_model.constraints.copy()
+                for name, constraint in ce_constraints.items():
+                    if 'no_enzyme' in name:
+                        del catalytic_event_model.constraints[name]
+                        self.remove_cons_vars([constraint])
 
-            # add the enzyme to the interface between the enzyme constraints, enzyme variables and the reaction
-            for catalytic_event in enzyme.catalytic_events:
-                if catalytic_event not in self.catalytic_events:
-                    # make catalytic event aware of the model.
-                    # The catalytic event will be added configured in the model.setter magic function
-                    catalytic_event.model = self
-                    self.catalytic_events += [catalytic_event]
-                    if context:
-                        context(partial(setattr, catalytic_event, "_model", None))
-                else:
-                    # add enzyme to the catalytic event
-                    catalytic_event_model = self.catalytic_events.get_by_id(catalytic_event.id)
-                    #remove block on the reaction of no enzyme constraint if this is present
-                    ce_constraints = catalytic_event_model.constraints.copy()
-                    for name, constraint in ce_constraints.items():
-                        if 'no_enzyme' in name:
-                            del catalytic_event_model.constraints[name]
-                            self.remove_cons_vars([constraint])
-
+                if enzyme not in catalytic_event_model.enzymes:
                     catalytic_event_model.add_enzymes({enzyme: enzyme.rxn2kcat[catalytic_event.rxn_id]})
 
-                    # replace the catalytic event with the already existing event from the model
-                    enzyme.catalytic_events._replace_on_id(catalytic_event_model)
+                # replace the catalytic event with the already existing event from the model
+                enzyme.catalytic_events._replace_on_id(catalytic_event_model)
 
-            #connect the enzyme to each of the reactions it is associated with
-            for rxn, kcatdict in enzyme.rxn2kcat.items():
-                # link enzymatic variable to reaction via the turnover number kcat
-                for direction, kcat in kcatdict.items():
-                    # check direction
-                    if direction != 'f' and direction != 'b':
-                        warnings.warn(['Invalid kcat direction encountered for ', catalytic_event.id, direction])
-                        continue
+        # connect the enzyme to each of the reactions it is associated with
+        for rxn, kcatdict in enzyme.rxn2kcat.items():
+            # link enzymatic variable to reaction via the turnover number kcat
+            for direction, kcat in kcatdict.items():
+                # check direction
+                if direction != 'f' and direction != 'b':
+                    warnings.warn(['Invalid kcat direction encountered for ', catalytic_event.id, direction])
+                    continue
 
-                    # create enzyme constraint for the reaction if not existent already
-                    constraint_id = 'EC_' + enzyme.id + '_' + direction
-                    if constraint_id not in self.enzyme_constraints.keys():
-                        self.add_enzyme_constraints([constraint_id])
+                # create enzyme constraint for the reaction if not existent already
+                constraint_id = 'EC_' + enzyme.id + '_' + direction
+                if constraint_id not in self.enzyme_constraints.keys():
+                    self.add_enzyme_constraints([constraint_id])
 
-                    # kcat is used as a coefficient for the enzyme concentration
-                    # Get existent forward/reverse variables
-                    coeff = kcat*3600*1e-6 #3600 to convert to /h to /s *1e-6 to make calculations more accurate
-                    if direction == 'f':
-                        self.constraints[constraint_id].set_linear_coefficients(
-                            {enzyme_var_model.forward_variable: -1,
-                              self.reactions.get_by_id(rxn).forward_variable: 1/coeff
-                            })
-                    elif direction == 'b':
-                        self.constraints[constraint_id].set_linear_coefficients(
-                            {enzyme_var_model.reverse_variable: -1,
-                             self.reactions.get_by_id(rxn).reverse_variable: 1/coeff
-                            })
+                # kcat is used as a coefficient for the enzyme concentration
+                # Get existent forward/reverse variables
+                self._change_kcat_in_enzyme_constraint(rxn, enzyme.id,
+                                                       direction, kcat)
+                if direction == 'f':
+                    self.constraints[constraint_id].set_linear_coefficients(
+                        {enzyme_var_model.forward_variable: -1,
+                         })
+                elif direction == 'b':
+                    self.constraints[constraint_id].set_linear_coefficients(
+                        {enzyme_var_model.reverse_variable: -1,
+                         })
 
-                    # make reaction-enzyme interface and the enzyme variable aware of its participation in the constraint
-                    catalytic_event_model.constraints[enzyme.id] = self.constraints[constraint_id]
-                    enzyme_var_model.constraints[constraint_id] = self.constraints[constraint_id]
-                    self.solver.update()
+                # make reaction-enzyme interface and the enzyme variable aware of its participation in the constraint
+                catalytic_event_model.constraints[enzyme.id] = self.constraints[constraint_id]
+                enzyme_var_model.constraints[constraint_id] = self.constraints[constraint_id]
+                self.solver.update()
+
+        # check if all genes are in the model
+        for genes_or in enzyme.genes:
+            for gene_and in genes_or:
+                if not gene_and in self.genes:
+                    self.genes.append(gene_and)
 
     def add_sectors(self, sectors: List = None):
         """
@@ -736,17 +762,17 @@ class PAModel(Model):
     @staticmethod
     def make_enzyme_min_max_constraint(m: Optional[Model], enz: Enzyme, lower_bound: float, upper_bound:float):
         """
-        Adding variables and constraints for the lower and upperbounds of a reaction to a model.
+        Adding variables and constraints for the lower and upperbounds of an Enzyme to a model.
         When solving the model, shadow prices for the lower and upperbounds will be calculated.
         This allows for the calculation of sensitivity coefficients. The constraints are formulated as follows:
-        R_ub : E <= Emax
-        R_lb : -E <= -Emin
+        enz_max : E <= Emax
+        enz_min : -E <= -Emin
 
         Parameters
         ----------
         m: cobra.Model or PAModelpy.PAModel
             model to which the upper and lowerbound constraints and variables should be added
-        rxn: PAModelpy.Enzyme
+        enz: PAModelpy.Enzyme
             Enzyme for which minimal and maximal concentration constraints should be generated
         lower_bound: float
             Value of the lowerbound
@@ -835,19 +861,16 @@ class PAModel(Model):
 
         Definition: constraint_UB*shadowprice/obj_value.
 
-        :param obj_value: Float
-        :param mu: DataFrame
-            Shadowprices for all constraints
-        :param mu_ub: DataFrame
-            Shadowprices for the reaction UB constraints
-        :param mu_lb: DataFrame
-            Shadowprices for the reaction LB constraints
-        :param mu_ec_f: DataFrame
-            Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
-        :param mu_ec_b: DataFrame
-            Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
-
         Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
+
+        Args:
+            obj_value: Float: optimal objective value, commonly maximal growth rate under specific conditions
+            mu: DataFrame: shadowprices for all constraints
+            mu_ub: DataFrame: Shadowprices for the reaction UB constraints
+            mu_lb: DataFrame: Shadowprices for the reaction LB constraints
+            mu_ec_f: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+            mu_ec_b: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+
         """
         self.capacity_sensitivity_coefficients = pd.DataFrame(columns=['rxn_id', 'enzyme_id', 'constraint', 'coefficient'])
         # add capacity sensitivity coefficients for sectors if they are there
@@ -865,17 +888,14 @@ class PAModel(Model):
             #treat sectors separately if there is not a total protein constraint
         else:
             for sector in self.sectors:
-                try:
-                    constraint = 'sector'
-                    rxn_id = 'R_' + sector.id
-                    enzyme_id = sector.id
-                    ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
+                constraint = 'sector'
+                rxn_id = 'R_' + sector.id
+                enzyme_id = sector.id
+                ca_coefficient = self.constraints[enzyme_id].ub * mu[mu['rxn_id'] == sector.id]['shadow_prices'].iloc[0] / obj_value
 
-                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
-                    # add new_row to dataframe
-                    self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
-                except:
-                    continue
+                new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+                # add new_row to dataframe
+                self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
 
         for rxn in self.reactions:
             # LB
@@ -895,24 +915,57 @@ class PAModel(Model):
             self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_LB
 
         for enzyme in self.enzymes:
-            # get reactions associated with this enzyme
-            reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
-            # get the right row from the shadow price dataframes
-            # min constraints can be skipped as they always equal to 0 (the enzymes cannot have a concentration lower than 0)
-            mu_ec_max_row = mu_ec_f[mu_ec_f['index'] == f'{enzyme.id}_max']
-            mu_ec_min_row = mu_ec_b[mu_ec_b['index'] == f'{enzyme.id}_min']
+            self.calculate_enzyme_csc(enzyme, mu_ec_f, mu_ec_b, obj_value)
 
-            # max Enzyme constraint
-            ca_coefficient_EC_max= self.constraints[f'{enzyme.id}_max'].ub * mu_ec_max_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_max =[reactions, enzyme.id, 'enzyme_max', ca_coefficient_EC_max]
-            # add new_row to dataframe
-            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_enzyme_row_EC_max
+    def calculate_csc_for_molecule(self, molecule: Union[Enzyme],
+                                   mu_min:pd.DataFrame, mu_max:pd.DataFrame, obj_value:float,
+                                   constraint_type:str, associated_reactions:str):
+        """
+        Calculate the capacity sensitivity coefficients (CSCs) for constraints related to a biomolecule,
+        such as enzymes. These coefficients reflect the effect of infitesmal changes in the constraint bounds
+        on the objective function.
 
-            # min Enzyme constraint
-            ca_coefficient_EC_min = self.constraints[f'{enzyme.id}_min'].ub * mu_ec_min_row['shadow_prices'].iloc[0] / obj_value
-            new_enzyme_row_EC_min =[reactions, enzyme.id, 'enzyme_min', ca_coefficient_EC_min]
-            # add new_row to dataframe
-            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_enzyme_row_EC_min
+        The coefficients and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+        Args:
+           enzyme:Enzyme: enzyme object to calculate CSC for
+           mu_min: DataFrame: Shadowprices for the constraint related to a lower bound/minimum
+           mu_max: DataFrame: Shadowprices for the constraint related to an upper bound/maximum
+           obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
+        """
+        # get the right row from the shadow price dataframes
+        mu_max_row = mu_max[mu_max['index'] == f'{molecule.id}_max']
+        mu_min_row = mu_min[mu_min['index'] == f'{molecule.id}_min']
+
+        # Calculate sensitivity coefficients for maximum constraint
+        if f'{molecule.id}_max' in self.constraints.keys():
+            ca_coefficient_max = self.constraints[f'{molecule.id}_max'].ub * mu_max_row['shadow_prices'].iloc[0] / obj_value
+            new_row_max = [associated_reactions, molecule.id, f'{constraint_type}_max', ca_coefficient_max]
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_max
+
+        # Calculate sensitivity coefficients for minimum constraint
+        if f'{molecule.id}_min' in self.constraints.keys():
+            ca_coefficient_min = self.constraints[f'{molecule.id}_min'].ub * mu_min_row['shadow_prices'].iloc[0] / obj_value
+            new_row_min = [associated_reactions, molecule.id, f'{constraint_type}_min', ca_coefficient_min]
+            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_min
+
+
+    def calculate_enzyme_csc(self, enzyme:Enzyme, mu_ec_f:pd.DataFrame, mu_ec_b:pd.DataFrame, obj_value:float):
+        """
+        Calculate the capacity sensitivity coefficients (CSCs) for constraints related to enzyme. These coefficients
+        reflect the effect of infitesmal changes in the constraint bounds on the objective function. The coefficients
+        and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+        The function makes use of the abstracted function calculate_csc_for_molecule
+
+        Args:
+            enzyme:Enzyme: enzyme object to calculate CSC for
+            mu_ec_f: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+            mu_ec_b: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+            obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
+        """
+        reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
+        self.calculate_csc_for_molecule(enzyme, mu_ec_b, mu_ec_f, obj_value, 'enzyme', reactions)
 
     def calculate_esc(self, obj_value, mu_ec_f, mu_ec_b):
         """
@@ -1059,6 +1112,34 @@ class PAModel(Model):
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
 
+    def get_reaction_bounds(self, rxn_id:str) -> Tuple[Union[float, int]]:
+        """
+        Get the reaction bounds. If there should be a sensitivity analysis, the bounds of the upper and lower bound
+        constraints returned
+        Args:
+        rxn_id: str
+            string of reaction id to return
+        """
+        if rxn_id not in self.reactions:
+            warnings.warn(f'Reaction {rxn_id} does not exist in the model. Cannot get the upper- and lowerbound.')
+            return
+        #make sure the order of setting is right to prevent errors
+        lb = self.get_reaction_lb(rxn_id)
+        ub = self.get_reaction_ub(rxn_id)
+        return lb, ub
+
+    def get_reaction_ub(self, rxn_id:str) -> Union[int, float]:
+        if self.sensitivity:
+            return self.constraints[rxn_id + '_ub'].ub
+        else:
+            return self.reactions.get_by_id(rxn_id).upper_bound
+
+    def get_reaction_lb(self,rxn_id:str):
+        if self.sensitivity:
+            return -self.constraints[rxn_id + '_lb'].ub
+        else:
+            return self.reactions.get_by_id(rxn_id).lower_bound
+
     def change_enzyme_bounds(self, enzyme_id: str, lower_bound: float = None, upper_bound: float = None):
         """
                 Change the enzyme bounds. If the model should be primed for performing a sensitivity analysis,
@@ -1097,7 +1178,7 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
-    def get_enzymes_with_reaction_id(self, rxn_id:str):
+    def get_enzymes_with_reaction_id(self, rxn_id:str) -> DictList:
         """
         Returns Enzyme objects associated with the reaction id through CatalyticEvent objects
         :param rxn_id: str
@@ -1107,6 +1188,9 @@ class PAModel(Model):
         -------
             DictList of Enzyme objects associated with the reaction
         """
+        if rxn_id not in self.reactions:
+            warnings.warn(f'Reaction {rxn_id} is not in the model')
+            return DictList()
         catalytic_event_id = 'CE_' + rxn_id
         catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id)
         enzymes = catalytic_event.enzymes
@@ -1142,6 +1226,26 @@ class PAModel(Model):
                 active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
+
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
+                                                direction: str, kcat: float):
+        constraint_id = f'EC_{enzyme_id}_{direction}'
+        if isinstance(rxn, str):
+            rxn = self.reactions.get_by_id(rxn)
+        # change kcat value in the constraint
+        if kcat == 0:
+            coeff = 0
+        else:
+            coeff = 1 / (kcat * 3600 * 1e-6) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
+        if direction == 'f':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.forward_variable: coeff
+            })
+        elif direction == 'b':
+            self.constraints[constraint_id].set_linear_coefficients({
+                rxn.reverse_variable: coeff
+            })
+        self.solver.update()
 
     def remove_enzymes(self,
                        enzymes: Union[str, Enzyme, List[Union[str, Enzyme]]]
@@ -1192,6 +1296,48 @@ class PAModel(Model):
             associated_groups = self.get_associated_groups(enzyme)
             for group in associated_groups:
                 group.remove_members(enzyme)
+
+    def remove_enzyme_reaction_association(self,
+                                           enzyme: Union[str, Enzyme],
+                                           reaction: Union[str, Reaction],
+                                           )-> None:
+        """Remove an enzyme-reaction association from the model. Adapted from the cobra.core.remove_reactions() function.
+        If the reaction is not catalyzed by any enzyme anymore, the reaction ub will become 0
+
+                Args:
+                enzyme : Enzyme or str
+                    An enzyme, or the enzyme id for which the association should be removed to remove.
+                reaction : Reaction or str
+                    A reaction, or the reaction id for which the association should be removed to remove.
+
+                """
+
+        if isinstance(reaction, str): reaction = self.reactions.get_by_id(reaction)
+
+        try:
+            enzyme = self.enzymes[self.enzymes.index(enzyme)]
+        except ValueError:
+            warnings.warn(f"{enzyme.id} not in {self}")
+
+        #remove enzyme from catalytic event
+        catalytic_event = self.catalytic_events.get_by_id('CE_' + reaction.id)
+
+        # removing catalytic event from the enzymes
+        for enzyme in catalytic_event.enzymes:
+            if catalytic_event in enzyme.catalytic_events:
+                enzyme.remove_catalytic_event(catalytic_event)
+
+        for enzyme_var in catalytic_event.enzyme_variables:
+            if catalytic_event in enzyme_var.catalytic_events:
+                enzyme_var.remove_catalytic_event(catalytic_event)
+
+        #remove reaction from enzyme constraint
+        for constraint in enzyme._constraints.values():
+            constraint.set_linear_coefficients(
+                {reaction.forward_variable:0,
+                 reaction.reverse_variable:0
+                }
+            )
 
     def remove_reactions(
         self,
@@ -1506,7 +1652,8 @@ class PAModel(Model):
         self.objective.set_linear_coefficients({v: 1.0 for v in variables})
 
         #run pFBA
-        self.optimize()
+        sol = self.optimize()
+        return sol
 
     def reset_objective(self):
         """
