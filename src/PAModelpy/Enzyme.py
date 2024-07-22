@@ -39,10 +39,9 @@ class Enzyme(Object):
             - Other: a single enzyme catalyzes a single reaction.
     """
 
-    
     # constant parameters
     DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
-    
+
     def __init__(
         self,
         id: str,
@@ -54,32 +53,36 @@ class Enzyme(Object):
         name: Optional[str] = None,
         molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
     ):
-
         self.rxn2kcat = rxn2kcat
         self.rxn2pr = rxn2pr
         self.molmass = molmass
-        self.id = id # use e.g. Uniprot ID
+        self.id = id  # use e.g. Uniprot ID
         self.name = name
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
 
-        #create enzyme variable associated with theis enzyme
+        # create enzyme variable associated with theis enzyme
         self.enzyme_variable = None
         self.create_enzyme_variable()
 
-        self.catalytic_event_id = 'CE_' + '{0}' # generic template for the catalytic events IDs
+        self.catalytic_event_id = (
+            "CE_" + "{0}"
+        )  # generic template for the catalytic events IDs
         # initialize CatalyticEvent interfaces for each associated reaction (promiscuity)
         self.catalytic_events = DictList()
         for rxn_id, kcats in rxn2kcat.items():
             self.create_catalytic_event(rxn_id, kcats)
 
-        self._constraints = {} # dict with constraint_id:optlang.Constraint, key:value pairs.
+        self._constraints = (
+            {}
+        )  # dict with constraint_id:optlang.Constraint, key:value pairs.
         self._model = None
-        self.enzyme_complex = [] #is the enzyme in a complex?
+        self.enzyme_complex = []  # is the enzyme in a complex?
         self.genes = genes
         self.transcripts = DictList()
-        self.annotation = {'type':'Constraint'}#you can add an annotation for an enzyme
-     
+        self.annotation = {
+            "type": "Constraint"
+        }  # you can add an annotation for an enzyme
     @property
     def kcat_values(self):
         """Returns a dictionary with kcat values for each associated reaction.
@@ -197,7 +200,7 @@ class Enzyme(Object):
         Returns:
             Variables.CatalyticEvent: Enzyme variable object of type Variables.CatalyticEvent.
         """
-        
+
         # create unique enzyme object name and id
         catalytic_event_id = self.catalytic_event_id.format(rxn_id)
         if self.name is not None:
@@ -257,11 +260,11 @@ class Enzyme(Object):
         Returns:
             Dict: A dictionary containing kcat values for the forward (f) and backward (b) reactions.
         """
-        
+
         if isinstance(rxn_ids, str):
             rxn_ids = [rxn_ids]
-         
-        rxn2kcat = {}   
+
+        rxn2kcat = {}
         if rxn_ids is None:
             # return all kcat values
             rxn2kcat = self.rxn2kcat
@@ -277,7 +280,7 @@ class Enzyme(Object):
 
         if len(rxn_ids) == 1:
             return rxn2kcat[rxn_id]
-                    
+
         return rxn2kcat
 
     def remove_catalytic_event(self, catalytic_event: Union[CatalyticEvent, str]):
@@ -342,21 +345,21 @@ class EnzymeComplex(Enzyme):
     DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
 
     def __init__(
-            self,
-            id: str,
-            rxn2kcat: Dict,
+        self,
+        id: str,
+        rxn2kcat: Dict,
             enzymes: DictList = DictList(),
-            genes: list = [],
+        genes: list = [],
             upper_bound: Union[int, float] = 1000.0,
             name: Optional[str] = None,
             molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS, ):
         super().__init__(
-            id = id,
+            id=id,
             rxn2kcat=rxn2kcat,
             genes=genes,
             upper_bound=upper_bound,
             name=name,
-            molmass=molmass
+            molmass=molmass,
         )
 
         self.reactions = list(rxn2kcat.keys())
@@ -400,29 +403,27 @@ class EnzymeVariable(Reaction):
     DEFAULT_ENZYME_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
 
     def __init__(
-            self,
-            kcats2rxns: Dict,
-            molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
-            id: Optional[str] = None,  # ID of enzymatic reaction,
-            name: str = "",
-            upper_bound: Optional[float] = None,
-            **kwargs
+        self,
+        kcats2rxns: Dict,
+        molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
+        id: Optional[str] = None,  # ID of enzymatic reaction,
+        name: str = "",
+        upper_bound: Optional[float] = None,
+        **kwargs,
     ):
         super().__init__(
             id=id,
             name=name,
-            subsystem='Enzymes',
+            subsystem="Enzymes",
             lower_bound=-upper_bound,
             upper_bound=upper_bound,
-            **kwargs
+            **kwargs,
         )
         self.kcats = kcats2rxns
         self.molmass = molmass
         self.rxn_ids = [rxn for rxn in kcats2rxns.keys()]
-        self.enzyme = None  # store the enzyme associated to the enzyme variable
-        self.catalytic_events = (
-            DictList()
-        )  # store the interfaces to reactions related to this enzyme
+        self.enzyme = None #store the enzyme associated to the enzyme variable
+        self.catalytic_events = DictList() #store the interfaces to reactions related to this enzyme
         self.reactions = DictList()
         self.constraints = {}  # store IDs of constraint the enzyme is associated with
         self._model = None
@@ -571,7 +572,6 @@ class EnzymeVariable(Reaction):
             "reverse_variable": reverse_variable,
         }
         self._model.add_cons_vars([forward_variable, reverse_variable])
-
 
         # add catalytic event and reaction instances
         for rxn_id in self.rxn_ids:
@@ -731,7 +731,7 @@ class EnzymeVariable(Reaction):
                 self._model.reactions.get_by_id(reaction)
             # if not: add the enzyme to the model
             except:
-                rxn = Reaction(id = reaction)
+                rxn = Reaction(id=reaction)
                 self._model.add_reactions([rxn])
 
             rxn = self._model.reactions.get_by_id(reaction)
@@ -759,6 +759,7 @@ class EnzymeVariable(Reaction):
                     self.constraints[f'EC_{self.id}_{direction}'].set_linear_coefficients({
                         self.reverse_variable: -1
                     })
+
 
     def remove_catalytic_event(self, catalytic_event: Union[CatalyticEvent, str]):
         """Remove a catalytic event from an enzyme.

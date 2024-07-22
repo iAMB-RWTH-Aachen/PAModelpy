@@ -1,3 +1,10 @@
+---
+title: 'Introduction'
+sidebar_position: 1
+sidebar_title: 'Introduction'
+slug: '/'
+---
+
 # PAModelpy - Protein Allocation Model reconstruction in Python
 *******
 
@@ -25,7 +32,7 @@ We have extended this package with the following features:
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
 ## What can you find where in this repository?
-This repository contains not only the source code, but also examples and scripts which were used in [publication](linktopublication).
+This repository contains not only the source code, but also examples and scripts which were used in **INSERT PUBLICATION HERE**.
 - **Data**
   - *eGFP_expression_Bienick2014*: measured growth rate and eGFP expression by [Bienick et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0109105)
   - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
@@ -49,6 +56,13 @@ This repository contains not only the source code, but also examples and scripts
 - **Enzyme**: Different classes which relate enzymes to the model with enzyme constraints and variables.
 - **CatalyticEvent**: A class which serves as an interface between reactions and enzyme. This allows for easy lookup of Protein-Reaction assocations.
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
+
+For the technical users, the following UML diagram gives an overview of the model structure and the software architecture. Please be aware that the Config object is not shown in this UML diagram,
+as this object is merely used to transfer identifiers from one object to another in the software.
+
+![PAModelUML](PAModelpy_UML.svg)
+
+*UML diagram of the PAModelpy software. Not all attributes and functions are shown. Those who are shown are assumes to be most descriptive for the objects function.*
 
 ## Dependencies
 Dependencies for the scripts in this repository, not included in the PAModelpy package:
