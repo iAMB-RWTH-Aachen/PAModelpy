@@ -1611,6 +1611,8 @@ class PAModel(Model):
             sectors = [sectors]
 
         for sector in sectors:
+            if isinstance(sector, str): sector = self.sectors.get_by_id(sector)
+
             print(f"Removing the following protein sector: {sector.id}\n")
             # remove the connection to the model
             sector._model = None
@@ -1621,52 +1623,100 @@ class PAModel(Model):
             except ValueError:
                 warnings.warn(f"{sector.id} not in {self}")
 
-            # remove the sector from the total protein if it is there
-            if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
-                # remove parts of constraint corresponding to the enzyme sector from the total_protein_constraint
-                # 1. add the intercept value from the sum of protein (Total_protein == Etot)
-                tpc_ub = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub
-                self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
-                    tpc_ub + sector.intercept
-                )
-
-                # 2. remove link between flux and enzyme concentration
-                # link enzyme concentration in the sector to the total enzyme concentration
-                lin_rxn = self.reactions.get_by_id(sector.id_list[0])
-                self.constraints[
-                    self.TOTAL_PROTEIN_CONSTRAINT_ID
-                ].set_linear_coefficients(
-                    {lin_rxn.forward_variable: 0, lin_rxn.reverse_variable: 0}
-                )
-
+            # check if the sector is the ActiveEnzymeSector, this needs to have a different removal mechanism
+            if isinstance(sector, ActiveEnzymeSector):
+                self.remove_active_enzymes_sector(sector)
             else:
-                # remove the associated constraints
-                for constraint in sector.constraints:
-                    if isinstance(constraint, Enzyme):
-                        self.remove_enzymes([constraint])
-                    # check if constraint is in the solver
-                    if constraint in self.constraints.values():
-                        self.remove_cons_vars([constraint])
-                        self.solver.update()
+                self.remove_linear_sector(sector)
 
-                # remove the associated variables
-                for variable in sector.variables:
-                    if isinstance(variable, CatalyticEvent):
-                        self.remove_catalytic_events([variable])
-                    else:
-                        self.remove_cons_vars([variable])
-                        self.solver.update()
-                        # remove reference to the sector variables in all groups
-                        associated_groups = self.get_associated_groups(variable)
-                        for group in associated_groups:
-                            group.remove_members(variable)
+    def remove_active_enzymes_sector(self, sector: ActiveEnzymeSector) -> None:
+        """
+            Remove an active enzyme sector from the model.
 
-                # remove sector constraint from model easy lookup:
-                del self.sector_constraints[sector.id]
+            This function performs the following steps:
+            1. Removes all enzymes associated with the sector.
+            2. Removes all catalytic events associated with the sector.
+            3. If a total protein constraint exists, it removes this constraint.
+            4. Deletes the sector constraint from the model's easy lookup.
+            5. Removes the sector from the model and disconnects its link to the model.
 
-            # remove the sector and its connection to the model
-            self.sectors.remove(sector)
-            sector._model = None
+            Args:
+                sector (ActiveEnzymeSector): The active enzyme sector to be removed.
+
+            Returns:
+                None
+            """
+
+        self.remove_enzymes(self.enzymes.copy())
+        self.remove_catalytic_events(self.catalytic_events)
+        if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
+            # remove total_protein_constraint
+            self.remove_cons_vars(self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID])
+
+        # remove the sector and its connection to the model
+        self.sectors.remove(sector)
+        sector._model = None
+
+    def remove_linear_sector(self, sector: Union[UnusedEnzymeSector, TransEnzymeSector, CustomSector]) -> None:
+        """
+            Remove a linear sector from the model.
+
+            This function performs the following steps:
+            1. If a total protein constraint exists, it adjusts the constraint to remove the sector's contribution.
+            2. Removes the associated constraints and variables.
+            3. Deletes the sector constraint from the model's easy lookup.
+            4. Removes the sector from the model and disconnects its link to the model.
+
+            Args:
+                sector (Union[UnusedEnzymeSector, TransEnzymeSector, CustomSector]): The linear sector to be removed.
+
+            Returns:
+                None
+            """
+        # remove the sector from the total protein if it is there
+        if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
+            # remove parts of constraint corresponding to the enzyme sector from the total_protein_constraint
+            # 1. add the intercept value from the sum of protein (Total_protein == Etot)
+            tpc_ub = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub
+            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = tpc_ub + sector.intercept
+
+            # 2. remove link between flux and enzyme concentration
+            # link enzyme concentration in the sector to the total enzyme concentration
+            lin_rxn = self.reactions.get_by_id(sector.id_list[0])
+            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
+                lin_rxn.forward_variable: 0,
+                lin_rxn.reverse_variable: 0
+            })
+
+        else:
+
+            # remove the associated constraints
+            for constraint in sector.constraints:
+                if isinstance(constraint, Enzyme):
+                    self.remove_enzymes([constraint])
+                # check if constraint is in the solver
+                if constraint in self.constraints.values():
+                    self.remove_cons_vars([constraint])
+                    self.solver.update()
+
+            # remove the associated variables
+            for variable in sector.variables:
+                if isinstance(variable, CatalyticEvent):
+                    self.remove_catalytic_events([variable])
+                else:
+                    self.remove_cons_vars([variable])
+                    self.solver.update()
+                    # remove reference to the sector variables in all groups
+                    associated_groups = self.get_associated_groups(variable)
+                    for group in associated_groups:
+                        group.remove_members(variable)
+
+            # remove sector constraint from model easy lookup:
+            del self.sector_constraints[sector.id]
+
+        # remove the sector and its connection to the model
+        self.sectors.remove(sector)
+        sector._model = None
 
     def test(self, glc_flux: Union[int, float] = 10):
         """

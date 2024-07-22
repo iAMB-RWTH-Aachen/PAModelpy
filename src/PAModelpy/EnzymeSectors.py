@@ -263,10 +263,8 @@ class ActiveEnzymeSector(Sector):
         directions = []
         kcats = []
         for enzyme_info in enzyme_dict.values():
-            # get all directions from the kcat dictfor key, value in enzyme_info.items():
-                if key == 'f' or key =='b':
-                    directions += [key]
-                    for key, value in enzyme_info.items():
+            # get all directions from the kcat dict
+            for key, value in enzyme_info.items():
                 if key == 'f' or key =='b':
                     directions += [key]
                     kcats += [value]
