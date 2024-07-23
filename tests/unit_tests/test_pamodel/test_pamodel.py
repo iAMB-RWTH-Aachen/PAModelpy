@@ -2,6 +2,7 @@ import pytest
 from cobra.io import load_json_model
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from tests.unit_tests.test_pamodel.test_pam_generation import set_up_toy_pam_with_isozymes_and_enzymecomplex
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
@@ -154,6 +155,31 @@ def test_if_pamodel_remove_sectors_can_remove_translational_protein_sector():
     # Assert
     assert toy_pam.constraints[toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID].ub == tpc_ub + sector.intercept
     assert all(coeff == 0 for coeff in lin_coeff.values())
+
+def test_if_pamodel_remove_enzymes_removes_all_constraints():
+    # Arrange
+    toy_pam = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity=False)
+    enz_to_remove = 'E10'
+    ce_names = ['CE_R3_E3_E10_E11', 'R2_E10']
+    ec_names = ['EC_E3_E10_E11_f', 'EC_E3_E10_E11_b', 'EC_E10_f', 'EC_E10_b']
+
+    # Act
+    toy_pam.remove_enzymes(enz_to_remove)
+
+    # Assert
+    # catalytic events should be removed
+    for ce in ce_names:
+        assert ce not in list(toy_pam.reactions)
+
+    # constraints should be removed
+    for ec in ec_names:
+        assert not any(ec==key for key in toy_pam.constraints.keys())
+
+    # enzymes and enzyme variables should not be there
+    assert len(toy_pam.enzymes.query(enz_to_remove)) == 0
+    assert len(toy_pam.enzyme_variables.query(enz_to_remove)) == 0
+
+
 
 #######################################################################################################
 #HELPER METHODS

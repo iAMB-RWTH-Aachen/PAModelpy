@@ -1424,6 +1424,10 @@ class PAModel(Model):
             self.enzymes.remove(enzyme)
             enzyme._model = None
 
+            # remove enzyme complexes related to this enzyme
+            for complex in self.enzymes.query(enzyme.id):
+                self.remove_enzymes(complex)
+
             # remove variable related to the enzyme
             self.enzyme_variables.remove(enzyme.enzyme_variable)
             forward = enzyme.enzyme_variable.forward_variable
