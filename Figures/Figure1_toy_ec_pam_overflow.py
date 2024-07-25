@@ -182,10 +182,13 @@ def plot_sensitivities(fig, grdspec, glc_rates, mu_list, substrate, byproduct, t
     sub = mu_ax.plot(glc_rates, substrate, color='orange', linewidth=3)
     byp = mu_ax.plot(glc_rates, byproduct, color='purple', linewidth=3)
     prot_ax = mu_ax.twinx()
-    etotact = prot_ax.plot(glc_rates, total_active_protein, color = 'darkred', linewidth = 3, linestyle = 'dotted')
+    etotact = prot_ax.plot(glc_rates, [p*10 for p in total_active_protein], color = 'darkred', linewidth = 3, linestyle = 'dotted')
     prot_ax.set_ylabel('active enzyme sector (AES) ($g/g_{protein}$)')
-    prot_ax.set_ylim([0.49,0.4902])
-    prot_ax.set_yticks([0.49,0.4901,0.4902])
+    prot_ax.set_ylim([4.9,4.9022])
+    prot_ax.annotate('$\cdot 10^{-1}$',xy=(0.98, 0.1), xycoords='figure fraction',
+                   xytext=(0.98, 1.1), textcoords='axes fraction',
+                   va='top', ha='left', fontsize=FONTSIZE*0.65)
+    prot_ax.set_yticks([4.9,4.901,4.902])
     mu_ax.legend([sub, byp, mu, etotact], labels = ['R1', 'R9', 'R7', 'AES'], handles=sub+byp+mu+etotact,loc = 'upper left')
     mu_ax.xaxis.set_visible(False)
     # mu_ax.legend([mu], labels=['growth rate'], loc='center left')

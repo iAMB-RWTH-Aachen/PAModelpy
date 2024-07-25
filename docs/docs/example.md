@@ -80,9 +80,13 @@ associations required to build the protein-reaction relations in the model. It h
 ```json
 {'R1':
     {'E1':
-        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'protein_reaction_relation': [['E1']]},
+        {'f': forward kcat, 'b': backward kcat, 
+          'molmass': molar mass, 
+          'protein_reaction_relation': [['E1']]},
      'E2':
-        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass, 'protein_reaction_relation': [['E1']]}
+        {'f': forward kcat, 'b': backward kcat, 
+          'molmass': molar mass, 
+          'protein_reaction_relation': [['E1']]}
     }
 }
 ```
