@@ -2,6 +2,7 @@ import pytest
 from cobra.io import load_json_model
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from tests.unit_tests.test_pamodel.test_pam_generation import set_up_toy_pam_with_isozymes_and_enzymecomplex
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
@@ -154,6 +155,18 @@ def test_if_pamodel_remove_sectors_can_remove_translational_protein_sector():
     # Assert
     assert toy_pam.constraints[toy_pam.TOTAL_PROTEIN_CONSTRAINT_ID].ub == tpc_ub + sector.intercept
     assert all(coeff == 0 for coeff in lin_coeff.values())
+
+def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
+    # Arrange
+    sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity = False)
+    enzyme_ut = 'E10'
+    associated_enzymes = ['E10', 'E3_E10_E11']
+
+    # Assert
+    catalyzing_enzymes = sut._get_catalyzing_enzymes_for_enzyme(enzyme_ut)
+
+    # Assert
+    assert all(enz in catalyzing_enzymes for enz in associated_enzymes)
 
 #######################################################################################################
 #HELPER METHODS

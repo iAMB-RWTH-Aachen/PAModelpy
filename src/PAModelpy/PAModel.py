@@ -1001,8 +1001,35 @@ class PAModel(Model):
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row_LB
 
+        print(self.enzymes)
         for enzyme in self.enzymes:
-            self.calculate_enzyme_csc(enzyme, mu_ec_f, mu_ec_b, obj_value)
+            for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
+                ce = self.enzymes.get_by_id(catalyzing_enzyme)
+                self.calculate_enzyme_csc(ce, mu_ec_f, mu_ec_b, obj_value)
+
+    def _get_catalyzing_enzymes_for_enzyme(self, enzyme:Union[Enzyme, str])-> list:
+        """ Retrieves those enzymes which are associated with a constraint
+
+        Enzymes which are only present in an enzyme complex are thus ignored
+
+        Args:
+            enzyme: Enzyme object or enzyme identifier
+
+        Returns:
+
+        """
+        if isinstance(enzyme, Enzyme):
+            enzyme_id = enzyme.id
+        else:
+            enzyme_id = enzyme
+
+        #get all associated constraints
+        associated_constraints = ["_".join(cid.split("_")[:-1]) for cid in self.constraints.keys() if (enzyme_id in cid)&("_max" in cid)] # enzymes always have a min and max constraint
+        #remove the constraints associated with a reaction
+        associated_enzymes = [cid for cid in associated_constraints if not any([rxn.id in cid for rxn in self.reactions])]
+        # removing duplicates and empty strings
+        associated_enzymes = list(set([enz for enz in associated_enzymes if len(enz)>0]))
+        return associated_enzymes
 
     def calculate_csc_for_molecule(self, molecule: Union[Enzyme],
                                    mu_min:pd.DataFrame, mu_max:pd.DataFrame, obj_value:float,
@@ -1079,27 +1106,29 @@ class PAModel(Model):
 
         # calculate enzyme sensitivity coefficient
         for enzyme in self.enzymes:
-            # get the reactions associated with the enzyme
-            reactions = ",".join(self.get_reactions_with_enzyme_id(enzyme.id))
+            for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
 
-            # get the right row from the shadow price dataframes
-            sp_ec_f = mu_ec_f[mu_ec_f["rxn_id"] == f"EC_{enzyme.id}"][
-                "shadow_prices"
-            ].iloc[0]
-            sp_ec_b = mu_ec_b[mu_ec_b["rxn_id"] == f"EC_{enzyme.id}"][
-                "shadow_prices"
-            ].iloc[0]
-            e_fwd = self.enzyme_variables.get_by_id(enzyme.id).forward_variable.primal
-            e_rev = self.enzyme_variables.get_by_id(enzyme.id).reverse_variable.primal
+                # get the reactions associated with the enzyme
+                reactions = ",".join(self.get_reactions_with_enzyme_id(catalyzing_enzyme))
 
-            # EC: enzyme constraint
-            enzyme_sensitivity_coefficient = (
-                e_fwd * sp_ec_f + e_rev * sp_ec_b
-            ) / obj_value
-            # add new_row to dataframe
-            self.enzyme_sensitivity_coefficients.loc[
-                len(self.enzyme_sensitivity_coefficients)
-            ] = [reactions, enzyme.id, enzyme_sensitivity_coefficient]
+                # get the right row from the shadow price dataframes
+                sp_ec_f = mu_ec_f[mu_ec_f["rxn_id"] == f"EC_{catalyzing_enzyme}"][
+                    "shadow_prices"
+                ].iloc[0]
+                sp_ec_b = mu_ec_b[mu_ec_b["rxn_id"] == f"EC_{catalyzing_enzyme}"][
+                    "shadow_prices"
+                ].iloc[0]
+                e_fwd = self.enzyme_variables.get_by_id(catalyzing_enzyme).forward_variable.primal
+                e_rev = self.enzyme_variables.get_by_id(catalyzing_enzyme).reverse_variable.primal
+
+                # EC: enzyme constraint
+                enzyme_sensitivity_coefficient = (
+                    e_fwd * sp_ec_f + e_rev * sp_ec_b
+                ) / obj_value
+                # add new_row to dataframe
+                self.enzyme_sensitivity_coefficients.loc[
+                    len(self.enzyme_sensitivity_coefficients)
+                ] = [reactions, catalyzing_enzyme, enzyme_sensitivity_coefficient]
 
     def calculate_sum_of_enzymes(self):
         """

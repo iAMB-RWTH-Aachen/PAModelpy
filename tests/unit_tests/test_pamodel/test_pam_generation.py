@@ -101,12 +101,23 @@ def test_if_toy_pam_with_enzyme_comples_has_same_growth_rate_as_without():
 
     assert sut.objective.value == pytest.approx(toy_pam.objective.value, abs = 1e-6)
 
-# def test_set_up_ecolicore_pam_works():
-#     sut = set_up_ecolicore_pam()
-#     assert True
-# def test_set_up_ecoli_pam_works():
-#     sut = set_up_ecoli_pam()
-#     assert True
+def test_set_up_ecolicore_pam_works():
+    sut = set_up_ecolicore_pam()
+    sut.optimize()
+    assert True
+def test_if_ecolicore_pam_optimizes():
+    sut = set_up_ecolicore_pam()
+    sut.optimize()
+    assert sut.objective.value > 0
+
+def test_set_up_ecoli_pam_works():
+    sut = set_up_ecoli_pam()
+    assert True
+
+def test_if_ecoli_pam_optimizes():
+    sut = set_up_ecoli_pam()
+    sut.optimize()
+    assert sut.objective.value > 01
 
 #########################################################################################################################
 # HELPER FUNCTIONS
