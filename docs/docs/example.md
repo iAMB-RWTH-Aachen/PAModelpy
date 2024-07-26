@@ -80,12 +80,23 @@ associations required to build the protein-reaction relations in the model. It h
 ```json
 {'R1':
     {'E1':
-        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass},
+        {'f': forward kcat, 'b': backward kcat, 
+          'molmass': molar mass, 
+          'protein_reaction_relation': [['E1']]},
      'E2':
-        {'f': forward kcat, 'b': backward kcat, 'molmass': molar mass}
+        {'f': forward kcat, 'b': backward kcat, 
+          'molmass': molar mass, 
+          'protein_reaction_relation': [['E1']]}
     }
 }
 ```
+If you have a information about the gene-protein-reaction associations (e.g. 'AND'/'OR' relations between different 
+peptides/proteins for one or more reactions), this information can be added in the `protein_reaction_relation` entry
+of the reaction2protein dictionary. This entry is a list of lists, in which each sublist represent one functional
+enzyme (complex). This means if E1 and E2 catalyze the same reaction, the `protein_reaction_relation` becomes `[['E1','E2']]`
+for an enzyme complex ('AND' relation), and `[['E1']['E2']]` for isozymes ('OR' relation). In this example, we will use 
+one enzyme per reaction for simplicity. In the `Script/pam_generation_uniprot_ids.py` file you can find how you can parse
+gene-protein-reaction relations obtained from a genome-scale model and uniprot to include different enzyme relations.
 
 We need to take the following steps to get the right format:
 
@@ -128,7 +139,7 @@ for rxn, mw in molmass_dict.items():
     
 rxn2protein = {}
 for rxn, ec in rxn2ec.items():
-    ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn]}}
+    ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn], 'protein_reaction_relation': [[ec]]}}
     #add enzyme to enzymes related to reaction if these are already stored
     if rxn in rxn2protein.keys():
         rxn2protein[rxn] = {**rxn2protein[rxn], **{ec:ec_dict}}
@@ -302,7 +313,10 @@ for i in range(nmbr_reactions-3): # all reactions have an enzyme, except excreti
     rxn_id = f'R{i+1}'
     # 1e-6 to correct for the unit transformation in the model (meant to make the calculations preciser for different unit dimensions)
     #dummy molmass
-    rxn2kcat = {**rxn2kcat, **{rxn_id: {f'E{i+1}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6), 'molmass': 1e6}}}}
+    rxn2kcat = {**rxn2kcat, **{rxn_id: {f'E{i+1}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6), 
+                                                   'molmass': 1e6,
+                                                   'protein_reaction_relation': [[f'E{i+1}']]}
+                                        }}}
 active_enzyme = ActiveEnzymeSector(rxn2protein = rxn2kcat, configuration=config)
 
 # Building Tranlational Protein Sector
