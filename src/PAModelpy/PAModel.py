@@ -204,7 +204,6 @@ class PAModel(Model):
             """
 
             if enz.id in self.enzymes:
-                warnings.warn(f"Ignoring enzyme '{enz.id}' since it already exists.")
                 return False
             return True
 
@@ -299,9 +298,6 @@ class PAModel(Model):
         if not hasattr(enzyme_list, "__iter__"):
             enzyme_list = [enzyme_list]
         for enz in enzyme_list:
-            # if the enzyme is an enzyme complex, pass it on to the specialized add enzyme complex method
-            if isinstance(enz, EnzymeComplex):
-                self.add_enzyme_complex(enz)
             if not isinstance(enz, Enzyme):
                 raise AttributeError(
                     "The input was neither an Iterable nor an Enzyme. Please provide only (lists of) Enzyme objects."
@@ -309,7 +305,7 @@ class PAModel(Model):
 
         # First check whether the enzymes exist in the model.
         pruned = filter(existing_filter, enzyme_list)
-
+        # print(list(pruned), enzyme_list)
         # check if the provided parameters (kcats, rxn_id) match with the model reaction
         pruned = DictList(filter(parameter_filter, pruned))
 
@@ -330,6 +326,8 @@ class PAModel(Model):
 
         # populate solver
         for enzyme in pruned:
+            if isinstance(enzyme, EnzymeComplex):
+                self.add_enzyme_complex(enzyme)
             self._add_enzyme(enzyme)
 
     def add_enzyme_complex(self, enzyme_complex: EnzymeComplex):
@@ -1488,8 +1486,9 @@ class PAModel(Model):
 
         try:
             enzyme = self.enzymes[self.enzymes.index(enzyme)]
-        except ValueError:
-            warnings.warn(f"{enzyme.id} not in {self}")
+        except:
+            #If it is not there, there is nothing to remove
+            return
 
         #remove enzyme from catalytic event
         catalytic_event = self.catalytic_events.get_by_id('CE_' + reaction.id)

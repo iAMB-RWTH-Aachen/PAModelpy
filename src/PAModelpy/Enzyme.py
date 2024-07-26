@@ -371,7 +371,7 @@ class EnzymeComplex(Enzyme):
             if enzyme not in self.enzymes:
                 self.enzymes.append(enzyme)
                 enzyme.enzyme_complex.append(self.id)
-                # self.molmass += enzyme.molmass
+                self.molmass += enzyme.molmass
                 #remove associated constraints from the model
                 if self._model is not None:
                     if enzyme in self._model.enzymes:
@@ -688,12 +688,7 @@ class EnzymeVariable(Reaction):
         """
 
         for i, ce in enumerate(catalytic_events):
-            if ce in self.catalytic_events:
-                warn(
-                    f"Catalytic event {ce.id} is already associated with enzyme variable {self.id}. "
-                    f"Continue with other catalytic events"
-                )
-            else:
+            if ce not in self.catalytic_events:
                 if not ce.enzyme_variables.has_id(self.id):
                     ce.enzyme_variables.append(self)
                 self.catalytic_events.append(ce)

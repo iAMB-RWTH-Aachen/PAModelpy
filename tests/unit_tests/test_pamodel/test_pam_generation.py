@@ -117,7 +117,7 @@ def test_set_up_ecoli_pam_works():
 def test_if_ecoli_pam_optimizes():
     sut = set_up_ecoli_pam()
     sut.optimize()
-    assert sut.objective.value > 01
+    assert sut.objective.value > 0
 
 #########################################################################################################################
 # HELPER FUNCTIONS

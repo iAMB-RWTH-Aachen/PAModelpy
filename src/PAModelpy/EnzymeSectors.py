@@ -202,7 +202,6 @@ class ActiveEnzymeSector(Sector):
                         molmass=molmass,
                         genes=gene_list
                     )
-
                     if self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                         for pr in protein_reaction:
                             if len(pr) > 1:
@@ -215,6 +214,7 @@ class ActiveEnzymeSector(Sector):
                                         genes=gene_list,
                                         enzymes=[enzyme]
                                     )
+
                                     model.add_enzymes([enzyme])
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
