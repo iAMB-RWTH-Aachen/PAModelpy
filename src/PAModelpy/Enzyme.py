@@ -380,6 +380,30 @@ class EnzymeComplex(Enzyme):
                     else:
                         self._model.enzymes.append(enzyme)
 
+    def __copy__(self) -> "EnzymeComplex":
+        """Copy the enzyme complex.
+
+        Returns:
+            PAModelpy.Enzyme.EnzymeComplex: A new enzyme complex that is a copy of the original enzyme.
+        """
+
+        cop = copy(super(EnzymeComplex, self))
+        return cop
+
+    def __deepcopy__(self, memo: dict) -> "EnzymeComplex":
+        """Copy the enzyme complex with memo.
+
+        Args:
+            memo (dict): Automatically passed parameter.
+
+        Returns:
+            PAModelpy.Enzyme.EnzymeComplex: A new enzyme complex that is a copy of the original enzyme with memo.
+        """
+
+        cop = deepcopy(super(EnzymeComplex, self), memo)
+        return cop
+
+
 class EnzymeVariable(Reaction):
     """EnzymeVariable is a class for holding information regarding the variable representing an enzyme in the model.
     For each reaction, the enzyme variables are summarized in a CatalyticEvent.

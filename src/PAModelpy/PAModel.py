@@ -999,7 +999,6 @@ class PAModel(Model):
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row_LB
 
-        print(self.enzymes)
         for enzyme in self.enzymes:
             for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
                 ce = self.enzymes.get_by_id(catalyzing_enzyme)
@@ -1168,12 +1167,13 @@ class PAModel(Model):
         self.solver.update()
 
     def change_sector_parameters(
-        self, sector, slope: float, intercept: float, lin_rxn_id: str
+        self, sector, slope: float, intercept: float, lin_rxn_id: str, print_change = False
     ):
-        # input in g/gDW
-        print(f"Changing the slope and intercept of the {sector.id}")
-        print(f"Changing slope from {sector.slope} to {slope*1e3} mg/gcdw/h")
-        print(f"Changing intercept from {sector.intercept} to {intercept*1e3} mg/gcdw")
+        if print_change:
+            # input in g/gDW
+            print(f"Changing the slope and intercept of the {sector.id}")
+            print(f"Changing slope from {sector.slope} to {slope*1e3} mg/gcdw/h")
+            print(f"Changing intercept from {sector.intercept} to {intercept*1e3} mg/gcdw")
 
         prev_intercept = sector.intercept
         # *1e3 to convert g to mg

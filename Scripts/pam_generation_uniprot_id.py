@@ -276,7 +276,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
             # no enzyme information found
             print('No enzyme information found for reaction: ' + rxn.id)
             enzyme_id = 'Enzyme_' + rxn.id
-            gpr_info = parse_gpr_information_for_protein2genes(rxn.gpr, rxn_id)
+            gpr_info = parse_gpr_information_for_protein2genes(rxn.gpr)
 
             rxn2protein[rxn.id] = {enzyme_id: {
                 **kcat_dict,
@@ -439,3 +439,9 @@ if __name__ == '__main__':
     ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
     ecoli_pam.optimize()
     print(ecoli_pam.objective.value)
+    import pickle
+
+    with open('path_to_your_pickle_file.pkl', 'wb') as file:
+        p = pickle.dump(ecoli_pam, file)
+    with open('path_to_your_pickle_file.pkl', 'rb') as file:
+        ob = pickle.load(file)

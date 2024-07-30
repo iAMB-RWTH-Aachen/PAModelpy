@@ -176,7 +176,10 @@ class ActiveEnzymeSector(Sector):
                 kcat = dict(
                     (k, v) for k, v in enzyme_dict.items() if k == "f" or k == "b"
                 )
-                protein_reaction = enzyme_dict['protein_reaction_association']
+                if 'protein_reaction_association' in enzyme_dict.keys():
+                    protein_reaction = enzyme_dict['protein_reaction_association']
+                else:
+                    protein_reaction = enzyme_id
 
                 # get molar mass of enzyme or replace with default value
                 if "molmass" in enzyme_dict.keys():
