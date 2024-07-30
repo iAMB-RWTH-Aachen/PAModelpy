@@ -89,6 +89,34 @@ Adds a catalytic event associated with a reaction to an enzyme.
 
 - `NoneType` - None
 
+#### add\_genes
+
+```python
+def add_genes(gene_list: list,
+              gene_length: list,
+              relation: str = 'OR') -> None
+```
+
+Add genes to the enzyme and the model related to the enzyme if applicable
+
+**Arguments**:
+
+- `gene_list` _list_ - A list of gene identifiers to be added.
+- `gene_length` _list_ - A list of lengths corresponding to each gene.
+- `relation` _str, optional_ - The relationship between genes in gene_list.
+  Defaults to &#x27;OR&#x27;. Possible values: &#x27;OR&#x27; or &#x27;AND&#x27;.
+  
+
+**Raises**:
+
+- `ValueError` - If an invalid relation is provided.
+  
+
+**Notes**:
+
+  If relation is &#x27;OR&#x27;, each gene in gene_list will be treated as coding for an individual isozyme
+  If relation is &#x27;AND&#x27;, all genes in gene_list will be treated as coding for peptides in an enzyme complex
+
 #### create\_catalytic\_event
 
 ```python
@@ -311,13 +339,107 @@ The enzyme concentration equals the flux value.
 
 - `float` - Enzyme concentration in mmol/gDW.
 
+#### concentration
+
+```python
+@concentration.setter
+def concentration(conc: Union[float, int]) -> None
+```
+
+Sets the concentration of the enzyme by creating or updating a constraint
+that enforces the concentration to be equal to the sum of the forward and reverse
+variable primals.
+
+**Arguments**:
+
+  conc : float, int
+  The concentration value to be set for the enzyme. This value will be used
+  as both the lower and upper bound for the constraint, effectively fixing the
+  concentration to this value.
+  
+  Notes
+  -----
+  - If a concentration constraint for the enzyme does not already exist in the model,
+  this function creates a new constraint named &#x27;&lt;enzyme_id&gt;_conc&#x27;.
+  - The concentration constraint is defined as:
+  concentration = forward_variable.primal + reverse_variable.primal
+  - If the constraint already exists, the linear coefficients for the forward and reverse
+  variables are updated to ensure the constraint remains valid.
+  
+  Raises
+  ------
+  ValueError
+  If `conc` is not a valid numerical value.
+
+#### set\_forward\_concentration
+
+```python
+def set_forward_concentration(conc: Union[float, int]) -> None
+```
+
+Sets the concentration of the enzyme by creating or updating a constraint
+that enforces the concentration to be equal to the sum of only the forward
+variable primals. This forces a reaction to be active in the forward direction.
+It used the concentration setter functionality and subsequently sets the
+coefficient for the reverse variable in the constraint to 0.
+
+**Arguments**:
+
+  conc : float, int
+  The concentration value to be set for the enzyme. This value will be used
+  as both the lower and upper bound for the constraint, effectively fixing the
+  concentration to this value.
+  
+  Notes
+  -----
+  - If a concentration constraint for the enzyme does not already exist in the model,
+  this function creates a new constraint named &#x27;&lt;enzyme_id&gt;_conc&#x27;.
+  - The concentration constraint is defined as:
+  concentration = forward_variable.primal
+  
+  Raises
+  ------
+  ValueError
+  If `conc` is not a valid numerical value.
+
+#### set\_reverse\_concentration
+
+```python
+def set_reverse_concentration(conc: Union[float, int]) -> None
+```
+
+Sets the concentration of the enzyme by creating or updating a constraint
+that enforces the concentration to be equal to the sum of only the reverse
+variable primals. This forces a reaction to be active in the reverse direction.
+It used the concentration setter functionality and subsequently sets the
+coefficient for the forward variable in the constraint to 0.
+
+**Arguments**:
+
+  conc : float, int
+  The concentration value to be set for the enzyme. This value will be used
+  as both the lower and upper bound for the constraint, effectively fixing the
+  concentration to this value.
+  
+  Notes
+  -----
+  - If a concentration constraint for the enzyme does not already exist in the model,
+  this function creates a new constraint named &#x27;&lt;enzyme_id&gt;_conc&#x27;.
+  - The concentration constraint is defined as:
+  concentration = reverse_variable.primal
+  
+  Raises
+  ------
+  ValueError
+  If `conc` is not a valid numerical value.
+
 #### add\_catalytic\_events
 
 ```python
 def add_catalytic_events(catalytic_events: list, kcats: list)
 ```
 
-Adding catalytic events to an enzyme variable.
+Adding a catalytic event to an enzyme variable
 
 **Arguments**:
 

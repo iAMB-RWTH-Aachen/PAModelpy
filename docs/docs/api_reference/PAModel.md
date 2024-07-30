@@ -56,7 +56,7 @@ def __init__(id_or_model: Union[str, "Model", None] = None,
              active_sector: Optional[ActiveEnzymeSector] = None,
              translational_sector: Optional[TransEnzymeSector] = None,
              unused_sector: Optional[UnusedEnzymeSector] = None,
-             custom_sectors: Union[List, CustomSector] = None,
+             custom_sectors: Optional[CustomSector] = [None],
              configuration=Config)
 ```
 
@@ -237,15 +237,15 @@ def make_enzyme_min_max_constraint(m: Optional[Model], enz: Enzyme,
                                    lower_bound: float, upper_bound: float)
 ```
 
-Adding variables and constraints for the lower and upper bounds of an enzyme&#x27;s concentration to a model.
-When solving the model, shadow prices for the lower and upper bounds will be calculated.
-This allows for the calculation of sensitivity coefficients.
+Adding variables and constraints for the lower and upperbounds of an Enzyme to a model.
+When solving the model, shadow prices for the lower and upperbounds will be calculated.
+This allows for the calculation of sensitivity coefficients. The constraints are formulated as follows:
 
 **Notes**:
 
   The constraints are formulated as follows:
-  - `E_ub: E <= Emax`
-  - `E_lb: -E <= -Emin`
+  -    `enz_max : E <= Emax`
+  -    `enz_min : -E <= -Emin`
   
 
 **Arguments**:
@@ -292,12 +292,59 @@ Capacity Sensitivity Coefficient = constraint_UB * shadowprice / obj_value
 - `mu_ec_f` _DataFrame_ - Shadow prices for the constraints related to enzymatic catalysis of the forward reaction.
 - `mu_ec_b` _DataFrame_ - Shadow prices for the constraints related to enzymatic catalysis of the backward reaction.
   
-
-**Returns**:
-
-  None
+  Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
   
-  Results are saved in the `self.capacity_sensitivity_coefficients` attribute as a DataFrame.
+
+**Arguments**:
+
+- `obj_value` - Float: optimal objective value, commonly maximal growth rate under specific conditions
+- `mu` - DataFrame: shadowprices for all constraints
+- `mu_ub` - DataFrame: Shadowprices for the reaction UB constraints
+- `mu_lb` - DataFrame: Shadowprices for the reaction LB constraints
+- `mu_ec_f` - DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+- `mu_ec_b` - DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+
+#### calculate\_csc\_for\_molecule
+
+```python
+def calculate_csc_for_molecule(molecule: Union[Enzyme], mu_min: pd.DataFrame,
+                               mu_max: pd.DataFrame, obj_value: float,
+                               constraint_type: str,
+                               associated_reactions: str)
+```
+
+Calculate the capacity sensitivity coefficients (CSCs) for constraints related to a biomolecule,
+such as enzymes. These coefficients reflect the effect of infitesmal changes in the constraint bounds
+on the objective function.
+
+The coefficients and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+**Arguments**:
+
+- `enzyme:Enzyme` - enzyme object to calculate CSC for
+- `mu_min` - DataFrame: Shadowprices for the constraint related to a lower bound/minimum
+- `mu_max` - DataFrame: Shadowprices for the constraint related to an upper bound/maximum
+- `obj_value` - float: optimal objective value, commonly maximal growth rate under specific conditions
+
+#### calculate\_enzyme\_csc
+
+```python
+def calculate_enzyme_csc(enzyme: Enzyme, mu_ec_f: pd.DataFrame,
+                         mu_ec_b: pd.DataFrame, obj_value: float)
+```
+
+Calculate the capacity sensitivity coefficients (CSCs) for constraints related to enzyme. These coefficients
+reflect the effect of infitesmal changes in the constraint bounds on the objective function. The coefficients
+and associated reactions will be saved in the capacity_sensitivity_coefficients dataframe.
+
+The function makes use of the abstracted function calculate_csc_for_molecule
+
+**Arguments**:
+
+- `enzyme:Enzyme` - enzyme object to calculate CSC for
+- `mu_ec_f` - DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
+- `mu_ec_b` - DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+- `obj_value` - float: optimal objective value, commonly maximal growth rate under specific conditions
 
 #### calculate\_esc
 
@@ -365,6 +412,20 @@ constraints are adjusted.
 - `lower_bound` _float, optional_ - The new value for the lower bound of the reaction (default is None).
 - `upper_bound` _float, optional_ - The new value for the upper bound of the reaction (default is None).
 
+#### get\_reaction\_bounds
+
+```python
+def get_reaction_bounds(rxn_id: str) -> Tuple[Union[float, int]]
+```
+
+Get the reaction bounds. If there should be a sensitivity analysis, the bounds of the upper and lower bound
+constraints returned
+
+**Arguments**:
+
+- `rxn_id` - str
+  string of reaction id to return
+
 #### change\_enzyme\_bounds
 
 ```python
@@ -385,7 +446,7 @@ the upper bound of the minimum and maximum enzyme concentration constraints are 
 #### get\_enzymes\_with\_reaction\_id
 
 ```python
-def get_enzymes_with_reaction_id(rxn_id: str)
+def get_enzymes_with_reaction_id(rxn_id: str) -> DictList
 ```
 
 Return Enzyme objects associated with the reaction identifier through CatalyticEvent objects.
@@ -458,6 +519,23 @@ Remove enzymes from the model.
 
   The change is reverted upon exit when using the model as a context.
 
+#### remove\_enzyme\_reaction\_association
+
+```python
+def remove_enzyme_reaction_association(enzyme: Union[str, Enzyme],
+                                       reaction: Union[str, Reaction]) -> None
+```
+
+Remove an enzyme-reaction association from the model. Adapted from the cobra.core.remove_reactions() function.
+If the reaction is not catalyzed by any enzyme anymore, the reaction ub will become 0
+
+**Arguments**:
+
+  enzyme : Enzyme or str
+  An enzyme, or the enzyme id for which the association should be removed to remove.
+  reaction : Reaction or str
+  A reaction, or the reaction id for which the association should be removed to remove.
+
 #### remove\_reactions
 
 ```python
@@ -523,6 +601,55 @@ Also removes associated CatalyticEvents if they exist.
 - `sectors` _list, sector, or str_ - A list with sector (`PAModelpy.Sector` or `PAModelpy.ActiveEnzymeSector`),
   or their IDs, to remove. A single sector will be placed in a list.
   Strings will be placed in a list and used to find the sector in the model.
+
+#### remove\_active\_enzymes\_sector
+
+```python
+def remove_active_enzymes_sector(sector: ActiveEnzymeSector) -> None
+```
+
+Remove an active enzyme sector from the model.
+
+This function performs the following steps:
+1. Removes all enzymes associated with the sector.
+2. Removes all catalytic events associated with the sector.
+3. If a total protein constraint exists, it removes this constraint.
+4. Deletes the sector constraint from the model&#x27;s easy lookup.
+5. Removes the sector from the model and disconnects its link to the model.
+
+**Arguments**:
+
+- `sector` _ActiveEnzymeSector_ - The active enzyme sector to be removed.
+  
+
+**Returns**:
+
+  None
+
+#### remove\_linear\_sector
+
+```python
+def remove_linear_sector(
+    sector: Union[UnusedEnzymeSector, TransEnzymeSector,
+                  CustomSector]) -> None
+```
+
+Remove a linear sector from the model.
+
+This function performs the following steps:
+1. If a total protein constraint exists, it adjusts the constraint to remove the sector&#x27;s contribution.
+2. Removes the associated constraints and variables.
+3. Deletes the sector constraint from the model&#x27;s easy lookup.
+4. Removes the sector from the model and disconnects its link to the model.
+
+**Arguments**:
+
+- `sector` _Union[UnusedEnzymeSector, TransEnzymeSector, CustomSector]_ - The linear sector to be removed.
+  
+
+**Returns**:
+
+  None
 
 #### test
 

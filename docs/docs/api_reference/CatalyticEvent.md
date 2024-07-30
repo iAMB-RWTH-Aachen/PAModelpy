@@ -13,8 +13,9 @@ It contains multiple functions which enable easy mapping and handling of one Eve
 class CatalyticEvent(Object)
 ```
 
-CatalyticEvent is a class for holding information regarding the catalysis of a Reaction in a cobra.Model object.
-It serves as an interface between the metabolic reaction and the associated enzyme constraints and variables.
+CatalyticEvent is a class for holding information regarding the
+catalysis of a Reaction in a cobra.Model object. It serves as an interface
+between the metabolic reaction and the associated enzyme constraints and variables.
 
 **Notes**:
 
@@ -142,13 +143,14 @@ constraint expressions related to the enzyme.
 def change_kcat_values(enzyme_kcat_dict: dict)
 ```
 
-Change kcat values for the enzyme variable.
+changes kcat values for the enzyme variable
 
 **Arguments**:
 
-- `enzyme_kcat_dict` - Dict[str, Dict[str, float]]
-  A nested dictionary with enzyme identifiers as keys and kcat dictionaries as values.
-  The kcat dictionary should have `f` and `b` keys for the forward and backward reactions, respectively.
+- `enzyme_kcat_dict` - nested Dict
+  A Dict with enzyme_id, kcat key, value pairs to connect the
+  enzyme with the associated reaction the kcat is another dict with &#x27;f&#x27; and &#x27;b&#x27;
+  for the forward and backward reactions respectively.
 
 #### \_\_copy\_\_
 
