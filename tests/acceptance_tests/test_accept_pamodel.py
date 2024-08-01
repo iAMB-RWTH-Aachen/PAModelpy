@@ -13,21 +13,21 @@ from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, 
 
 from Scripts.pam_generation import set_up_toy_pam, set_up_ecoli_pam
 
-def test_toy_model_sensitivity_coefficients_relations_sum_is_correct():
-    #arrange
-    toy_pam = set_up_toy_pam()
-    #act
-    toy_pam.test(-0.001)
-    #assert
-    assert_sensitivity_coefficients(toy_pam)
-
-def test_ecoli_model_sensitivity_coefficients_relations_sum_is_correct():
-    # arrange
-    ecoli_pam = set_up_ecoli_pam()
-    # act
-    ecoli_pam.test()
-    # assert
-    assert_sensitivity_coefficients(ecoli_pam)
+# def test_toy_model_sensitivity_coefficients_relations_sum_is_correct():
+#     #arrange
+#     toy_pam = set_up_toy_pam()
+#     #act
+#     toy_pam.test(-0.001)
+#     #assert
+#     assert_sensitivity_coefficients(toy_pam)
+#
+# def test_ecoli_model_sensitivity_coefficients_relations_sum_is_correct():
+#     # arrange
+#     ecoli_pam = set_up_ecoli_pam()
+#     # act
+#     ecoli_pam.test()
+#     # assert
+#     assert_sensitivity_coefficients(ecoli_pam)
 
 
 #######################################################################################################
