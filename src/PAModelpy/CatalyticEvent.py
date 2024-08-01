@@ -204,6 +204,8 @@ class CatalyticEvent(Object):
 
         for enzyme, kcat in enzyme_kcat_dict.items():
             # check if the enzyme is already associated to the catalytic event
+            if self.catalytic_reactions.has_id(f'CE_{self.rxn_id}_{enzyme.id}'):
+                continue
             if enzyme in self.enzymes:
                 self.add_enzyme_reaction_association(enzyme)
                 self.change_kcat_values(
@@ -275,8 +277,9 @@ class CatalyticEvent(Object):
             self._model._change_kcat_in_enzyme_constraint(catalytic_reaction, enzyme.id,
                                                           direction, kcatvalue)
 
-        #change rxn2kcat dict for correct referencing
-        del enzyme.rxn2kcat[self.rxn_id]
+        #change rxn2kcat dict for correct referencing if the reaction was in there
+        if self.rxn_id in enzyme.rxn2kcat.keys():
+            del enzyme.rxn2kcat[self.rxn_id]
         enzyme.rxn2kcat[catalytic_reaction.id] = kcat_dict
 
 

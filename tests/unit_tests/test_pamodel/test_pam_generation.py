@@ -134,7 +134,7 @@ def test_if_pamodel_can_be_pickled_and_unpickled():
 
     # Assert
     assert sut.objective.value == pytest.approx(sut_unpickled.objective.value, rel = 1e-4)
-    assert all([enz_id in [e.id for e in sut_unpickled.enzymes] for enz_id in sut.enzymes])
+    assert all([enz.id in [e.id for e in sut_unpickled.enzymes] for enz in sut.enzymes])
 
 #########################################################################################################################
 # HELPER FUNCTIONS

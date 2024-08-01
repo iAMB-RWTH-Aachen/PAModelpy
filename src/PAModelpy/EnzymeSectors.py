@@ -192,6 +192,7 @@ class ActiveEnzymeSector(Sector):
                 if enzyme_id in model.enzyme_variables and not self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                     enzyme = model.enzymes.get_by_id(enzyme_id)
                     self._add_reaction_to_enzyme(model, enzyme, rxn_id, kcat)
+
                 else:
                     if self.protein2gene != {}:
                         gene_list = self._get_model_genes_from_enzyme(enzyme_id, model)
@@ -205,6 +206,7 @@ class ActiveEnzymeSector(Sector):
                         molmass=molmass,
                         genes=gene_list
                     )
+
                     if self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                         for pr in protein_reaction:
                             if len(pr) > 1:
@@ -227,6 +229,7 @@ class ActiveEnzymeSector(Sector):
                                     enz_complex.reactions.append(rxn_id)
                                     enz_complex.add_enzymes([enzyme])
                     else:
+
                         model.add_enzymes([enzyme])
 
                         self.constraints += [enzyme]
@@ -317,6 +320,7 @@ class ActiveEnzymeSector(Sector):
 
         if catal_event_id in model.catalytic_events:
             ce = model.catalytic_events.get_by_id(catal_event_id)
+            ce.add_enzymes({enzyme:kcat})
             enzyme.add_catalytic_event(ce, kcat)
         else:
             enzyme.create_catalytic_event(rxn_id=rxn_id, kcats=kcat)

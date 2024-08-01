@@ -1374,6 +1374,9 @@ class PAModel(Model):
             # also change the active enzyme sector
             active_enzyme = self.sectors.get_by_id("ActiveEnzymeSector")
             for rxn, kcat_f_b in kcats.items():
+                # if a catalytic reaction is given, then extract the actual reaction id from it
+                if 'CE' in rxn:
+                    rxn = rxn.split('_')[1]
                 active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')

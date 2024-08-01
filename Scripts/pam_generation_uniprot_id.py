@@ -440,12 +440,13 @@ if __name__ == '__main__':
     ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
     ecoli_pam.optimize()
     print(ecoli_pam.objective.value)
-    import pickle
-
-    with open('path_to_your_pickle_file.pkl', 'wb') as file:
-        pickle.dump(ecoli_pam, file)
-    with open('path_to_your_pickle_file.pkl', 'rb') as file:
-        ob = pickle.load(file)
+    print(ecoli_pam.reactions.query('ACONT'))
+    # import pickle
+    #
+    # with open('path_to_your_pickle_file.pkl', 'wb') as file:
+    #     pickle.dump(ecoli_pam, file)
+    # with open('path_to_your_pickle_file.pkl', 'rb') as file:
+    #     ob = pickle.load(file)
 
 
     # for enz_var in ecoli_pam.enzyme_variables:
