@@ -168,6 +168,7 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Assert
     assert all(enz in catalyzing_enzymes for enz in associated_enzymes)
 
+
 #######################################################################################################
 #HELPER METHODS
 #######################################################################################################

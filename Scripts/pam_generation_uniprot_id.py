@@ -8,6 +8,7 @@ from typing import Union
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.configuration import Config
+from src.PAModelpy import CatalyticEvent, EnzymeVariable
 
 from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 import ast
@@ -442,6 +443,18 @@ if __name__ == '__main__':
     import pickle
 
     with open('path_to_your_pickle_file.pkl', 'wb') as file:
-        p = pickle.dump(ecoli_pam, file)
+        pickle.dump(ecoli_pam, file)
     with open('path_to_your_pickle_file.pkl', 'rb') as file:
         ob = pickle.load(file)
+
+
+    # for enz_var in ecoli_pam.enzyme_variables:
+    #     if enz_var not in ob.enzyme_variables:
+    #         print(enz_var)
+    # for ce in ecoli_pam.catalytic_events:
+    #     ce_ob = ob.catalytic_events.get_by_id(ce.id)
+    #     for var in ce.enzyme_variables:
+    #         if cobra.DictList(ce_ob.enzyme_variables).has_id(var.id):
+    #             print(var, ce)
+    #             print(ce.enzyme_variables)
+    #             print(ce_ob.enzyme_variables)

@@ -1,4 +1,5 @@
 import pytest
+import pickle
 from src.PAModelpy.configuration import Config
 from src.PAModelpy.PAModel import PAModel
 
@@ -118,6 +119,22 @@ def test_if_ecoli_pam_optimizes():
     sut = set_up_ecoli_pam()
     sut.optimize()
     assert sut.objective.value > 0
+
+def test_if_pamodel_can_be_pickled_and_unpickled():
+    sut = set_up_ecoli_pam(sensitivity=False)
+    sut.change_reaction_bounds('EX_glc__D_e', -10, 0)
+    sut.optimize()
+
+    # Act
+    sut_pickle = pickle.dumps(sut)
+    sut_unpickled = pickle.loads(sut_pickle)
+
+    # sut_unpickled.change_reaction_bounds('EX_glc__D_e', -10, 0)
+    sut_unpickled.optimize()
+
+    # Assert
+    assert sut.objective.value == pytest.approx(sut_unpickled.objective.value, rel = 1e-4)
+    assert all([enz_id in [e.id for e in sut_unpickled.enzymes] for enz_id in sut.enzymes])
 
 #########################################################################################################################
 # HELPER FUNCTIONS

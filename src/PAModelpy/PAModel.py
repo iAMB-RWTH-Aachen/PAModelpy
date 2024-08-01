@@ -2063,3 +2063,29 @@ class PAModel(Model):
             if param != "self" and default.default == inspect.Parameter.empty:
                 init_args[param] = getattr(object, param)
         return init_args
+
+    def __getstate__(self) -> Dict:
+        """Get state for serialization.
+
+        Ensures that the context stack is cleared prior to serialization,
+        since partial functions cannot be pickled reliably.
+
+        Returns
+        -------
+        odict: Dict
+            A dictionary of state, based on self.__dict__.
+        """
+        odict = self.__dict__.copy()
+        odict["_contexts"] = []
+        return odict
+
+    def __setstate__(self, state: Dict) -> None:
+        """Make sure all cobra.Objects an PAModel.Objects in the model point to the model.
+
+        Parameters
+        ----------
+        state: dict
+        """
+        self.__dict__.update(state)
+        if not hasattr(self, "name"):
+            self.name = None

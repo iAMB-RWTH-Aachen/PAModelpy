@@ -144,6 +144,7 @@ class CatalyticEvent(Object):
     @model.setter
     def model(self, model):
         self._model = model
+
         # add reaction instance
         if self.rxn_id in self._model.reactions:
             self.rxn = self._model.reactions.get_by_id(self.rxn_id)
@@ -196,6 +197,10 @@ class CatalyticEvent(Object):
                 enzyme with the associated reaction. The kcat is another dictionary with `f` and `b`
                 for the forward and backward reactions respectively.
         """
+        # return lists back to dictlist after unpickling
+        if isinstance(self.enzymes, list):
+            self.enzymes = DictList(self.enzymes)
+            self.enzyme_variables = DictList(self.enzyme_variables)
 
         for enzyme, kcat in enzyme_kcat_dict.items():
             # check if the enzyme is already associated to the catalytic event
@@ -285,6 +290,10 @@ class CatalyticEvent(Object):
                 A list with PAModelpy.Package.Enzyme objects to be removed. If a list of identifiers (str)
                 is provided, the corresponding enzyme will be obtained from the CatalyticEvent.enzymes attribute.
         """
+        # return lists back to dictlist after unpickling
+        if isinstance(self.enzymes, list):
+            self.enzymes = DictList(self.enzymes)
+            self.enzyme_variables = DictList(self.enzyme_variables)
 
         # check the input
         if not hasattr(enzyme_list, "__iter__"):
@@ -407,3 +416,18 @@ class CatalyticEvent(Object):
 
         cop = deepcopy(super(CatalyticEvent, self), memo)
         return cop
+
+    def __getstate__(self):
+        # Return the state to be pickled
+        state = self.__dict__.copy()
+        # Handling non-serializable attributes
+        state['enzyme_variables'] = list(self.enzyme_variables)
+        state['enzymes'] = list(self.enzymes)
+        return state
+
+    def __setstate__(self, state):
+        # Restore state from the unpickled state
+        self.__dict__.update(state)
+
+
+

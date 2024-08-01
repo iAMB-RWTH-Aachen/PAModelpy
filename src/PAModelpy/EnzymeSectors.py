@@ -355,6 +355,17 @@ class ActiveEnzymeSector(Sector):
             gene_list.append(genes_and_list)
         return gene_list
 
+    # def __getstate__(self):
+    #     # Return the state to be pickled
+    #     state = self.__dict__.copy()
+    #     # Handle any non-serializable attributes here
+    #     return state
+
+    def __setstate__(self, state):
+        # Restore state from the unpickled state
+        self.__dict__.update(state)
+        # Handle any attributes that require initialization or special handling here
+
 class TransEnzymeSector(EnzymeSector):
     DEFAULT_MOL_MASS = 4.0590394e05  # default E. coli ribosome molar mass [g/mol]
     BIOMASS_RXNID = Config.BIOMASS_REACTION

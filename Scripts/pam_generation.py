@@ -4,9 +4,11 @@ import os
 from typing import Union
 
 # load PAMpy modules
-from PAModelpy.PAModel import PAModel
-from PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from PAModelpy.configuration import Config
+from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from src.PAModelpy.configuration import Config
+
+from src.PAModelpy import EnzymeVariable
 
 from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_translational_protein_sector, build_unused_protein_sector
 
@@ -319,3 +321,15 @@ def parse_coefficients(pamodel):
 def parse_esc(pamodel):
     return pamodel.enzyme_sensitivity_coefficients.coefficient.to_list()
 
+if __name__ == '__main__':
+    ecoli_pam = set_up_ecoli_pam(sensitivity=False)
+    # ecoli_pam.objective = ecoli_pam.BIOMASS_REACTION
+    ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
+    ecoli_pam.optimize()
+    print(ecoli_pam.objective.value)
+    import pickle
+
+    with open('path_to_your_pickle_file.pkl', 'wb') as file:
+        p = pickle.dump(ecoli_pam, file)
+    with open('path_to_your_pickle_file.pkl', 'rb') as file:
+        ob = pickle.load(file)

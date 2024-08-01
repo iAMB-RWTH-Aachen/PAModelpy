@@ -47,7 +47,7 @@ S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
     #set up model basics
     model = Model('toy_model')
     cobra_config = Configuration()
-    cobra_config.solver = 'gurobi'
+    # cobra_config.solver = 'gurobi'
     for i in range(1, n + 1):
         rxn = Reaction('R' + str(i))
         lower_bound = 0
@@ -183,7 +183,6 @@ if __name__ == "__main__":
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints', active_sector=active_enzyme,
                       translational_sector = translation_enzyme,
                       unused_sector = unused_enzyme, p_tot=Etot, configuration=Config)
-
     #optimize biomass formation
     pamodel.objective={pamodel.reactions.get_by_id('R7') :1}
 

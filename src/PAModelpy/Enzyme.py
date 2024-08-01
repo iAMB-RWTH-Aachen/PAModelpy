@@ -18,6 +18,11 @@ from cobra import DictList
 from warnings import warn
 
 
+def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
+    # return lists back to dictlist after unpickling
+    if not isinstance(self.catalytic_events,DictList):
+        self.enzymes = DictList(self.catalytic_events)
+
 
 class Enzyme(Object):
     """Upper level Enzyme object containing information about the enzyme and links to the EnzymeVariables for each reaction the enzyme catalyzes.
@@ -152,6 +157,7 @@ class Enzyme(Object):
         Returns:
             NoneType: None
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
         self.catalytic_events += [ce]
         self.enzyme_variable.add_catalytic_events([ce], [kcats])
 
@@ -186,7 +192,6 @@ class Enzyme(Object):
         self.genes += genes_to_add
 
         if self._model is not None:
-            print(genes_to_add)
             self._model.add_genes(genes = genes_to_add, enzymes = [self], gene_lengths=gene_length)
 
 
@@ -236,6 +241,7 @@ class Enzyme(Object):
             rxn2kcat (Dict): A dictionary with reaction ID, kcat value pairs for the forward (f) and backward (b) reaction,
                 e.g. `{'PGI': {'f': 30, 'b': 0.1}}`
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
 
         # update the enzyme variables
         for rxn_id, kcats in rxn2kcat.items():
@@ -289,6 +295,7 @@ class Enzyme(Object):
         Args:
             catalytic_event (Union[CatalyticEvent, str]): CatalyticEvent or str, catalytic event or identifier to remove.
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
         if isinstance(catalytic_event, str):
             try:
                 catalytic_event = self.catalytic_events.get_by_id(catalytic_event)
@@ -299,6 +306,7 @@ class Enzyme(Object):
 
         # remove the event from the DictList
         self.catalytic_events.remove(catalytic_event)
+
 
     def __copy__(self) -> "Enzyme":
         """Copy the enzyme variable.
@@ -322,6 +330,20 @@ class Enzyme(Object):
 
         cop = deepcopy(super(Enzyme, self), memo)
         return cop
+
+
+    def __getstate__(self):
+        # Return the state to be pickled
+        state = self.__dict__.copy()
+        state['catalytic_events'] = list(self.catalytic_events)
+        # Handle any non-serializable attributes here
+        return state
+
+    def __setstate__(self, state):
+        # Restore state from the unpickled state
+        self.__dict__.update(state)
+        # Handle any attributes that require initialization or special handling here
+
 
 
 class EnzymeComplex(Enzyme):
@@ -402,6 +424,21 @@ class EnzymeComplex(Enzyme):
 
         cop = deepcopy(super(EnzymeComplex, self), memo)
         return cop
+
+
+    def __getstate__(self):
+        # Return the state to be pickled
+        state = self.__dict__.copy()
+        state['catalytic_events'] = list(self.catalytic_events)
+
+        # Handle any non-serializable attributes here
+        return state
+
+    def __setstate__(self, state):
+        # Restore state from the unpickled state
+        self.__dict__.update(state)
+        # Handle any attributes that require initialization or special handling here
+
 
 
 class EnzymeVariable(Reaction):
@@ -570,6 +607,8 @@ class EnzymeVariable(Reaction):
 
     @model.setter
     def model(self, model):
+        # _change_catalytic_event_list_to_dictlist_after_unpickling(self)
+
         self._model = model
         # setting up the relations to the model
         # add enzyme instance
@@ -710,6 +749,7 @@ class EnzymeVariable(Reaction):
             catalytic_events (list): A list of catalytic events to add.
             kcats (list): A list with dictionaries containing direction and kcat key-value pairs.
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
 
         for i, ce in enumerate(catalytic_events):
             if ce not in self.catalytic_events:
@@ -786,6 +826,8 @@ class EnzymeVariable(Reaction):
         Args:
             catalytic_event (Union[CatalyticEvent, str]): CatalyticEvent or str, catalytic event or identifier to remove.
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
+
         if isinstance(catalytic_event, str):
             try:
                 catalytic_event = self.catalytic_events.get_by_id(catalytic_event)
@@ -852,6 +894,8 @@ class EnzymeVariable(Reaction):
                 enzyme with the associated reaction. The kcat is another dictionary with `f` and `b` for the forward and
                 backward reactions, respectively.
         """
+        _change_catalytic_event_list_to_dictlist_after_unpickling(self)
+
         # apply changes to internal dicts (one by one to avoid deleting kcat values)
         kcats_change = {}
         for rxn, kcat_dict in reaction_kcat_dict.items():
@@ -875,6 +919,15 @@ class EnzymeVariable(Reaction):
                                                               direction, kcat)
             self._model.solver.update()
 
+    def __str__(self) -> str:
+        """Return enzyme variable id as str.
+
+        Returns:
+        str
+            A string comprised out of the enzyme id
+        """
+        return f"{self.id}"
+
     def __copy__(self) -> "PAModelpy.Enzyme.EnzymeVariable":
         """Copy the enzyme variable.
 
@@ -897,3 +950,17 @@ class EnzymeVariable(Reaction):
 
         cop = deepcopy(super(EnzymeVariable, self), memo)
         return cop
+
+    def __getstate__(self):
+        # Return the state to be pickled
+        state = self.__dict__.copy()
+        state['catalytic_events'] = list(self.catalytic_events)
+
+        # Handle any non-serializable attributes here
+        return state
+
+    def __setstate__(self, state):
+        # Restore state from the unpickled state
+
+        self.__dict__.update(state)
+        # Handle any attributes that require initialization or special handling here
