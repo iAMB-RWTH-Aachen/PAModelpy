@@ -1,12 +1,13 @@
 import pytest
 from cobra.io import load_json_model
 
-from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector, CatalyticEvent
+from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam
 from tests.unit_tests.test_pamodel.test_pam_generation import set_up_toy_pam_with_isozymes_and_enzymecomplex
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
-    sut = build_toy_pam()
+    sut = build_toy_pam(sensitivity=False)
     input_kcat = 10
     enzyme_id = 'E1'
     rxn= sut.reactions.get_by_id('CE_R1_'+enzyme_id)
@@ -19,6 +20,42 @@ def test_if_pamodel_change_kcat_function_works():
     model_kcat_b = 1/coeff_b/(3600*1e-6)
 
     coeff_f = sut.constraints[constraint_name+'f'].get_linear_coefficients([rxn.forward_variable])[rxn.forward_variable]
+    # /(3600*1e-6) to correct for dimension modifications in the model
+    model_kcat_f = 1/coeff_f/(3600*1e-6)
+
+    #assert
+    assert input_kcat == pytest.approx(model_kcat_b, 1e-4)
+    assert input_kcat == pytest.approx(model_kcat_f, 1e-4)
+
+def test_if_pamodel_gets_reaction_id_from_complex_catalytic_reaction_id():
+    # Arrange
+    sut = build_toy_pam(sensitivity=False)
+    ce_reaction_id = "CE_CYTBO3_4pp_P0ABJ1_P0ABJ5_P0ABJ7_P0ABJ8"
+    reaction_id = "CYTBO3_4pp"
+
+    # Act
+    parsed_reaction_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(ce_reaction_id)
+
+    # Assert
+    assert parsed_reaction_id == reaction_id
+
+def test_if_pamodel_change_kcat_function_works_with_catalytic_reactions():
+    #arrange
+    sut = set_up_ecoli_pam(sensitivity=False)
+    input_kcat = 10
+    enzyme_id = 'P0ABJ1'
+    rxn_id = "CYTBO3_4pp"
+    ce_rxn= sut.reactions.query(f'CE_{rxn_id}_{enzyme_id}')[0]
+    enzyme_complex_id = "_".join(ce_rxn.id.split("_")[3:])
+    constraint_name = f'EC_{enzyme_complex_id}_'
+
+    #act
+    sut.change_kcat_value(enzyme_complex_id, kcats ={ce_rxn.id:{'f': input_kcat, 'b': input_kcat}})
+    coeff_b = sut.constraints[constraint_name+'b'].get_linear_coefficients([ce_rxn.reverse_variable])[ce_rxn.reverse_variable]
+    #/(3600*1e-6) to correct for dimension modifications in the model
+    model_kcat_b = 1/coeff_b/(3600*1e-6)
+
+    coeff_f = sut.constraints[constraint_name+'f'].get_linear_coefficients([ce_rxn.forward_variable])[ce_rxn.forward_variable]
     # /(3600*1e-6) to correct for dimension modifications in the model
     model_kcat_f = 1/coeff_f/(3600*1e-6)
 

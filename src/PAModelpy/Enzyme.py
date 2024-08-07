@@ -245,7 +245,12 @@ class Enzyme(Object):
 
         # update the enzyme variables
         for rxn_id, kcats in rxn2kcat.items():
-            catalytic_event_id = self.catalytic_event_id.format(rxn_id)
+
+            if 'CE_' not in rxn_id:
+                catalytic_event_id = self.catalytic_event_id.format(rxn_id)
+            else:
+                catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id)}"
+
             # change rxn2kcat dictionary
             self.rxn2kcat[rxn_id] = kcats
             # is there already a link between enzyme and reaction?

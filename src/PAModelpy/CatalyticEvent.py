@@ -11,6 +11,7 @@ from optlang.symbolics import Zero
 from typing import Optional, Dict, Union
 from warnings import warn
 from copy import copy, deepcopy
+import re
 
 
 class CatalyticEvent(Object):
@@ -392,6 +393,27 @@ class CatalyticEvent(Object):
                 #change enzyme variable
                 enzyme_var.kcats[ce_reaction.id][direction] = kcat
                 self._model._change_kcat_in_enzyme_constraint(ce_reaction, enzyme, direction, kcat)
+
+    @staticmethod
+    def _extract_reaction_id_from_catalytic_reaction_id(input_str: str) -> str:
+        # Define the regex pattern for protein IDs, obtained from UniProtKB, 2024-08-07
+        # https://www.uniprot.org/help/accession_numbers
+        protein_id_pattern = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+
+        # Remove the 'CE_' prefix if it exists
+        if input_str.startswith('CE_'):
+            input_str = input_str[3:]
+
+        # Define the regex pattern to match protein IDs
+        protein_id_regex = re.compile(protein_id_pattern)
+
+        # split off all protein ids from the reaction
+        reaction_id = protein_id_regex.split(input_str)[0]
+
+        # Remove any trailing or leading underscores that might remain
+        reaction_id = reaction_id.strip('_')
+
+        return reaction_id
 
     def __copy__(self) -> "CatalyticEvent":
         """
