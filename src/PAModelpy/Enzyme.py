@@ -115,11 +115,11 @@ class Enzyme(Object):
         concentration = self.enzyme_variable.concentration
         if units == 'g/gDW':
             #converting mmol to grams of protein:
-            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol]
-            concentration = concentration * 1e-3 * self.molmass
+            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol] *1e-6 [solver tolerance conversion factor]
+            concentration = concentration * 1e-3 * self.molmass*1e-6
         if return_units:
-            return concentration, units
-        return concentration
+            return concentration*1e-6, units
+        return concentration*1e-6
 
     @concentration.setter
     def concentration(self, conc):

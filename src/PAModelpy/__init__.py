@@ -1,4 +1,4 @@
-print('Loading PAModelpy modules version 0.0.3.16')
+print('Loading PAModelpy modules version 0.0.3.17')
 
 from .Enzyme import *
 from .EnzymeSectors import *
