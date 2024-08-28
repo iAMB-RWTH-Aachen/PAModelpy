@@ -282,6 +282,8 @@ class CatalyticEvent(Object):
         if self.rxn_id in enzyme.rxn2kcat.keys():
             del enzyme.rxn2kcat[self.rxn_id]
         enzyme.rxn2kcat[catalytic_reaction.id] = kcat_dict
+        #also add catalytic reaction to the ActiveEnzymeSector
+        self._model.sectors.ActiveEnzymeSector.rxn2protein[catalytic_reaction.id] = {enzyme.id: kcat_dict}
 
 
     def remove_enzymes(self, enzyme_list: list):
@@ -395,10 +397,9 @@ class CatalyticEvent(Object):
                 self._model._change_kcat_in_enzyme_constraint(ce_reaction, enzyme, direction, kcat)
 
     @staticmethod
-    def _extract_reaction_id_from_catalytic_reaction_id(input_str: str) -> str:
-        # Define the regex pattern for protein IDs, obtained from UniProtKB, 2024-08-07
-        # https://www.uniprot.org/help/accession_numbers
-        protein_id_pattern = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+    def _extract_reaction_id_from_catalytic_reaction_id(input_str: str,
+                                                        protein_id_pattern:str = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+                                                        ) -> str:
 
         # Remove the 'CE_' prefix if it exists
         if input_str.startswith('CE_'):

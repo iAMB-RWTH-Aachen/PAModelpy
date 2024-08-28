@@ -70,6 +70,7 @@ class Enzyme(Object):
         self.enzyme_variable = None
         self.create_enzyme_variable()
 
+        self.enzyme_id_regex = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
         self.catalytic_event_id = (
             "CE_" + "{0}"
         )  # generic template for the catalytic events IDs
@@ -132,6 +133,7 @@ class Enzyme(Object):
     @model.setter
     def model(self, model):
         self._model = model
+        self.enzyme_id_regex = model.ENZYME_ID_REGEX
 
     def set_forward_concentration(self, conc):
         self.enzyme_variable.set_forward_concentration(conc)
@@ -249,7 +251,7 @@ class Enzyme(Object):
             if 'CE_' not in rxn_id:
                 catalytic_event_id = self.catalytic_event_id.format(rxn_id)
             else:
-                catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id)}"
+                catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id, self.enzyme_id_regex)}"
 
             # change rxn2kcat dictionary
             self.rxn2kcat[rxn_id] = kcats

@@ -10,6 +10,7 @@ class Config:
     - ACETATE_EXCRETION_RXNID: str, `EX_ac_e`
     - PHYS_RXN_IDS: List of str,  `[BIOMASS_REACTION, GLUCOSE_EXCHANGE_RXNID, ACETATE_EXCRETION_RXNID, CO2_EXHANGE_RXNID, OXYGEN_UPTAKE_RXNID,
                         'PGI', 'G6PDH2r', 'EDA', 'CS', 'ICL', 'PPC', 'ME1', 'ME2']`
+    - ENZYME_ID_REGEX: r-str: r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
 
     Defaults are configured for the iML1515 E.coli model
     """
@@ -36,6 +37,10 @@ class Config:
         "ME1",
         "ME2",
     ]
+
+    # Define the regex pattern for protein IDs, obtained from UniProtKB, 2024-08-07
+    # https://www.uniprot.org/help/accession_numbers
+    ENZYME_ID_REGEX = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
 
     def reset(self):
         """
@@ -64,3 +69,4 @@ class Config:
             "ME1",
             "ME2",
         ]
+        self.ENZYME_ID_REGEX = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'

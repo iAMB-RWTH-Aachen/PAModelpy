@@ -69,6 +69,7 @@ class PAModel(Model):
     CO2_EXHANGE_RXNID = Config.CO2_EXHANGE_RXNID
     GLUCOSE_EXCHANGE_RXNID = Config.GLUCOSE_EXCHANGE_RXNID
     BIOMASS_REACTION = Config.BIOMASS_REACTION
+    ENZYME_ID_REGEX = Config.ENZYME_ID_REGEX
 
     def __init__(self, id_or_model: Union[str, "Model", None] = None,
                  name: Optional[str] = None,
@@ -78,13 +79,14 @@ class PAModel(Model):
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
                  custom_sectors: Optional[CustomSector] =[None],
-                 configuration = Config):
+                 configuration = Config()):
         """Constants"""
         self.TOTAL_PROTEIN_CONSTRAINT_ID = configuration.TOTAL_PROTEIN_CONSTRAINT_ID
         self.P_TOT_DEFAULT = configuration.P_TOT_DEFAULT  # g_protein/g_cdw
         self.CO2_EXHANGE_RXNID = configuration.CO2_EXHANGE_RXNID
         self.GLUCOSE_EXCHANGE_RXNID = configuration.GLUCOSE_EXCHANGE_RXNID
         self.BIOMASS_REACTION = configuration.BIOMASS_REACTION
+        self.ENZYME_ID_REGEX = configuration.ENZYME_ID_REGEX
 
         self.configuration = configuration
         """Initialize the Model."""
@@ -1377,7 +1379,8 @@ class PAModel(Model):
             for rxn, kcat_f_b in kcats.items():
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
                 if 'CE' in rxn:
-                    rxn = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn)
+                    rxn = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn,
+                                                                                         self.ENZYME_ID_REGEX)
                 active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')

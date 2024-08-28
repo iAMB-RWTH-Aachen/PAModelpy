@@ -221,6 +221,10 @@ class ActiveEnzymeSector(Sector):
                                     )
 
                                     model.add_enzymes([enzyme])
+                                    #add relation to rxn2protein dictionary
+
+                                    self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
+                                                                **{enzyme_complex_id:kcat}}
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
                                 else:

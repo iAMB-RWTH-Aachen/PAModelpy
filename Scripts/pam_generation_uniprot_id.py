@@ -439,8 +439,6 @@ if __name__ == '__main__':
     # ecoli_pam.objective = ecoli_pam.BIOMASS_REACTION
     ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
     ecoli_pam.optimize()
-    print(ecoli_pam.objective.value)
-    print(ecoli_pam.reactions.query('ACONT'))
     # import pickle
     #
     # with open('path_to_your_pickle_file.pkl', 'wb') as file:
