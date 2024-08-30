@@ -406,7 +406,7 @@ class CatalyticEvent(Object):
             input_str = input_str[3:]
 
         # Define the regex pattern to match protein IDs
-        protein_id_regex = re.compile(protein_id_pattern)
+        protein_id_regex = re.compile(r'_'+protein_id_pattern)
 
         # split off all protein ids from the reaction
         reaction_id = protein_id_regex.split(input_str)[0]
