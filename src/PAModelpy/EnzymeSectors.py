@@ -219,7 +219,6 @@ class ActiveEnzymeSector(Sector):
                                         genes=gene_list,
                                         enzymes=[enzyme]
                                     )
-
                                     model.add_enzymes([enzyme])
                                     #add relation to rxn2protein dictionary
 
@@ -227,13 +226,14 @@ class ActiveEnzymeSector(Sector):
                                                                 **{enzyme_complex_id:kcat}}
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
+
                                 else:
                                     enz_complex = model.enzymes.get_by_id(enzyme_complex_id)
                                     self._add_reaction_to_enzyme(model, enz_complex, rxn_id, kcat)
                                     enz_complex.reactions.append(rxn_id)
                                     enz_complex.add_enzymes([enzyme])
-                    else:
 
+                    else:
                         model.add_enzymes([enzyme])
 
                         self.constraints += [enzyme]
@@ -244,6 +244,7 @@ class ActiveEnzymeSector(Sector):
 
                     # adding to the enzyme sector object for easy removal
                     model.tpc += 1
+
         return model
 
     def check_kcat_values(self, model, reaction, enzyme_dict):

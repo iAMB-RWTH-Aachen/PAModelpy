@@ -15,9 +15,7 @@ import warnings
 import pandas as pd
 from copy import copy, deepcopy
 import inspect
-import re
 
-# sys.path.append('../')
 from .EnzymeSectors import (
     ActiveEnzymeSector,
     TransEnzymeSector,
@@ -347,6 +345,7 @@ class PAModel(Model):
         context = get_context(self)
         # add constraint related to the enzyme
         self.add_enzyme_constraints([f"EC_{enzyme.id}_f", f"EC_{enzyme.id}_b"])
+
         # store the constraints connected to the model in the enzyme object
         new_constraints = {}
         new_constraints[f"EC_{enzyme.id}_f"] = self.enzyme_constraints[
@@ -420,6 +419,7 @@ class PAModel(Model):
 
         # connect the enzyme to each of the reactions it is associated with
         for rxn, kcatdict in enzyme.rxn2kcat.items():
+
             # link enzymatic variable to reaction via the turnover number kcat
             for direction, kcat in kcatdict.items():
                 # check direction
@@ -450,7 +450,6 @@ class PAModel(Model):
                     self.constraints[constraint_id].set_linear_coefficients(
                         {enzyme_var_model.reverse_variable: -1,
                          })
-
                 # make reaction-enzyme interface and the enzyme variable aware of its participation in the constraint
                 catalytic_event_model.constraints[enzyme.id] = self.constraints[constraint_id]
                 enzyme_var_model.constraints[constraint_id] = self.constraints[constraint_id]
@@ -476,6 +475,7 @@ class PAModel(Model):
                 self = sector.add(self)
             else:
                 self.add_sector(sector)
+
 
     def add_sector(self, sector):
         """
@@ -1354,7 +1354,7 @@ class PAModel(Model):
         rxn_ids = list(enzyme.rxn2kcat.keys())
         return rxn_ids
 
-    def change_kcat_value(self, enzyme_id:str, kcats:dict):
+    def change_kcat_value(self, enzyme_id: str, kcats: dict):
         """
         Change the turnover number (kcat) of the enzyme for a specific reaction.
 
@@ -1373,17 +1373,27 @@ class PAModel(Model):
 
         if self.enzymes.has_id(enzyme_id):
             enzyme = self.enzymes.get_by_id(enzyme_id)
-            enzyme.change_kcat_values(kcats)
             # also change the active enzyme sector
             active_enzyme = self.sectors.get_by_id("ActiveEnzymeSector")
+
+            rxn2kcat = kcats.copy()
             for rxn, kcat_f_b in kcats.items():
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
-                if 'CE' in rxn:
-                    rxn = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn,
-                                                                                         self.ENZYME_ID_REGEX)
+                rxn2kcat = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
                 active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
+
+            enzyme.change_kcat_values(kcats)
+
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
+
+    def _change_catalytic_reaction_to_reaction_id_in_kcatdict(self, rxn: str, rxn2kcat: dict):
+        if 'CE' in rxn:
+            kcat_dict = rxn2kcat.pop(rxn)
+            rxn = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn,
+                                                                                 self.ENZYME_ID_REGEX)
+            rxn2kcat[rxn] = kcat_dict
+        return rxn2kcat
 
 
     def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
@@ -1506,21 +1516,25 @@ class PAModel(Model):
         catalytic_event = self.catalytic_events.get_by_id('CE_' + reaction.id)
 
         # removing catalytic event from the enzymes
-        for enzyme in catalytic_event.enzymes:
-            if catalytic_event in enzyme.catalytic_events:
-                enzyme.remove_catalytic_event(catalytic_event)
-
-        for enzyme_var in catalytic_event.enzyme_variables:
-            if catalytic_event in enzyme_var.catalytic_events:
-                enzyme_var.remove_catalytic_event(catalytic_event)
+        # for enzyme in catalytic_event.enzymes:
+        #     if catalytic_event in enzyme.catalytic_events:
+        #         enzyme.remove_catalytic_event(catalytic_event)
+        #
+        # for enzyme_var in catalytic_event.enzyme_variables:
+        #     if catalytic_event in enzyme_var.catalytic_events:
+        #         enzyme_var.remove_catalytic_event(catalytic_event)
+        enzyme.remove_catalytic_event(catalytic_event.id)
+        enzyme.enzyme_variable.remove_catalytic_event(catalytic_event.id)
 
         #remove reaction from enzyme constraint
-        for constraint in enzyme._constraints.values():
-            constraint.set_linear_coefficients(
-                {reaction.forward_variable:0,
-                 reaction.reverse_variable:0
-                }
-            )
+        for dir in ['f', 'b']:
+            c_name = f'EC_{enzyme.id}_{dir}'
+            if c_name in self.constraints:
+                self.constraints[f'EC_{enzyme.id}_{dir}'].set_linear_coefficients(
+                    {reaction.forward_variable:0,
+                     reaction.reverse_variable:0
+                    }
+                )
 
     def remove_reactions(
         self,
@@ -1609,6 +1623,8 @@ class PAModel(Model):
         Note:
             The change is reverted upon exit when using the model as a context.
         """
+        if isinstance(catalytic_events, CatalyticEvent) or isinstance(catalytic_events, str):
+            catalytic_events = [catalytic_events]
 
         for catalytic_event in catalytic_events:
             self.catalytic_events.remove(catalytic_event)

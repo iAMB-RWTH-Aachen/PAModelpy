@@ -162,7 +162,6 @@ class CatalyticEvent(Object):
         })
         self.constraints[self.id] = ce_constraint
 
-        #add enzymes to the model if they are not there already
         for enzyme in self.enzymes:
             if enzyme in self._model.enzymes:
                 self.constraints = {**self.constraints, **enzyme._constraints}
@@ -296,6 +295,7 @@ class CatalyticEvent(Object):
                 A list with PAModelpy.Package.Enzyme objects to be removed. If a list of identifiers (str)
                 is provided, the corresponding enzyme will be obtained from the CatalyticEvent.enzymes attribute.
         """
+
         # return lists back to dictlist after unpickling
         if isinstance(self.enzymes, list):
             self.enzymes = DictList(self.enzymes)
@@ -318,7 +318,6 @@ class CatalyticEvent(Object):
                     )
                     pass
 
-        for enz in enzyme_list:
             # remove from kcat dict
             del self.kcats[enz]
             # remove from enzymes dictlist
@@ -329,7 +328,7 @@ class CatalyticEvent(Object):
                 self.enzyme_variables.remove(enzyme_var)
             # set coefficient in constraint to 0
             for constraint in set(
-                [cons for name, cons in self.constraints.items() if enz.id in name]
+                [cons for name, cons in self.constraints.items() if (f'EC_{enz.id}' in name)|(f'{enz.id}_m' in name)]
             ):
                 if constraint in self._model.constraints.values():
                     self._model.remove_cons_vars([constraint])
@@ -337,7 +336,7 @@ class CatalyticEvent(Object):
                 del self.constraints[constraint.name]
 
             # if there are no enzymes associated to the reaction anymore, the reaction flux will be 0
-            if len(self.enzymes) == 0:
+            if len(self.enzymes) == 0 and self._model is not None:
                 no_enz_constraint_f = self._model.problem.Constraint(
                     Zero, name=f"{self.rxn_id}_no_enzyme_f", lb=0, ub=0
                 )
@@ -398,15 +397,57 @@ class CatalyticEvent(Object):
 
     @staticmethod
     def _extract_reaction_id_from_catalytic_reaction_id(input_str: str,
-                                                        protein_id_pattern:str = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+                                                        protein_id_pattern:str = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})',
+                                                        default_enzyme_id_pattern:str = r'E[0-9][0-9]*'
                                                         ) -> str:
+
+        """
+            Extracts the reaction ID from a catalytic reaction string by removing
+            any associated protein IDs in various formats.
+
+            The function identifies and strips off protein IDs from the input string.
+            Protein IDs can be in one of two formats:
+            1. Standard protein identifiers (by default Uniprot ids: e.g., 'P0ABJ1', 'Q1234X').
+            2. Protein IDs for unknown enzymes in the format 'E<number>' (e.g., 'E1', 'E10', 'E534').
+
+            If the string starts with 'CE_', the 'CE_' prefix is removed before processing.
+
+            Args:
+                input_str (str): The input string representing a catalytic reaction ID,
+                    which may contain associated protein IDs.
+                protein_id_pattern (str): Regular expression pattern for matching
+                    standard protein IDs. Defaults to a UniProt-based regex.
+                default_enzyme_id_pattern (str): Regular expression pattern for matching protein
+                    IDs in the format 'E<number>' (e.g., 'E1', 'E99'). Defaults to 'E[0-9][0-9]*'.
+
+            Returns:
+                str: The extracted reaction ID with any protein IDs removed.
+
+            Examples:
+                >>> _extract_reaction_id_from_catalytic_reaction_id('CE_CYTBO3_4pp_P0ABJ1_P0ABJ5_E123')
+                'CYTBO3_4pp'
+
+                >>> _extract_reaction_id_from_catalytic_reaction_id('CE_REACTID_E1_E534')
+                'REACTID'
+
+                >>> _extract_reaction_id_from_catalytic_reaction_id('LPLIPAL2ATE140_E3')
+                'LPLIPAL2ATE140'
+
+            Notes:
+                - The function will strip protein IDs from both the standard format
+                  (e.g., 'P0ABJ1', 'Q1234X') and the 'E<number>' format.
+                - If no valid protein ID is found, the reaction ID is returned as-is.
+                - The function assumes that valid reaction IDs are located at the
+                  beginning of the string or after the 'CE_' prefix.
+            """
 
         # Remove the 'CE_' prefix if it exists
         if input_str.startswith('CE_'):
             input_str = input_str[3:]
 
         # Define the regex pattern to match protein IDs
-        protein_id_regex = re.compile(r'_'+protein_id_pattern)
+        protein_id_regex = re.compile(r'_'+protein_id_pattern+ r'|' + r'_' + default_enzyme_id_pattern
+)
 
         # split off all protein ids from the reaction
         reaction_id = protein_id_regex.split(input_str)[0]

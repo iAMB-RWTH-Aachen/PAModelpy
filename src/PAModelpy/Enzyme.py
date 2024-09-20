@@ -14,15 +14,12 @@ from optlang.symbolics import Zero
 
 from .CatalyticEvent import CatalyticEvent
 from typing import Dict, Union, Optional
-from cobra import DictList
 from warnings import warn
-
 
 def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
     # return lists back to dictlist after unpickling
     if not isinstance(self.catalytic_events,DictList):
         self.enzymes = DictList(self.catalytic_events)
-
 
 class Enzyme(Object):
     """Upper level Enzyme object containing information about the enzyme and links to the EnzymeVariables for each reaction the enzyme catalyzes.
@@ -303,16 +300,20 @@ class Enzyme(Object):
             catalytic_event (Union[CatalyticEvent, str]): CatalyticEvent or str, catalytic event or identifier to remove.
         """
         _change_catalytic_event_list_to_dictlist_after_unpickling(self)
-        if isinstance(catalytic_event, str):
-            try:
-                catalytic_event = self.catalytic_events.get_by_id(catalytic_event)
-            except:
-                print(
-                    f"Catalytic event {catalytic_event} is not related to this enzyme and can thus not be removed!"
-                )
 
         # remove the event from the DictList
-        self.catalytic_events.remove(catalytic_event)
+        if catalytic_event in self.catalytic_events:
+            if isinstance(catalytic_event, str):
+                catalytic_event = self.catalytic_events.get_by_id(catalytic_event)
+
+            # remove kcat association
+            if catalytic_event.rxn_id in self.rxn2kcat:
+                del self.rxn2kcat[catalytic_event.rxn_id]
+
+            self.catalytic_events.remove(catalytic_event)
+            #remove enzyme from catalytic event
+            if self in catalytic_event.enzymes:
+                catalytic_event.remove_enzymes([self])
 
 
     def __copy__(self) -> "Enzyme":
@@ -397,17 +398,28 @@ class EnzymeComplex(Enzyme):
 
     def add_enzymes(self, enzymes: DictList):
         for enzyme in enzymes:
-            if enzyme not in self.enzymes:
+            if enzyme not in self.enzymes:# and not isinstance(enzyme, EnzymeComplex):
                 self.enzymes.append(enzyme)
                 enzyme.enzyme_complex.append(self.id)
                 self.molmass += enzyme.molmass
-                #remove associated constraints from the model
-                if self._model is not None:
-                    if enzyme in self._model.enzymes:
-                        for rxn in self.reactions:
-                            self._model.remove_enzyme_reaction_association(enzyme, rxn)
-                    else:
-                        self._model.enzymes.append(enzyme)
+
+                #remove link between enzyme and reaction
+                #do not remove the relation with any enzyme complex
+                if not isinstance(enzyme, EnzymeComplex):
+                    # remove link to enzyme
+                    for rxn in self.reactions:
+                        if rxn in enzyme.rxn2kcat:
+                            del enzyme.rxn2kcat[rxn]
+
+                    # remove associated constraints from the model
+                    if self._model is not None:
+                        if enzyme in self._model.enzymes:
+                            for rxn in self.reactions:
+                                self._model.remove_enzyme_reaction_association(enzyme, rxn)
+                        else:
+                            self._model.enzymes.append(enzyme)
+
+
 
     def __copy__(self) -> "EnzymeComplex":
         """Copy the enzyme complex.
@@ -835,16 +847,8 @@ class EnzymeVariable(Reaction):
         """
         _change_catalytic_event_list_to_dictlist_after_unpickling(self)
 
-        if isinstance(catalytic_event, str):
-            try:
-                catalytic_event = self.catalytic_events.get_by_id(catalytic_event)
-            except:
-                print(
-                    f"Catalytic event {catalytic_event} is not related to this enzyme and can thus not be removed!"
-                )
-
-        # remove the event from the DictList
-        self.catalytic_events.remove(catalytic_event.id)
+        if catalytic_event in self.catalytic_events:
+            self.catalytic_events.remove(catalytic_event)
 
     def remove_reactions(self, reaction_list: list):
         """Remove reactions from the enzyme variable and remove the reactions from the

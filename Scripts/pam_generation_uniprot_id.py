@@ -435,25 +435,31 @@ def filter_sublists(nested_list, target_string):
     return [sublist for sublist in nested_list if target_string in sublist]
 
 if __name__ == '__main__':
-    ecoli_pam = set_up_ecoli_pam(sensitivity=False)
-    # ecoli_pam.objective = ecoli_pam.BIOMASS_REACTION
-    ecoli_pam.change_reaction_bounds('EX_glc__D_e', -10, 0)
-    ecoli_pam.optimize()
-    # import pickle
-    #
-    # with open('path_to_your_pickle_file.pkl', 'wb') as file:
-    #     pickle.dump(ecoli_pam, file)
-    # with open('path_to_your_pickle_file.pkl', 'rb') as file:
-    #     ob = pickle.load(file)
+    VALID_DATA_PATH = os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls')
+    valid_data_df = pd.read_excel(VALID_DATA_PATH, sheet_name='Yields').sort_values('BIOMASS_Ec_iML1515_core_75p37M',
+                                                                                    ascending = False)
+    max_mu = valid_data_df.at[0,'BIOMASS_Ec_iML1515_core_75p37M']
 
+    init_kcat = 11
 
-    # for enz_var in ecoli_pam.enzyme_variables:
-    #     if enz_var not in ob.enzyme_variables:
-    #         print(enz_var)
-    # for ce in ecoli_pam.catalytic_events:
-    #     ce_ob = ob.catalytic_events.get_by_id(ce.id)
-    #     for var in ce.enzyme_variables:
-    #         if cobra.DictList(ce_ob.enzyme_variables).has_id(var.id):
-    #             print(var, ce)
-    #             print(ce.enzyme_variables)
-    #             print(ce_ob.enzyme_variables)
+    for i in range(1,4,2):
+        pam = set_up_ecoli_pam(sensitivity=False)
+        pam.change_reaction_bounds('EX_glc__D_e', -1e3, 0)
+        for enzyme in pam.enzymes:
+            kcats = enzyme.rxn2kcat.copy()
+            for rxn, kcat_dict in kcats.items():
+                if '3PEPTabcpp' in rxn:
+                    print(enzyme, kcat_dict)
+                #if the enzyme is part of a complex it has only zero kcats
+                if all([val == 0 for val in kcat_dict.values()]):
+                    continue
+                for dir, kcat in kcat_dict.items():
+                    if kcat == 11:
+                        kcats[rxn][dir] = init_kcat*i
+            pam.change_kcat_value(enzyme.id, kcats)
+        pam.optimize()
+        if pam.objective.value >= max_mu*0.9:
+            print(init_kcat*i, pam.objective.value)
+            break
+        else:
+            print(i, pam.objective.value)
