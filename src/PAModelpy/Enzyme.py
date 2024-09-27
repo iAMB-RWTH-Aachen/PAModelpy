@@ -249,7 +249,6 @@ class Enzyme(Object):
                 catalytic_event_id = self.catalytic_event_id.format(rxn_id)
             else:
                 catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id, self.enzyme_id_regex)}"
-
             # change rxn2kcat dictionary
             self.rxn2kcat[rxn_id] = kcats
             # is there already a link between enzyme and reaction?
@@ -270,6 +269,8 @@ class Enzyme(Object):
         Returns:
             Dict: A dictionary containing kcat values for the forward (f) and backward (b) reactions.
         """
+        if rxn_ids is None:
+            raise AttributeError
 
         if isinstance(rxn_ids, str):
             rxn_ids = [rxn_ids]
@@ -289,7 +290,7 @@ class Enzyme(Object):
                     rxn2kcat[rxn_id] = self.rxn2kcat[catalytic_event_id+'_'+self.id]
 
         if len(rxn_ids) == 1:
-            return rxn2kcat[rxn_id]
+            return self.rxn2kcat[self.catalytic_event_id.format(rxn_id)+'_'+self.id]
 
         return rxn2kcat
 

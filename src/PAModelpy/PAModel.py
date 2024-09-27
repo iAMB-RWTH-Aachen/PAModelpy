@@ -15,6 +15,8 @@ import warnings
 import pandas as pd
 from copy import copy, deepcopy
 import inspect
+import pickle
+import pytest
 
 from .EnzymeSectors import (
     ActiveEnzymeSector,
@@ -112,7 +114,7 @@ class PAModel(Model):
             {}
         )  # a dict with sector constraint id, optlang.Constraint (enzymes) key, value pairs for constraints related to the protein sectors
         self.tpc = 0  # counter of number of CatalyticEvents which contribute to the total protein constraint
-        self.sensitivity = sensitivity
+        self._sensitivity = sensitivity
         self.capacity_sensitivity_coefficients = (
             pd.DataFrame()
         )  # dataframe to store the result of the sensitivity analysis (capacity sensitivity coefficients for each constraint). The sensitivity coefficients are splitted on LB, UB and the different sectors
@@ -125,7 +127,7 @@ class PAModel(Model):
         self.add_total_protein_constraint(p_tot)
 
         if sensitivity:  # perform sensitivity analysis when the model is run
-            self.add_lb_ub_constraints()
+            self._add_lb_ub_constraints()
 
         sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
         for sector in [sector for sector in sectors_to_add if sector is not None]:
@@ -134,11 +136,23 @@ class PAModel(Model):
         print(f"Done with setting up the proteome allocation model {self.id}\n")
 
     @property
+    def sensitivity(self):
+        return self._sensitivity
+
+    @sensitivity.setter
+    def sensitivity(self, sensitivity:bool):
+        if sensitivity:
+            self._add_lb_ub_constraints()
+        else:
+            self._remove_lb_ub_constraints()
+        self._sensitivity = sensitivity
+
+    @property
     def total_protein_fraction(self):
         return self.p_tot
 
     @total_protein_fraction.setter
-    def total_protein_fraction(self, p_tot):
+    def total_protein_fraction(self, p_tot:float):
         self.change_total_protein_constraint(p_tot)
 
     @property
@@ -262,7 +276,7 @@ class PAModel(Model):
                 reaction = self.reactions.get_by_id(rxn_id)
                 for kcats in kcats.values():
                     # check consistency between provided kcat values and reaction direction
-                    if self.sensitivity:
+                    if self._sensitivity:
                         lower_bound = -self.constraints[f"{rxn_id}_lb"].ub
                         upper_bound = self.constraints[f"{rxn_id}_ub"].ub
                     else:
@@ -501,13 +515,8 @@ class PAModel(Model):
             )
 
             # 2. link flux to enzyme concentration
-            # link enzyme concentration in the sector to the total enzyme concentration
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                {
-                    lin_rxn.forward_variable: sector.slope,
-                    lin_rxn.reverse_variable: -sector.slope,
-                }
-            )
+            self._link_sector_lin_rxn_to_total_protein_constraints(lin_rxn, sector.slope)
+
         else:
             # constraint corresponding to the enzyme sector
             constraint = self.problem.Constraint(Zero, name=sector.id, lb=0, ub=0)
@@ -544,6 +553,22 @@ class PAModel(Model):
         # add sector to sectorlist is it isn't included already
         if not self.sectors.has_id(sector.id):
             self.sectors += [sector]
+
+    def _link_sector_lin_rxn_to_total_protein_constraints(self, lin_rxn: Reaction,
+                                                          slope: float)-> None:
+        tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
+
+        for direction_variable, coeff in zip([lin_rxn.forward_variable, lin_rxn.reverse_variable], [slope, -slope]):
+            if direction_variable in tot_prot_constraint.variables:
+                old_coeff = tot_prot_constraint.get_linear_coefficients([direction_variable])[direction_variable]
+                new_coeff = old_coeff + coeff
+            else:
+                new_coeff = coeff
+
+            tot_prot_constraint.set_linear_coefficients(
+                {
+                    direction_variable: new_coeff
+                })
 
     def add_catalytic_events(self, catalytic_events: Optional[Iterable]):
         """
@@ -736,28 +761,28 @@ class PAModel(Model):
         """
         super().add_reactions(reaction_list=reaction_list)
         # add upper and lower bound constraints if you want to perform a sensitivity analysis
-        if self.sensitivity:
+        if self._sensitivity:
             for rxn in reaction_list:
-                self = self.make_lb_ub_constraint(
+                self = self._make_lb_ub_constraint(
                     self, rxn, rxn.lower_bound, rxn.upper_bound
                 )
                 # reset the reaction bounds
                 rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
 
-    def add_lb_ub_constraints(self):
+    def _add_lb_ub_constraints(self):
         """
         Makes additional constraints for the reaction lower bounds and upperbounds.
         By adding these constraints the shadow prices of the reaction bounds can be
         calculated and used in sensitivity analysis
         """
         for rxn in self.reactions:
-            self = self.make_lb_ub_constraint(
+            self = self._make_lb_ub_constraint(
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
             rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
 
     @staticmethod
-    def make_lb_ub_constraint(
+    def _make_lb_ub_constraint(
         m: Optional[Model], rxn: Reaction, lower_bound: float, upper_bound: float
     ):
         """
@@ -801,6 +826,32 @@ class PAModel(Model):
             m.constraints[f"{rxn.id}_lb"].set_linear_coefficients(
                 {rxn.forward_variable: -1, rxn.reverse_variable: 1}
             )
+
+        return m
+
+    def _remove_lb_ub_constraints(self) -> None:
+        """
+        Removes additional constraints for the reaction lower bounds and upperbounds.
+        This makes computation faster
+        """
+        for rxn in self.reactions:
+            self = self._remove_lb_ub_constraint(
+                self, rxn
+            )
+
+    @staticmethod
+    def _remove_lb_ub_constraint(
+        m: Optional[Model], rxn: Reaction):
+
+        for bound in ['ub', 'lb']:
+            if f"{rxn.id}_{bound}" in m.constraints.keys():
+                constraint = m.constraints[f"{rxn.id}_{bound}"]
+                bound_value = constraint.ub
+                m.remove_cons_vars([constraint])
+                if bound == 'lb':
+                    rxn.lower_bound = -bound_value
+                else:
+                    rxn.upper_bound = bound_value
 
         return m
 
@@ -1240,13 +1291,13 @@ class PAModel(Model):
             self.change_reaction_ub(rxn_id, upper_bound)
 
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
-        if self.sensitivity:
+        if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
         else:
             self.reactions.get_by_id(rxn_id).upper_bound = upper_bound
 
     def change_reaction_lb(self, rxn_id: str, lower_bound: float = None):
-        if self.sensitivity:
+        if self._sensitivity:
             self.constraints[rxn_id + "_lb"].ub = -lower_bound
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
@@ -1268,13 +1319,13 @@ class PAModel(Model):
         return lb, ub
 
     def get_reaction_ub(self, rxn_id:str) -> Union[int, float]:
-        if self.sensitivity:
+        if self._sensitivity:
             return self.constraints[rxn_id + '_ub'].ub
         else:
             return self.reactions.get_by_id(rxn_id).upper_bound
 
     def get_reaction_lb(self,rxn_id:str):
-        if self.sensitivity:
+        if self._sensitivity:
             return -self.constraints[rxn_id + '_lb'].ub
         else:
             return self.reactions.get_by_id(rxn_id).lower_bound
@@ -1310,13 +1361,13 @@ class PAModel(Model):
             self.change_enzyme_max(enzyme_id, upper_bound)
 
     def change_enzyme_max(self, enzyme_id: str, upper_bound: float = None):
-        if self.sensitivity:
+        if self._sensitivity:
             self.constraints[enzyme_id + "_max"].ub = upper_bound
         else:
             self.enzyme_variables.get_by_id(enzyme_id).upper_bound = upper_bound
 
     def change_enzyme_min(self, enzyme_id: str, lower_bound: float = None):
-        if self.sensitivity:
+        if self._sensitivity:
             self.constraints[enzyme_id + "_min"].ub = -lower_bound
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
@@ -1598,7 +1649,7 @@ class PAModel(Model):
                         self.enzymes.remove(enzyme)
                         self.remove_cons_vars(enzyme._constraints)
 
-                if self.sensitivity:
+                if self._sensitivity:
                     lb_constraint = self.constraints[rxn.id + "_lb"]
                     ub_constraint = self.constraints[rxn.id + "_ub"]
                     self.remove_cons_vars([lb_constraint, ub_constraint])
@@ -1892,21 +1943,57 @@ class PAModel(Model):
         """
 
         solution = super().optimize(objective_sense, raise_error)
-        if self.sensitivity and self.solver.status == "optimal":
+        if self._sensitivity and self.solver.status == "optimal":
             self.determine_sensitivity_coefficients()
         return solution
 
-    def copy(self) -> "PAModel":
+    def copy(self, copy_with_pickle:bool = False) -> "PAModel":
         """
         Provide a partial 'deepcopy' of the Model.
 
         Adjusted from cobra.Model.copy().
 
         All the Metabolite, Gene, Reaction, Enzyme, EnzymeVariable, Sector, and CatalyticEvent objects are created anew but in a faster fashion than deepcopy.
+        Args:
+            pickle: boolean value which determines whether the copy should be made using a pickle.
 
         Returns:
             PAModelpy.PAModel: A new model copy.
+
+        Note:
+            - when copying without pickle, there still seems to be a connection in memory between the model and its copy
+            - when copying with pickle, some dictlists are converted into lists. These lists will be converted back into dictlists
         """
+
+        if copy_with_pickle:
+            model_pickle = pickle.dumps(self)
+            new_model = pickle.loads(model_pickle)
+            #update bounds which are not copied with pickle
+            for constr_id, constr in self.constraints.items():
+                new_constraint = new_model.constraints[constr_id]
+                #to prevent rounding errors, only change if the bounds are actually different
+                if constr.lb != pytest.approx(new_constraint.lb, rel = 1e-3):
+                        new_constraint.lb = constr.lb
+                if constr.ub != pytest.approx(new_constraint.ub, rel=1e-3):
+                    new_constraint.ub = constr.ub
+
+            #reset all dictlist in objects
+            for enz in new_model.enzymes:
+                enz.catalytic_events = DictList(enz.catalytic_events)
+                enz.transcripts = DictList(enz.transcripts)
+                if isinstance(enz, EnzymeComplex):
+                    enz.enzymes = DictList(enz.enzymes)
+
+            for enz_var in new_model.enzyme_variables:
+                enz_var.catalytic_events = DictList(enz_var.catalytic_events)
+                enz_var.reactions = DictList(enz_var.reactions)
+
+            for ce in new_model.catalytic_events:
+                ce.catalytic_reactions = DictList(ce.catalytic_reactions)
+                ce.enzymes = DictList(ce.enzymes)
+                ce.enzyme_variables = DictList(ce.enzyme_variables)
+
+            return new_model
 
         do_not_copy_by_ref = {
             "metabolites",

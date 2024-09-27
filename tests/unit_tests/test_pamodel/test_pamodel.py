@@ -2,7 +2,7 @@ import pytest
 from cobra.io import load_json_model
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector, CatalyticEvent
-from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam
+from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam, set_up_ecolicore_pam
 from tests.unit_tests.test_pamodel.test_pam_generation import set_up_toy_pam_with_isozymes_and_enzymecomplex
 
 def test_if_pamodel_change_kcat_function_works():
@@ -137,11 +137,83 @@ def test_if_pamodel_change_enzyme_bounds_function_without_sensitivity_works():
     assert new_E1_min == new_toy_E1_min
     assert new_E1_max == new_toy_E1_max
 
+def test_if_pamodel_sensitivity_can_be_changed_true_to_false():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=True)
+    toy_R1_lb = -toy_pam.constraints['R1_lb'].ub
+    toy_R1_ub = toy_pam.constraints['R1_ub'].ub
+
+    # act
+    toy_pam.sensitivity = False
+    new_toy_R1_lb, new_toy_R1_ub = toy_pam.reactions.R1.bounds
+
+    # assert
+    assert all(true_bound == false_bound for true_bound, false_bound in zip([toy_R1_lb, toy_R1_ub],
+                                                                            [new_toy_R1_lb, new_toy_R1_ub]))
+    #check if constraints are removed
+    assert all([constr_id not in toy_pam.constraints.keys() for constr_id in ['R1_lb', 'R1_ub']])
+
+def test_if_pamodel_sensitivity_can_be_changed_false_to_true():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    toy_R1_lb, toy_R1_ub = toy_pam.reactions.R1.bounds
+
+    # act
+    toy_pam.sensitivity = True
+    new_toy_R1_lb = -toy_pam.constraints['R1_lb'].ub
+    new_toy_R1_ub = toy_pam.constraints['R1_ub'].ub
+
+    # assert
+    assert all(false_bound == true_bound for false_bound, true_bound in zip([toy_R1_lb, toy_R1_ub],
+                                                                            [new_toy_R1_lb, new_toy_R1_ub]))
+    #check if reaction bounds are relaxed
+    assert all([toy_R1_lb>toy_pam.reactions.R1.lower_bound, toy_R1_ub<toy_pam.reactions.R1.upper_bound])
+
+
+def test_if_pamodel_sensitivity_can_be_changed_true_to_false_ecolicore():
+    # arrange
+    ecolicore_pam = set_up_ecolicore_pam(sensitivity=True)
+    glc_lb = -ecolicore_pam.constraints['EX_glc__D_e_lb'].ub
+    glc_ub = ecolicore_pam.constraints['EX_glc__D_e_ub'].ub
+
+    # act
+    ecolicore_pam.sensitivity = False
+    new_glc_lb, new_glc_ub = ecolicore_pam.reactions.EX_glc__D_e.bounds
+
+    # assert
+    assert all(true_bound == false_bound for true_bound, false_bound in zip([glc_lb, glc_ub],
+                                                                            [new_glc_lb, new_glc_ub]))
+
+    assert all([constr_id not in ecolicore_pam.constraints.keys() for constr_id in ['EX_glc__D_e_lb', 'EX_glc__D_e_ub']])
+
+def test_if_pamodel_sensitivity_can_be_changed_false_to_true_ecolicore():
+    # arrange
+    ecolicore_pam = set_up_ecolicore_pam(sensitivity=False)
+    glc_lb, glc_ub = ecolicore_pam.reactions.EX_glc__D_e.bounds
+
+    # act
+    ecolicore_pam.sensitivity = True
+    new_glc_lb = -ecolicore_pam.constraints['EX_glc__D_e_lb'].ub
+    new_glc_ub = ecolicore_pam.constraints['EX_glc__D_e_ub'].ub
+
+    # assert
+    assert all(false_bound == true_bound for false_bound, true_bound in zip([glc_lb, glc_ub],
+                                                                            [new_glc_lb, new_glc_ub]))
+
 def test_if_pamodel_copy_function_works():
     # arrange
     toy_pam = build_toy_pam(sensitivity=False)
     # act
     toy_pam_copy = toy_pam.copy()
+    # assert
+    assert_bounds(toy_pam, toy_pam_copy)
+    assert_total_protein_content(toy_pam, toy_pam_copy)
+
+def test_if_pamodel_copy_function_works_with_pickle():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    # act
+    toy_pam_copy = toy_pam.copy(copy_with_pickle = True)
     # assert
     assert_bounds(toy_pam, toy_pam_copy)
     assert_total_protein_content(toy_pam, toy_pam_copy)
