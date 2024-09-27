@@ -448,9 +448,6 @@ if __name__ == '__main__':
         for enzyme in pam.enzymes:
             kcats = enzyme.rxn2kcat.copy()
             for rxn, kcat_dict in kcats.items():
-                if '3PEPTabcpp' in rxn:
-                    print(enzyme, kcat_dict)
-                #if the enzyme is part of a complex it has only zero kcats
                 if all([val == 0 for val in kcat_dict.values()]):
                     continue
                 for dir, kcat in kcat_dict.items():
