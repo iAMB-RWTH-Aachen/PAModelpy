@@ -417,8 +417,8 @@ class EnzymeComplex(Enzyme):
                         if enzyme in self._model.enzymes:
                             for rxn in self.reactions:
                                 self._model.remove_enzyme_reaction_association(enzyme, rxn)
-                        else:
-                            self._model.enzymes.append(enzyme)
+                        # else:
+                        #     self._model.enzymes.append(enzyme)
 
 
 

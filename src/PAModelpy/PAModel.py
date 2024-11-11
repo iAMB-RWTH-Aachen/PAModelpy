@@ -1372,6 +1372,54 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
+    def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
+        return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
+
+    def _check_if_gene_in_enzyme_genes(self, gene_id: str,
+                                       enzyme: Union[Enzyme, str]) -> bool:
+        # check if input is in correct form and if the model exists in the model
+        if isinstance(enzyme, str):
+            if enzyme in self.enzymes:
+                enzyme = self.enzymes.get_by_id(enzyme)
+            else:
+                warnings.warn('Enzyme is not in the model. Cannot find any genes')
+                return False
+        #find the genes in the and relationships of the enzyme [[gene1, gene2]] means gene1 and gene2
+        for and_relation in enzyme.genes:
+            for gene in and_relation:
+                if gene.id == gene_id:
+                    return True
+        return False
+
+    def get_genes_associated_with_enzyme(self, enzyme: Enzyme) -> dict:
+        """ Retrieve the model associated genes including their relation from the model
+
+        Goes through all the genes associated with an enzyme and checks if there is an 'and' or 'or' relation
+        between the genes. It only saves those genes, which are already associated with the model
+
+        Args:
+            enzyme: the enzyme for which the gene list should be evaluated
+
+        Returns:
+            gene_relations_dict: a dictionary with all the cobra.Gene objects associated with both the model as
+            the enzyme and their relationship
+
+        Example:
+            Example of returned object:
+            for an enzyme with the following list of genes: `[[gene1, gene2],[gene3, gene4],[gene5]]`
+            In this enzyme, there are 2 enzyme complexes with the ids 0 and 1.
+            `gene_relation_dict = {'and':[[gene1, gene2], [gene3, gene4]],
+                                    'or':[gene5]}`
+        """
+        gene_relations_dict = {'and':[], 'or':[]}
+        # enzyme_complex_id = 0
+        for gene_list in enzyme.genes:
+            if len(gene_list)>1: # and relationship
+                gene_relations_dict['and'] += [[gene for gene in gene_list if gene in self.genes]]
+            elif gene_list[0] in self.genes:
+                    gene_relations_dict['or'] += [gene_list[0]]
+        return gene_relations_dict
+
     def get_enzymes_with_reaction_id(self, rxn_id: str) -> DictList:
         """
         Return Enzyme objects associated with the reaction identifier through CatalyticEvent objects.
@@ -1430,8 +1478,9 @@ class PAModel(Model):
             rxn2kcat = kcats.copy()
             for rxn, kcat_f_b in kcats.items():
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
-                rxn2kcat = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
-                active_enzyme.rxn2protein[rxn][enzyme_id] = kcat_f_b
+                rxn2kcat, rxn_id = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
+                active_enzyme.rxn2protein[rxn_id] = {enzyme_id: kcat_f_b}
+                active_enzyme.rxn2protein[rxn] = {enzyme_id: kcat_f_b}
 
             enzyme.change_kcat_values(kcats)
 
@@ -1444,7 +1493,7 @@ class PAModel(Model):
             rxn = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn,
                                                                                  self.ENZYME_ID_REGEX)
             rxn2kcat[rxn] = kcat_dict
-        return rxn2kcat
+        return rxn2kcat,rxn
 
 
     def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
