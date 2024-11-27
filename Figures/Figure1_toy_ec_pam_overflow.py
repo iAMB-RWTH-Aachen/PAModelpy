@@ -279,5 +279,5 @@ if __name__ == "__main__":
     fig.set_figheight(height)
     plt.tight_layout()
 
-    fig.savefig('Figures/Figure1_toy_model-sensitivities_overflow.png',bbox_inches='tight')
+    fig.savefig('Figures/Figure1_toy_model-sensitivities_overflow.png',bbox_inches='tight', dpi=600)
     plt.show()

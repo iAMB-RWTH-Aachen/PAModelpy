@@ -210,7 +210,10 @@ class ActiveEnzymeSector(Sector):
                     if self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                         for pr in protein_reaction:
                             if len(pr) > 1:
-                                enzyme_complex_id = '_'.join(pr)
+                                #need to sort so the order of the id does not make the enzyme complex unique
+                                #e.g.: B1_B2_B3 should not be added if B3_B1_B2 is already in the model
+                                enzyme_complex_id = '_'.join(sorted(pr))
+
                                 if enzyme_complex_id not in model.enzymes:
                                     enzyme = EnzymeComplex(
                                         id=enzyme_complex_id,
@@ -223,7 +226,10 @@ class ActiveEnzymeSector(Sector):
                                     #add relation to rxn2protein dictionary
 
                                     self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
-                                                                **{enzyme_complex_id:kcat}}
+                                                                **{enzyme_complex_id: {
+                                                                    **kcat,
+                                                                    'genes': [g.id for g in gene_list[0]],
+                                                                    'protein_reaction_association': pr}}}
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
 

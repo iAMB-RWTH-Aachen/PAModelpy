@@ -17,6 +17,7 @@ from copy import copy, deepcopy
 import inspect
 import pickle
 import pytest
+from requests.compat import has_simplejson
 
 from .EnzymeSectors import (
     ActiveEnzymeSector,
@@ -313,7 +314,7 @@ class PAModel(Model):
         if not hasattr(enzyme_list, "__iter__"):
             enzyme_list = [enzyme_list]
         for enz in enzyme_list:
-            if not isinstance(enz, Enzyme):
+            if not hasattr(enz, "enzyme_variable"):
                 raise AttributeError(
                     "The input was neither an Iterable nor an Enzyme. Please provide only (lists of) Enzyme objects."
                 )
@@ -1069,7 +1070,7 @@ class PAModel(Model):
         Returns:
 
         """
-        if isinstance(enzyme, Enzyme):
+        if hasattr(enzyme, "enzyme_variable"):
             enzyme_id = enzyme.id
         else:
             enzyme_id = enzyme
@@ -1375,6 +1376,16 @@ class PAModel(Model):
     def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
 
+    def get_enzymecomplex_containing_enzyme(self, enzyme: Union[Enzyme, str]) -> list:
+        enzyme_complexes = []
+        if isinstance(enzyme, str):
+            enzyme = self.enzymes.get_by_id(enzyme)
+        for enz in self.enzymes:
+            if isinstance(enz, EnzymeComplex):
+                if enzyme in enz.enzymes:
+                    enzyme_complexes.append(enz)
+        return enzyme_complexes
+
     def _check_if_gene_in_enzyme_genes(self, gene_id: str,
                                        enzyme: Union[Enzyme, str]) -> bool:
         # check if input is in correct form and if the model exists in the model
@@ -1438,12 +1449,13 @@ class PAModel(Model):
         enzymes = catalytic_event.enzymes
         return enzymes
 
-    def get_reactions_with_enzyme_id(self, enz_id: str):
+    def get_reactions_with_enzyme_id(self, enz_id: str, ce_name: bool = True):
         """
         Return a list of reaction identifiers associated with the enzyme identifier (EC number) through CatalyticEvent objects.
 
-        Parameters:
-            enz_id (str): The enzyme identifier (EC number).
+        Args:
+            enz_id (str): The enzyme identifier.
+            ce_name (bool): boolean determining wether to return the catalytic reaction name (ce_rxnid_enzid) or the actual reaction identifier
 
         Returns:
             List[str]: A list of reaction identifiers associated with the enzyme.
@@ -1451,6 +1463,8 @@ class PAModel(Model):
 
         enzyme = self.enzymes.get_by_id(enz_id)
         rxn_ids = list(enzyme.rxn2kcat.keys())
+        if not ce_name:
+            rxn_ids = [CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rid) for rid in rxn_ids]
         return rxn_ids
 
     def change_kcat_value(self, enzyme_id: str, kcats: dict):
@@ -1848,7 +1862,7 @@ class PAModel(Model):
 
             # remove the associated constraints
             for constraint in sector.constraints:
-                if isinstance(constraint, Enzyme):
+                if hasattr(constraint, "enzyme_variable"):
                     self.remove_enzymes([constraint])
                 # check if constraint is in the solver
                 if constraint in self.constraints.values():
