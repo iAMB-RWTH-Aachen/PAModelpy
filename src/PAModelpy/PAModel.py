@@ -30,6 +30,7 @@ from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
+from .MembraneSector import MembraneSector
 
 
 class PAModel(Model):
@@ -79,6 +80,7 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
+                 membrane_sector: Optional[MembraneSector]=None,
                  custom_sectors: Optional[CustomSector] =[None],
                  configuration = Config()):
         """Constants"""
@@ -130,7 +132,7 @@ class PAModel(Model):
         if sensitivity:  # perform sensitivity analysis when the model is run
             self._add_lb_ub_constraints()
 
-        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        sectors_to_add = [active_sector, translational_sector, unused_sector, membrane_sector] + custom_sectors
         for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
@@ -488,6 +490,8 @@ class PAModel(Model):
             # different method to add the active enzyme_sector
             if isinstance(sector, ActiveEnzymeSector):
                 self = sector.add(self)
+            elif isinstance(sector, MembraneSector):
+                self = sector.add(self)
             else:
                 self.add_sector(sector)
 
@@ -776,11 +780,19 @@ class PAModel(Model):
         By adding these constraints the shadow prices of the reaction bounds can be
         calculated and used in sensitivity analysis
         """
+        #Debugging
+        self.rxn_old_bounds_lb = {} #
+        self.rxn_old_bounds_ub = {} #
+
         for rxn in self.reactions:
+            # Debugging
+            self.rxn_old_bounds_lb[rxn.id] = rxn.lower_bound #
+            self.rxn_old_bounds_ub[rxn.id] = rxn.upper_bound #
+
             self = self._make_lb_ub_constraint(
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
-            rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
+            # rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
 
     @staticmethod
     def _make_lb_ub_constraint(
@@ -988,6 +1000,7 @@ class PAModel(Model):
         self.capacity_sensitivity_coefficients = pd.DataFrame(
             columns=["rxn_id", "enzyme_id", "constraint", "coefficient"]
         )
+        raw_coefficients = {}
         # add capacity sensitivity coefficients for sectors if they are there
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             for sector in self.sectors:
@@ -1002,11 +1015,35 @@ class PAModel(Model):
                         ].iloc[0]
                         / obj_value
                     )
+
+                    # New
+                    raw_coefficients[enzyme_id] = ca_coefficient#
+
             new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             # add new_row to dataframe
             self.capacity_sensitivity_coefficients.loc[
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row
+
+            for sector in self.sectors:
+                if isinstance(sector, MembraneSector):
+                    constraint = "membrane"
+                    rxn_id = sector.id
+                    enzyme_id = sector.id
+                    ca_coefficient = (
+                            self.constraints[constraint].ub
+                            * mu[mu["rxn_id"] == constraint]["shadow_prices"].iloc[0]
+                            / obj_value
+                    )
+
+                    # New
+                    raw_coefficients[enzyme_id] = ca_coefficient#
+
+                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+                    # add new_row to dataframe
+                    self.capacity_sensitivity_coefficients.loc[
+                        len(self.capacity_sensitivity_coefficients)
+                    ] = new_row
 
             # treat sectors separately if there is not a total protein constraint
         else:
@@ -1019,6 +1056,9 @@ class PAModel(Model):
                     * mu[mu["rxn_id"] == sector.id]["shadow_prices"].iloc[0]
                     / obj_value
                 )
+
+                # New
+                raw_coefficients[enzyme_id] = ca_coefficient#
 
                 new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
                 # add new_row to dataframe
@@ -1037,12 +1077,19 @@ class PAModel(Model):
                 * mu_lb[mu_lb["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
                 / obj_value
             )
+
+            # New
+            raw_coefficients[rxn.id] = ca_coefficient#
+
             # UB
             ca_coefficient_UB = (
                 self.constraints[f"{rxn.id}_ub"].ub
                 * mu_ub[mu_ub["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
                 / obj_value
             )
+
+            # New
+            raw_coefficients[rxn.id] = ca_coefficient#
 
             new_row_UB = [rxn.id, "", "flux_ub", ca_coefficient_UB]
             new_row_LB = [rxn.id, "", "flux_lb", ca_coefficient_LB]
@@ -1053,6 +1100,15 @@ class PAModel(Model):
             self.capacity_sensitivity_coefficients.loc[
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row_LB
+
+        # New
+        total_coefficient = sum(raw_coefficients.values())
+        normalized_csc = self.capacity_sensitivity_coefficients.copy()
+
+        for i, row in self.capacity_sensitivity_coefficients.iterrows():
+            normalized_csc["coefficient"].loc[i] = row["coefficient"] / total_coefficient
+
+        #
 
         for enzyme in self.enzymes:
             for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
@@ -1373,7 +1429,7 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
-    def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
+    def get_enzymes_by_gene_reid(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
 
     def get_enzymecomplex_containing_enzyme(self, enzyme: Union[Enzyme, str]) -> list:
@@ -1630,13 +1686,13 @@ class PAModel(Model):
         catalytic_event = self.catalytic_events.get_by_id('CE_' + reaction.id)
 
         # removing catalytic event from the enzymes
-        # for enzyme in catalytic_event.enzymes:
-        #     if catalytic_event in enzyme.catalytic_events:
-        #         enzyme.remove_catalytic_event(catalytic_event)
-        #
-        # for enzyme_var in catalytic_event.enzyme_variables:
-        #     if catalytic_event in enzyme_var.catalytic_events:
-        #         enzyme_var.remove_catalytic_event(catalytic_event)
+        for enzyme in catalytic_event.enzymes:
+            if catalytic_event in enzyme.catalytic_events:
+                enzyme.remove_catalytic_event(catalytic_event)
+
+        for enzyme_var in catalytic_event.enzyme_variables:
+            if catalytic_event in enzyme_var.catalytic_events:
+                enzyme_var.remove_catalytic_event(catalytic_event)
         enzyme.remove_catalytic_event(catalytic_event.id)
         enzyme.enzyme_variable.remove_catalytic_event(catalytic_event.id)
 
