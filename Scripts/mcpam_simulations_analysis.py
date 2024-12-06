@@ -202,13 +202,21 @@ def run_pam_mcpam_core_with_optimized_kcats(sensitivity:bool=True,
 
     return pam_core, mcpam_core
 
-def run_simulations_pam_mcpam_core(models, print_area:bool=False):
+def run_simulations_pam_mcpam(models, print_area:bool=False, type:str="full scale"):
     fontsize = 25
     labelsize = 15
-    #### Fluxes simulations for different glc uptake rates
+
     # load phenotype data from excel file
     pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
                             sheet_name='Yields', index_col=None)
+
+    # Define the biomass name based on the used model
+    if type == "full scale":
+        biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
+        max_area_list = np.linspace(0.1, 0.4, 4)
+    else:
+        biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
+        max_area_list = np.linspace(0.01, 0.04, 4)
 
     # extract reaction specific data
     rxn_to_pt = {}
@@ -216,20 +224,16 @@ def run_simulations_pam_mcpam_core(models, print_area:bool=False):
         'EX_ac_e': 'EX_ac_e',
         'EX_co2_e': 'EX_co2_e',
         'EX_o2_e': 'EX_o2_e',
-        'BIOMASS_Ecoli_core_w_GAM':'BIOMASS_Ec_iML1515_core_75p37M',
-        # 'BIOMASS_Ec_iML1515_core_75p37M' :'BIOMASS_Ec_iML1515_core_75p37M'
+        biomass_name:'BIOMASS_Ec_iML1515_core_75p37M'
     }
     for rxn_id, pt_id in rxn_transform.items():
         rxn_to_pt[rxn_id] = pt_data[['EX_glc__D_e', pt_id]].dropna().rename(columns={pt_id: rxn_id})
 
-    glc_uptake_rates = np.linspace(0.5, 11.5, 20)
+    glc_uptake_rates = np.linspace(0.5, 14, 25)
 
-    # Initializing fluxes and concentrations for pam and mcpam core
+    # Initializing fluxes and concentrations for pam and mcpam
     fluxes_dict = {}
     concentrations_dict = {}
-
-    # Creating a list of different max area for mcpam
-    max_area_list = np.linspace(0.01, 0.04, 4)
 
     for model, config in zip(models, ["PAM", "mcPAM"]):
 
@@ -288,11 +292,11 @@ def run_simulations_pam_mcpam_core(models, print_area:bool=False):
     sns.set_palette(("colorblind"))
 
     # plot flux changes with glucose uptake
-    rxn_id = ['EX_ac_e', 'EX_co2_e', 'EX_o2_e', 'BIOMASS_Ecoli_core_w_GAM']
+    rxn_id = ['EX_ac_e', 'EX_co2_e', 'EX_o2_e', biomass_name]
     ax_title = {'EX_ac_e': 'Acetate Secretion',
                 'EX_co2_e': 'CO2 Secretion',
                 'EX_o2_e': 'O2 uptake',
-                'BIOMASS_Ecoli_core_w_GAM': 'Biomass Production'}
+                biomass_name: 'Biomass Production'}
     # rxn_id = ['EX_ac_e', 'EX_co2_e', 'EX_o2_e', 'BIOMASS_Ec_iML1515_core_75p37M']
     fig, axs = plt.subplots(2, 2, dpi=90)
     for r, ax in zip(rxn_id, axs.flatten()):
@@ -327,32 +331,6 @@ def run_simulations_pam_mcpam_core(models, print_area:bool=False):
 
     # show legend
     fig.subplots_adjust(top=0.85, wspace=0.5, hspace=0.5)
-
-    # Occupied, available area calculation for mcpam
-    mcpam_core = models[1]
-    mcpam_core.optimize()
-    occupied_area, available_area = mcpam_core.sectors.get_by_id("MembraneSector").calculate_occupied_membrane(mcpam_core)
-
-    # Print the objective values for glc uptake rate 10 [mmol/gDW/h]
-    for model, config in zip(models, ["pam_core", "mcpam_core"]):
-        model.reactions.EX_glc__D_e.lower_bound = -10
-        if config == "mcpam_core":
-            model.sectors.get_by_id("MembraneSector")._update_membrane_constraint(0.033, model)
-        print(f'{config} objective value for glc uptake rate 10 [mmol/gDW/h]:', model.objective.value)
-    print(f"mcPAM occupied area = {occupied_area} um2")
-    print(f"mcPAM available area = {available_area} um2")
-
-    #Add parameter box
-    param_text = (
-        f"mcPAM/PAM_core model \n"
-        f"Total protein: {mcpam_core.total_protein_fraction} g/g DW \n"
-        f"Max membrane area = {mcpam_core.membrane_sector.max_membrane_area * 100}% \n"
-        f"mcPAM occupied area = {occupied_area/available_area*100}%"
-    )
-
-    #Position the text box in the upper left corner of each subplot
-    fig.text(0.6, 2.75, 'param_text', transform=ax.transAxes, fontsize=fontsize,
-            verticalalignment='top', bbox=dict(facecolor='white', alpha=0.5, boxstyle="round,pad=0.3"))
 
     plt.show()
 

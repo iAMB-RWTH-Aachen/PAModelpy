@@ -359,7 +359,7 @@ def set_up_ecoli_mcpam(total_protein: Union[bool, float] = True, active_enzymes:
                        unused_sector=unused_protein_sector, sensitivity=sensitivity, configuration = config,
                       membrane_sector=membrane_sector
                       )
-    pamodel.solver = 'glpk'
+
     return pamodel
 
 def _parse_enzyme_information_from_file(file_path:str):

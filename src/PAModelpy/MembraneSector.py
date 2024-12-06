@@ -15,7 +15,7 @@ class MembraneSector(EnzymeSector):
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            max_area: float = 0.033,
+            max_area: float = 0.27,
             configuration=Config):
 
         self.id = 'MembraneSector'
