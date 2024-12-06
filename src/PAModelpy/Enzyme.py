@@ -250,7 +250,7 @@ class Enzyme(Object):
             else:
                 catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id, self.enzyme_id_regex)}"
             # change rxn2kcat dictionary
-            self.rxn2kcat[rxn_id] = kcats
+            self.rxn2kcat[rxn_id] = {**self.rxn2kcat[rxn_id],**kcats}
             # is there already a link between enzyme and reaction?
             if catalytic_event_id not in self.catalytic_events:
                 warn(f"Reaction {rxn_id} is not associated with enzyme {self.id}. Skip")
@@ -912,7 +912,7 @@ class EnzymeVariable(Reaction):
         kcats_change = {}
         for rxn, kcat_dict in reaction_kcat_dict.items():
             # save change in dict
-            self.kcats[rxn.id] = kcat_dict
+            self.kcats[rxn.id] = {**self.kcats[rxn.id],**kcat_dict}
             for direction, kcat in kcat_dict.items():
                 if direction != "f" and direction != "b":
                     warn(

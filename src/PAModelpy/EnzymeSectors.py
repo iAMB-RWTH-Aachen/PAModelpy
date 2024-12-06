@@ -1,7 +1,9 @@
 from warnings import warn
 from copy import copy, deepcopy
+
+from black.trans import defaultdict
 from cobra import Object, Gene, Model
-from typing import Union
+from typing import Union, Literal
 
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
@@ -375,6 +377,12 @@ class ActiveEnzymeSector(Sector):
     #     state = self.__dict__.copy()
     #     # Handle any non-serializable attributes here
     #     return state
+    def change_kcat_values(self, rxn_id:str, enzyme_id:str,
+                           kcat_f_b:dict[Literal['f', 'b'], float]
+                           ) -> None:
+        rxnid2protein = defaultdict(dict ,self.rxn2protein[rxn_id])
+        rxnid2protein[enzyme_id] = {**rxnid2protein[enzyme_id],**kcat_f_b}
+        self.rxn2protein[rxn_id] = dict(rxnid2protein)
 
     def __setstate__(self, state):
         # Restore state from the unpickled state

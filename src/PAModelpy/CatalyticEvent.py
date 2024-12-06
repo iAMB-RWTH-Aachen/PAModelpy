@@ -12,6 +12,7 @@ from typing import Optional, Dict, Union
 from warnings import warn
 from copy import copy, deepcopy
 import re
+from collections import defaultdict
 
 
 class CatalyticEvent(Object):
@@ -368,9 +369,10 @@ class CatalyticEvent(Object):
 
         # apply changes to internal dicts (one by one to avoid deleting kcat values)
         kcats_change = {}
+        kcats = defaultdict(dict, self.kcats)
         for enzyme, kcat_dict in enzyme_kcat_dict.items():
             # save change in dict
-            self.kcats[enzyme] = kcat_dict
+            kcats[enzyme] = {**kcats[enzyme],**kcat_dict}
             for direction, kcat in kcat_dict.items():
                 if direction != "f" and direction != "b":
                     warn(
@@ -394,6 +396,7 @@ class CatalyticEvent(Object):
                 #change enzyme variable
                 enzyme_var.kcats[ce_reaction.id][direction] = kcat
                 self._model._change_kcat_in_enzyme_constraint(ce_reaction, enzyme, direction, kcat)
+        self.kcats = dict(kcats)
 
     @staticmethod
     def _extract_reaction_id_from_catalytic_reaction_id(input_str: str,
