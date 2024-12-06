@@ -792,7 +792,14 @@ class PAModel(Model):
             self = self._make_lb_ub_constraint(
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
-            # rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
+
+            # New
+            if rxn.lower_bound >= 0:
+                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound-(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
+
+            if rxn.lower_bound <= 0:
+                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound+(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
+                #
 
     @staticmethod
     def _make_lb_ub_constraint(
@@ -1000,7 +1007,7 @@ class PAModel(Model):
         self.capacity_sensitivity_coefficients = pd.DataFrame(
             columns=["rxn_id", "enzyme_id", "constraint", "coefficient"]
         )
-        raw_coefficients = {}
+        self.raw_coefficients = {}
         # add capacity sensitivity coefficients for sectors if they are there
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             for sector in self.sectors:
@@ -1015,9 +1022,6 @@ class PAModel(Model):
                         ].iloc[0]
                         / obj_value
                     )
-
-                    # New
-                    raw_coefficients[enzyme_id] = ca_coefficient#
 
             new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             # add new_row to dataframe
@@ -1035,9 +1039,6 @@ class PAModel(Model):
                             * mu[mu["rxn_id"] == constraint]["shadow_prices"].iloc[0]
                             / obj_value
                     )
-
-                    # New
-                    raw_coefficients[enzyme_id] = ca_coefficient#
 
                     new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
                     # add new_row to dataframe
@@ -1057,9 +1058,6 @@ class PAModel(Model):
                     / obj_value
                 )
 
-                # New
-                raw_coefficients[enzyme_id] = ca_coefficient#
-
                 new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
                 # add new_row to dataframe
                 self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
@@ -1078,18 +1076,12 @@ class PAModel(Model):
                 / obj_value
             )
 
-            # New
-            raw_coefficients[rxn.id] = ca_coefficient#
-
             # UB
             ca_coefficient_UB = (
                 self.constraints[f"{rxn.id}_ub"].ub
                 * mu_ub[mu_ub["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
                 / obj_value
             )
-
-            # New
-            raw_coefficients[rxn.id] = ca_coefficient#
 
             new_row_UB = [rxn.id, "", "flux_ub", ca_coefficient_UB]
             new_row_LB = [rxn.id, "", "flux_lb", ca_coefficient_LB]
@@ -1101,14 +1093,6 @@ class PAModel(Model):
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row_LB
 
-        # New
-        total_coefficient = sum(raw_coefficients.values())
-        normalized_csc = self.capacity_sensitivity_coefficients.copy()
-
-        for i, row in self.capacity_sensitivity_coefficients.iterrows():
-            normalized_csc["coefficient"].loc[i] = row["coefficient"] / total_coefficient
-
-        #
 
         for enzyme in self.enzymes:
             for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):

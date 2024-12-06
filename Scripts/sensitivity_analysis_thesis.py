@@ -45,10 +45,10 @@ def calculate_sensitivities(pamodel):
             Ccsc_new = list()
 
             if pamodel.solver.status == 'optimal':
-                capacity_coeff = pamodel.capacity_sensitivity_coefficients
+                capacity_sensitivity_coefficients = pamodel.capacity_sensitivity_coefficients
                 # for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector']: # for PAM without membrane
                 for csc in ['flux_ub', 'flux_lb', 'enzyme_max', 'enzyme_min', 'proteome', 'sector', 'membrane']:
-                    Ccsc_new += capacity_coeff[capacity_coeff['constraint'] == csc].coefficient.to_list()
+                    Ccsc_new += capacity_sensitivity_coefficients[capacity_sensitivity_coefficients['constraint'] == csc].coefficient.to_list()
 
                 Ccsc += [Ccsc_new]
 
@@ -58,7 +58,7 @@ def calculate_sensitivities(pamodel):
                 print('Sum of capacity sensitivity coefficients: \t \t \t \t \t \t', round(sum(Ccsc_new), 6))
                 print('Sum of enzyme sensitivity coefficients: \t \t \t \t \t \t', round(sum(Cesc[-1]), 6), '\n')
 
-    return {'Ccsc': Ccsc, 'Cesc': Cesc, 'y_axis': y_axis, 'fluxes': fluxes, 'capacity coefficients': capacity_coeff,
+    return {'Ccsc': Ccsc, 'Cesc': Cesc, 'y_axis': y_axis, 'fluxes': fluxes, 'capacity coefficients': capacity_sensitivity_coefficients,
             'enzyme coefficients': enzyme_coeff}
 
 
@@ -587,18 +587,18 @@ gs_pam = gs0[0]
 # x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
 # x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
 
-# Make figure acetate and csc
-fig.set_layout_engine(layout='constrained')
-fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
-                                 ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-                                 yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-                                 phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
-
-# Make figure esc
-# fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+# # Make figure acetate and csc
+# fig.set_layout_engine(layout='constrained')
+# fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
 #                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
 #                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
 #                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+
+# Make figure esc
+fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+                                 ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
+                                 yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
+                                 phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
 plt.plasma()
 fig.set_figwidth(width)
