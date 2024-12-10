@@ -380,9 +380,7 @@ class ActiveEnzymeSector(Sector):
     def change_kcat_values(self, rxn_id:str, enzyme_id:str,
                            kcat_f_b:dict[Literal['f', 'b'], float]
                            ) -> None:
-        rxnid2protein = defaultdict(dict ,self.rxn2protein[rxn_id])
-        rxnid2protein[enzyme_id] = {**rxnid2protein[enzyme_id],**kcat_f_b}
-        self.rxn2protein[rxn_id] = dict(rxnid2protein)
+        self.rxn2protein.setdefault(rxn_id, {}).update(kcat_f_b)
 
     def __setstate__(self, state):
         # Restore state from the unpickled state

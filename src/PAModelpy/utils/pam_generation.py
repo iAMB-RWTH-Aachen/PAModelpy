@@ -9,9 +9,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 
-from src.PAModelpy.PAModel import PAModel
-from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from src.PAModelpy.configuration import Config
+from ..PAModel import PAModel
+from ..EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 11 #s-1
@@ -80,7 +80,7 @@ def parse_gpr_information(gpr_info:str,
                           gene2protein: dict[str, str] = None) -> tuple[list,list]:
     #filter out nan entries
     if not isinstance(gpr_info, str):
-        return None
+        return None, None
 
     # #only get the genes associated with this enzyme
     gpr_list = _parse_gpr(gpr_info)
@@ -191,11 +191,13 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
                                                           protein2gpr:defaultdict[str,list]
                                                           ) -> Tuple[dict[str, ReactionInformation],defaultdict[str,list]]:
     for rxn in model.reactions:
+        rxn_id = _extract_reaction_id(
+            rxn.id)  # some reactions ids are associated with copy numbers, only filter for the actual reaction id
         if not (
-                rxn.id not in rxn_info2protein.keys()
-                and 'EX'.lower() not in rxn.id.lower()#is the reaction an exchange with the environment?
-                and 'BIOMASS' not in rxn.id#is the reaction a pseudoreaction?
-                and len(rxn._genes) > 0 #is the reaction associated with enzymes?
+                rxn_id not in rxn_info2protein.keys()
+                and 'EX'.lower() not in rxn.id.lower()  # is the reaction an exchange with the environment?
+                and 'BIOMASS' not in rxn.id  # is the reaction a pseudoreaction?
+                and len(rxn._genes) > 0  # is the reaction associated with enzymes?
                 and list(rxn._genes)[0].id != 's0001'
         ): continue
 
