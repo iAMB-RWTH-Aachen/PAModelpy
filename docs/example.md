@@ -238,7 +238,7 @@ sensitivities can help us explain concepts of protein allocation.
 
 <figure id="toy_model_image">
 
-![toy_model_image](./assets/toy-model.png)
+![toy_model_image](assetsoy-model.png)
 
 <figcaption>**Figure 1. Toy model network and parameters**  
 *This toy model represents a schematic overview of a microbial metabolism,

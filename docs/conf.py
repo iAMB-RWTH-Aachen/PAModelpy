@@ -1,7 +1,3 @@
-# Configuration file for the Sphinx documentation builder.
-import os
-import sys
-sys.path.insert(0, os.path.abspath('../docs/docs'))  # Adjust the path to where your documentation files are
 
 # Set the source directory for your Sphinx documentation files
 source_suffix = ['.rst', '.md']  # If using Markdown files with MyST
