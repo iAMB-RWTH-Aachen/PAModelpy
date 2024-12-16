@@ -1,7 +1,4 @@
----
-sidebar_label: EnzymeSectors
-title: EnzymeSectors
----
+# EnzymeSectors
 
 ## Sector Objects
 

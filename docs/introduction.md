@@ -1,12 +1,4 @@
----
-title: 'Introduction'
-sidebar_position: 1
-sidebar_title: 'Introduction'
-slug: '/'
----
-
 # PAModelpy - Protein Allocation Model reconstruction in Python
-*******
 
 ## What is PAModelpy?
 Models of metabolism are powerful tools to explore the metabolic potential of microorganism. 

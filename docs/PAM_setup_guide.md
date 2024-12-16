@@ -1,5 +1,4 @@
-
-# Protein Allocation Model (PAM) Setup Guide
+# Setting up PAMs using PAModelpy
 
 This guide provides step-by-step instructions on how to use the provided Python scripts to build Protein Allocation Models (PAMs) from a genome-scale model and parameter datasets.
 
@@ -152,5 +151,3 @@ eco_enzymes_mapped = merge_enzyme_complexes(enzyme_db, gene2protein)
 
 - **Issue: Objective value is zero after optimization**  
   Solution: Check the input parameter file for consistency and ensure that all reactions are correctly annotated.
-
----

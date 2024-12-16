@@ -1,14 +1,6 @@
-from PAModelpy.Scripts.protein_costs_analysis import active_enzyme_infofrom PAModelpy.src import merge_enzyme_complexesfrom PAModelpy.Scripts.protein_costs_analysis import active_enzyme_infofrom PAModelpy.Scripts.protein_costs_analysis import active_enzyme_info---
-title: 'Examples'
-sidebar_position: 2
-sidebar_title: 'Examples'
----
-
 # Example usage of PAModelpy
-*************
 
 ## Example 1: setting up an *Escherichia coli* Protein Allocation model (PAM)
-*****
 *Escherichia coli* (*E.coli*) is a commonly used model organism in Microbiology. When this microorganism is grown
 on increasing glucose concentration, it shifts from a purely respiratory metabolism to a respiro-fermentative metabolic
 phenotype. This phenomenon is called 'overflow metabolism'. Interestingly, overflow metabolism cannot be simulated using
@@ -66,7 +58,7 @@ import os
 pam = set_up_pam(os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx'),
                  os.path.join('Models', 'iML1515.xml'))
 ```
-More information can be found in the `PAM_setup_guide`
+More information can be found in the :ref:`PAM_setup_guide`
 
 #### 1.1: Active enzyme sector
 The active enzyme sector will be build using information about which enzymes catalyzes a specific reaction, 
@@ -89,15 +81,20 @@ object. The main input in this object is the rxn2protein dictionary, where all t
 associations required to build the protein-reaction relations in the model. It has the following format:
 
 ```json
-{'R1':
-    {'E1':
-        {'f': forward kcat, 'b': backward kcat, 
-          'molmass': molar mass, 
-          'protein_reaction_relation': [['E1']]},
-     'E2':
-        {'f': forward kcat, 'b': backward kcat, 
-          'molmass': molar mass, 
-          'protein_reaction_relation': [['E1']]}
+{
+    "R1": {
+        "E1": {
+            "f": "forward kcat",
+            "b": "backward kcat",
+            "molmass": "molar mass",
+            "protein_reaction_relation": [["E1"]]
+        },
+        "E2": {
+            "f": "forward kcat",
+            "b": "backward kcat",
+            "molmass": "molar mass",
+            "protein_reaction_relation": [["E1"]]
+        }
     }
 }
 ```
@@ -106,7 +103,7 @@ peptides/proteins for one or more reactions), this information can be added in t
 of the reaction2protein dictionary. This entry is a list of lists, in which each sublist represent one functional
 enzyme (complex). This means if E1 and E2 catalyze the same reaction, the `protein_reaction_relation` becomes `[['E1','E2']]`
 for an enzyme complex ('AND' relation), and `[['E1']['E2']]` for isozymes ('OR' relation). In this example we will use
-the peptide ids as defined by [UniProt](). The [paper introducting sEnz](https://doi.org/10.1093/bioinformatics/btae691) 
+the peptide ids as defined by [UniProt](https://www.uniprot.org/). The [paper introducting sEnz](https://doi.org/10.1093/bioinformatics/btae691) 
 uses a different system, based on EC numbers. How to build those PAMs can be found in the scripts associated to the 
 publication and in the `Script/pam_generation.py` file. Now we will use gene-protein-reaction relations obtained from a 
 genome-scale model and uniprot to include different enzyme relations.
@@ -228,7 +225,7 @@ the model, such as deleting or adding enzymes, changing kcats, changing enzymes 
 at the following jupyter notebook: `Examples/PAModel_example_script.ipynb`. Have fun!
 
 ## Example 2: Determining the most sensitive enzymes in a toy model
-******
+
 When looking at the flux distribution resulting from our simulations, we do not get any information about which enzymes
 played an important role in prediciting the specific metabolic phenotype. However, with the right model configurations,
 we get the sensitivity of the objective function to slight changes in the enzyme availability (enzyme sensitivity 
@@ -236,9 +233,7 @@ coefficients, ESC) as a result from the model simulations. In this example we'll
 sensitivities can help us explain concepts of protein allocation.
 
 
-<figure id="toy_model_image">
-
-![toy_model_image](assetsoy-model.png)
+![toy_model_image](assets/toy-model.png)
 
 <figcaption>**Figure 1. Toy model network and parameters**  
 *This toy model represents a schematic overview of a microbial metabolism,
@@ -380,7 +375,7 @@ print_heatmap(x_axis_esc, Cesc, yaxis=substrate_axis)
 ```
 
 ### Step 4: Interpret the results
-Compare the [toy model network structure](#toy_model_image) with the results from the heatmap. Did you expect these results? Do they make 
+Compare the toy model network structure :ref:`toy_model_image` with the results from the heatmap. Did you expect these results? Do they make 
 sense? Which mechanisms to explain these observations. If the observations are not inline with you're expectations,
 you can use the enzyme sensitivities to point to the enzymatic parameters which might need to be adjusted (in this dummy
 example this makes no sense off course, but in reality this is a very plausible outcome).

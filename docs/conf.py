@@ -8,8 +8,8 @@ project = 'PAModelpy'
 copyright = '2024, iAMB, RWTH Aachen University'
 author = 'Samira van den Bogaard'
 
-release = '0.4.1'
-version = '0.4.1'
+release = '0.4.2'
+version = '0.4.2'
 
 # -- General configuration
 

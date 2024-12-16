@@ -1,10 +1,8 @@
----
-sidebar_label: Enzyme
-title: Enzyme
----
+# Enzyme classes
 
 Classes related to enzymes:
 - Enzyme: Constraints relating enzymes to reactions. Including upper and lower bound enzyme constraints
+- EnzymeComplex: Constraints relating enzyme complexes to reactions. Including upper and lower bound enzyme constraints
 - EnzymeVariable: Variable related to an enzyme. The value of this variable represent the concentration.
 
 ## Enzyme Objects

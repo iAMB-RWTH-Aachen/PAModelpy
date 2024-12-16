@@ -160,6 +160,7 @@ class ActiveEnzymeSector(Sector):
 
                         del rxn2protein[rxn_id]
                 except:
+                    print(model.reactions.query(rxn_id))
                     warn(
                         f"Reaction {rxn_id} is not in the model, this reaction will be skipped"
                     )
