@@ -1,0 +1,146 @@
+{
+    "optimized_kcats_core": {
+        "P25516": {
+            "CE_ACONTa_P25516": {
+                "f": 5.2,
+                "b": 5.2
+            },
+            "CE_ACONTb_P25516": {
+                "f": 5.2,
+                "b": 5.2
+            }
+        },
+        "P0AC98": {
+            "CE_ACt2rpp_P0AC98": {
+                "f": 15,
+                "b": 15
+            }
+        },
+        "P0A9P0_P0AFG3_P0AFG6": {
+            "CE_AKGDH_P0A9P0_P0AFG3_P0AFG6": {
+                "f": 35,
+                "b": 35
+            }
+        },
+        "P0AEX3": {
+            "CE_AKGt2rpp_P0AEX3": {
+                "f": 100,
+                "b": 100
+            }
+        },
+        "P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P0ABC0_P68699": {
+            "CE_ATPS4rpp_P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P0ABC0_P68699": {
+                "f": 800,
+                "b": 800
+            }
+        },
+        "P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P68699": {
+            "CE_ATPS4rpp_P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P68699": {
+                "f": 800,
+                "b": 800
+            }
+        },
+        "P26458_P26459": {
+            "CE_CYTBD2pp_P26458_P26459": {
+                "f": 300,
+                "b": 300
+            },
+            "CE_CYTBDpp_P26458_P26459": {
+                "f": 300,
+                "b": 300
+            }
+        },
+        "P0ABJ9_P0ABK2_P56100": {
+            "CE_CYTBDpp_P0ABJ9_P0ABK2_P56100": {
+                "f": 300,
+                "b": 300
+            }
+        },
+        "P0AC53": {
+            "CE_G6PDH2r_P0AC53": {
+                "f": 1446,
+                "b": 1446
+            }
+        },
+        "P08839_P0AA04_P69797_P69801_P69805": {
+            "CE_GLCptspp_P08839_P0AA04_P69797_P69801_P69805": {
+                "f": 2765,
+                "b": 0
+            }
+        },
+        "P08839_P0AA04_P69783_P69786": {
+            "CE_GLCptspp_P08839_P0AA04_P69783_P69786": {
+                "f": 2765,
+                "b": 0
+            },
+            "GLCptspp": {
+                "f": 2765,
+                "b": 0
+            }
+        },
+        "P00350": {
+            "CE_GND_P00350": {
+                "f": 1446,
+                "b": 1446
+            }
+        },
+        "P0AFC3_P0AFC7_P0AFD1_P0AFD4_P0AFD6_P0AFE0_P0AFE4_P0AFE8_P0AFF0_P31979_P33599_P33602_P33607": {
+            "CE_NADH16pp_P0AFC3_P0AFC7_P0AFD1_P0AFD4_P0AFD6_P0AFE0_P0AFE4_P0AFE8_P0AFF0_P31979_P3359\n9_P33602_P33607": {
+                "f": 166.67,
+                "b": 0
+            }
+        },
+        "P06959_P0A9P0_P0AFG8": {
+            "CE_PDH_P06959_P0A9P0_P0AFG8": {
+                "f": 37.9,
+                "b": 37.9
+            }
+        },
+        "P0A799": {
+            "CE_PGK_P0A799": {
+                "f": 10,
+                "b": 10
+            }
+        },
+        "P0A830": {
+            "CE_SUCCt2_2pp_P0A830": {
+                "f": 30,
+                "b": 30
+            },
+            "SUCCt2_2pp": {
+                "f": 30,
+                "b": 30
+            }
+        },
+        "P0AC98": {
+            "CE_SUCCt2_2pp_P0AC98": {
+                "f": 30,
+                "b": 30
+            }
+        },
+        "P07014_P0AC41_P0AC44_P69054": {
+            "CE_SUCDi_P07014_P0AC41_P0AC44_P69054": {
+                "f": 182,
+                "b": 0
+            }
+        },
+        "P07001_P0AB67": {
+            "CE_THD2pp_P07001_P0AB67": {
+                "f": 1000,
+                "b": 0
+            }
+        },
+        "P27302": {
+            "CE_TKT1_P27302": {
+                "f": 410000,
+                "b": 410000
+            }
+        },
+        "P33570": {
+            "CE_TKT1_P33570": {
+                "f": 410000,
+                "b": 410000
+            }
+        }
+    }
+}

@@ -14,7 +14,8 @@ from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, 
 from src.PAModelpy.MembraneSector import MembraneSector
 from src.PAModelpy.configuration import Config
 from Scripts.mcpam_generation_uniprot_id import (parse_reaction2protein,
-                                                 set_up_ecolicore_pam, set_up_ecolicore_mcpam)
+                                                 set_up_ecolicore_pam, set_up_ecolicore_mcpam,
+                                                 set_up_ecoli_pam, set_up_ecoli_mcpam)
 
 def compare_mu_for_different_sensitivities_ecolicore_pam():
     rxn2protein_new = {}
@@ -154,6 +155,12 @@ def build_ecolicore_pam_and_mcpam(sensitivity:bool=True, max_area: float = 0.1):
 
     return pam_core, mcpam_core
 
+def build_ecoli_pam_and_mcpam(sensitivity:bool=True, max_area: float = 0.1):
+    pam_core = set_up_ecoli_pam(sensitivity=sensitivity)
+    mcpam_core = set_up_ecoli_mcpam(sensitivity=sensitivity)
+
+    return pam_core, mcpam_core
+
 def set_objective_pam_mcpam(models:list, objective:str):
     for model in models:
         model.objective = objective
@@ -164,30 +171,34 @@ def optimize_pam_mcpam(models: list):
 
 def run_pam_mcpam_core_with_optimized_kcats(sensitivity:bool=True,
                                             enzyme_sets_name:str='enzyme_sets.json',
-                                            print_area:bool=False):
+                                            print_area:bool=False,
+                                            type:str='full scale'):
 
     # Resetting the configurations
     config = Config()
     config.reset()
 
     # Building the models
-    pam_core, mcpam_core = build_ecolicore_pam_and_mcpam(sensitivity=sensitivity)
+    if type == "full scale":
+        pam, mcpam =build_ecoli_pam_and_mcpam(sensitivity=sensitivity)
+    else:
+        pam, mcpam = build_ecolicore_pam_and_mcpam(sensitivity=sensitivity)
 
     # List of kcat values to be changed
     enzyme_path = os.path.join('Data', enzyme_sets_name)
     with open(enzyme_path, 'r') as json_file:
         enzyme_sets = json.load(json_file)
 
-    # Changing the solver, since problem with gurobi
-    pam_core.solver = 'glpk'
-    mcpam_core.solver = 'glpk'
-
     # Changing the kcats
-    models = [pam_core, mcpam_core]
+    models = [pam, mcpam]
     change_kcats_for_multiple_enzyme_sets(models, enzyme_sets)
 
     # Setting the objectives and Optimizing the models
-    BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
+    if type == "full scale":
+        BIOMASS_REACTION = 'BIOMASS_Ec_iML1515_core_75p37M'
+    else:
+        BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
+
     set_objective_pam_mcpam(models, BIOMASS_REACTION)
     optimize_pam_mcpam(models)
 
@@ -197,10 +208,10 @@ def run_pam_mcpam_core_with_optimized_kcats(sensitivity:bool=True,
 
     #Printing the occupied area for mcpam core
     if print_area:
-        occupied_area, available_area = mcpam_core.calculate_occupied_membrane()
+        occupied_area, available_area = mcpam.calculate_occupied_membrane()
         print(f'occupied area {occupied_area / available_area * 100}%')
 
-    return pam_core, mcpam_core
+    return pam, mcpam
 
 def run_simulations_pam_mcpam(models, print_area:bool=False, type:str="full scale"):
     fontsize = 25

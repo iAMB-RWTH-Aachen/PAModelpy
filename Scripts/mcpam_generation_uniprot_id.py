@@ -41,7 +41,7 @@ def set_up_ecolicore_pam(total_protein:bool = True,
     #load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
-        enzyme_db = pd.read_excel(PAM_DATA_FILE_PATH, sheet_name='mcPAM_data_parametrized')
+        enzyme_db = pd.read_excel(PAM_DATA_FILE_PATH, sheet_name='mcPAM_data_core')
 
         for idx in enzyme_db.rxnID:
             # transport reactions
@@ -127,7 +127,7 @@ def set_up_ecolicore_mcpam(total_protein: Union[bool, float] = True,
     # load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
-        enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_parametrized')
+        enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core')
 
         for idx in enzyme_db.rxnID:
             # transport reactions
@@ -183,7 +183,7 @@ def set_up_ecolicore_mcpam(total_protein: Union[bool, float] = True,
 
     if membrane_sector:
         membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane')
-        active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_parametrized')
+        active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core')
 
         area_avail_0 = membrane_info[membrane_info.Parameter == 'area_avail_0'].loc[1,'Value']
         area_avail_mu = membrane_info[membrane_info.Parameter == 'area_avail_mu'].loc[2,'Value']

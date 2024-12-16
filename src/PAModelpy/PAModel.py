@@ -772,7 +772,15 @@ class PAModel(Model):
                     self, rxn, rxn.lower_bound, rxn.upper_bound
                 )
                 # reset the reaction bounds
-                rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
+                # New
+                if rxn.lower_bound > 0:
+                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound - (rxn.lower_bound * 0.01), rxn.upper_bound + (
+                                rxn.upper_bound * 0.01)
+
+                if rxn.lower_bound <= 0:
+                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound + (rxn.lower_bound * 0.01), rxn.upper_bound + (
+                                rxn.upper_bound * 0.01)
+                    #
 
     def _add_lb_ub_constraints(self):
         """
@@ -785,16 +793,13 @@ class PAModel(Model):
         self.rxn_old_bounds_ub = {} #
 
         for rxn in self.reactions:
-            # Debugging
-            self.rxn_old_bounds_lb[rxn.id] = rxn.lower_bound #
-            self.rxn_old_bounds_ub[rxn.id] = rxn.upper_bound #
 
             self = self._make_lb_ub_constraint(
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
 
             # New
-            if rxn.lower_bound >= 0:
+            if rxn.lower_bound > 0:
                 rxn.lower_bound, rxn.upper_bound = rxn.lower_bound-(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
 
             if rxn.lower_bound <= 0:

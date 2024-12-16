@@ -14,7 +14,7 @@ from src.PAModelpy.configuration import Config
 
 if os.path.split(os.getcwd())[1] == 'Figures':
     os.chdir(os.path.split(os.getcwd())[0])
-from Scripts.mcpam_generation_uniprot_id import set_up_ecolicore_mcpam
+from Scripts.mcpam_generation_uniprot_id import set_up_ecolicore_mcpam, set_up_ecoli_mcpam
 
 Config.BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
 DATA_DIR = os.path.join('Data')  # os.path.join(os.path.split(os.getcwd())[0], 'Data')
@@ -587,18 +587,18 @@ gs_pam = gs0[0]
 # x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
 # x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
 
-# # Make figure acetate and csc
-# fig.set_layout_engine(layout='constrained')
-# fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
-#                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-#                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-#                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
-
-# Make figure esc
-fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+# Make figure acetate and csc
+fig.set_layout_engine(layout='constrained')
+fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+
+# # Make figure esc
+# fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+#                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
+#                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
+#                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
 plt.plasma()
 fig.set_figwidth(width)

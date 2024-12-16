@@ -10,15 +10,17 @@ import matplotlib.pyplot as plt; plt.rcdefaults()
 
 if __name__ == "__main__":
 
-    mcpam = set_up_ecolicore_mcpam(sensitivity=False)
-    pam = set_up_ecolicore_pam(sensitivity=False)
-    pam.optimize()
-    mcpam.optimize()
-    print("PAM objective value: ", pam.objective.value)
-    print("mcPAM objective value: ", mcpam.objective.value)
+    pam = set_up_ecoli_pam(sensitivity=False)
+    mcpam = set_up_ecoli_mcpam(sensitivity=False)
 
+    # pam, mcpam = run_pam_mcpam_core_with_optimized_kcats(sensitivity=True, type='full scale', enzyme_sets_name="enzyme_sets.json")
     models = [pam, mcpam]
-    run_simulations_pam_mcpam(models, type="core")
+    run_simulations_pam_mcpam(models, type="full scale")
+
+    for protein, kcats in mcpam.sectors.get_by_id("MembraneSector").membrane_proteins.items():
+        print(protein, kcats)
+
+
 
 
 
