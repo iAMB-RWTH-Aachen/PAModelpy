@@ -1,7 +1,6 @@
 from warnings import warn
 from copy import copy, deepcopy
 
-from black.trans import defaultdict
 from cobra import Object, Gene, Model
 from typing import Union, Literal
 

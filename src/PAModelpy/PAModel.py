@@ -1,6 +1,5 @@
 # cobra tools
 import cobra
-from black.trans import defaultdict
 from cobra import Model, DictList, Reaction, Metabolite, Solution
 from cobra.io import load_model
 from cobra.util.context import get_context
@@ -18,7 +17,6 @@ from copy import copy, deepcopy
 import inspect
 import pickle
 import pytest
-from requests.compat import has_simplejson
 
 from .EnzymeSectors import (
     ActiveEnzymeSector,

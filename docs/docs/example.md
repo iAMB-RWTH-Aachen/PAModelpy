@@ -1,4 +1,4 @@
----
+from PAModelpy.Scripts.protein_costs_analysis import active_enzyme_infofrom PAModelpy.src import merge_enzyme_complexesfrom PAModelpy.Scripts.protein_costs_analysis import active_enzyme_infofrom PAModelpy.Scripts.protein_costs_analysis import active_enzyme_info---
 title: 'Examples'
 sidebar_position: 2
 sidebar_title: 'Examples'
@@ -29,6 +29,8 @@ from PAModelpy.EnzymeSectors import ActiveEnzymeSector, TransEnzymeSector, Unuse
 from PAModelpy.PAModel import PAModel
 from PAModelpy.PAMValidator import PAMValidator
 from PAModelpy.configuration import Config
+
+from PAModelpy.utils import (merge_enzyme_complexes, parse_reaction2protein, _get_genes_for_proteins)
 ```
 
 
@@ -39,6 +41,33 @@ which help the cell adapt to new conditions). The total of these three sectors i
 upperbound is determined by the sum of all non-maintenance enzymes, which is assumed to be constant for prokaryotes. 
 For examples on how to parametrize these sectors, refer to `Scripts/create_ecolicore_pam_inclUE.ipynb`.
 
+- **Important note**: This tutorial aims to teach you how to build a PAM from scratch, so that you can adapt the sectors
+where needed and you get to understand the logic of the PAModelpy package. However, in the `utils` toolbox, there is a 
+dedicated method for building a pam with the following syntax:
+```python
+def set_up_pam(pam_info_file:str = '',
+               model:Union[str, cobra.Model] = 'Models/iML1515.xml',
+               config:Config = None,
+               total_protein: Union[bool, float] = True,
+               active_enzymes: bool = True,
+               translational_enzymes: bool = True,
+               unused_enzymes: bool = True,
+               sensitivity:bool = True,
+               enzyme_db:pd.DataFrame = None,
+               adjust_reaction_ids:bool = False) -> PAModel
+```
+
+You can call this function as follows:
+
+```python
+from PAModelpy.utils import set_up_pam
+import os
+
+pam = set_up_pam(os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx'),
+                 os.path.join('Models', 'iML1515.xml'))
+```
+More information can be found in the `PAM_setup_guide`
+
 #### 1.1: Active enzyme sector
 The active enzyme sector will be build using information about which enzymes catalyzes a specific reaction, 
 the turnover rate of the catalysis and the molar mass of the enzyme. In this example we'll use the parameters as 
@@ -47,32 +76,14 @@ published by [Alter et al. (2021)](https://journals.asm.org/doi/10.1128/mSystems
 First, we'll define the paths we'll download the data
 
 ```python
-protein_sector_info_path = 'Data/proteinAllocationModel_iML1515_EnzymaticData_py.xls'
+protein_sector_info_path = 'Data/proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx'
 active_enzyme_data = pd.read_excel(protein_sector_info_path, sheet_name='ActiveEnzymes'))
 ```
 
 The data is now in a dataframe with the following columns:
 `
-rxn_id - rxnName - rxnEquat - EC_nmbr - molMass
+rxn_id - gpr - gene - enzyme_id - molMass
 `
-First, let's add an identifier to the reactions for which the enzyme is unknown, in order to distinguish between the 
-enzymes
-```python
-#load active enzyme sector information
-active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
-
-# replace NaN values with unique identifiers
-#select the NaN values 
-nan_values = active_enzyme_info['EC_nmbr'].isnull()
-#make a list with unique ids
-nan_ids = [f'E{i}' for i in range(nan_values.sum())]
-#replace nan values by unique id
-active_enzyme_info.loc[nan_values, 'EC_nmbr'] = nan_ids
-
-#check if it worked:
-active_enzyme_info[nan_values]
-```
-
 We need to collect the data from this table and put it in the correct structure to be parsed into the ActiveEnzymeSector
 object. The main input in this object is the rxn2protein dictionary, where all the information about protein-reaction 
 associations required to build the protein-reaction relations in the model. It has the following format:
@@ -94,60 +105,32 @@ If you have a information about the gene-protein-reaction associations (e.g. 'AN
 peptides/proteins for one or more reactions), this information can be added in the `protein_reaction_relation` entry
 of the reaction2protein dictionary. This entry is a list of lists, in which each sublist represent one functional
 enzyme (complex). This means if E1 and E2 catalyze the same reaction, the `protein_reaction_relation` becomes `[['E1','E2']]`
-for an enzyme complex ('AND' relation), and `[['E1']['E2']]` for isozymes ('OR' relation). In this example, we will use 
-one enzyme per reaction for simplicity. In the `Script/pam_generation_uniprot_ids.py` file you can find how you can parse
-gene-protein-reaction relations obtained from a genome-scale model and uniprot to include different enzyme relations.
+for an enzyme complex ('AND' relation), and `[['E1']['E2']]` for isozymes ('OR' relation). In this example we will use
+the peptide ids as defined by [UniProt](). The [paper introducting sEnz](https://doi.org/10.1093/bioinformatics/btae691) 
+uses a different system, based on EC numbers. How to build those PAMs can be found in the scripts associated to the 
+publication and in the `Script/pam_generation.py` file. Now we will use gene-protein-reaction relations obtained from a 
+genome-scale model and uniprot to include different enzyme relations.
 
-We need to take the following steps to get the right format:
+Fortunately, in the `utils` directory, there are functions available which help you parse the information to the 
+reaction2protein and protein2gene dictionaries. This also includes a gapfilling step which assigns a 'dummy' identifier to
+each reaction which is not associated with an enzyme id.
+
+Before we start we have to ensure each row contains one 'catalytical unit', e.g. a single enzyme or enzyme complex which is
+able to catalyze a reaction. This means that we have to parse the dataframe. For this, we can use some tools provided in the `utils` directory.
 
 ```python
-# parse the enzyme information (kcat values, identifiers and molmasses)
-kcats_dict = active_enzyme_info.set_index(keys='rxnID').loc[:, 'kcat'].to_dict()
-ec_dict = active_enzyme_info.set_index(keys='rxnID').loc[:, 'EC_nmbr'].to_dict()
-molmass_dict = mol_mass=active_enzyme_info.set_index(keys='rxnID').loc[:,'molMass'].to_dict()
+#load the genome-scale information
+model = read_sbml_model(os.path.join('Models', 'iML1515.xml'))
 
+#get the mapping between the protein and genes
+protein2gene, gene2protein = _get_genes_for_proteins(active_enzyme_data, model)
+#parse the dataframe
+active_enzyme_per_cu = merge_enzyme_complexes(active_enzyme_data, gene2protein)
 
-kcats = {}
-# save fwd and bckw kcats separately in the form of: {rxn_id: {'f': kcat_f, 'b': kcat_b}}
-for rxn, kcat in kcats_dict.items():
-    #reversible reaction
-    if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-        direction = rxn[-1]
-        #check if the reaction already exists in the kcat dictionary
-        try: 
-            kcats[rxn[:-2]][direction] = kcat
-        except:
-            kcats[rxn[:-2]] = {direction: kcat}
-    #irreversible reaction
-    else:
-        kcats[rxn] = {'f': kcat}
+reaction2protein, protein2gpr = parse_reaction2protein(active_enzyme_data, model)
 
-rxn2ec = {}
-#parse the enzyme identifiers for the reactions
-for rxn, ec in ec_dict.items():
-    if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-        rxn = rxn[:-2]
-    for enz in str(ec).split(','):
-        rxn2ec[rxn] = enz.strip()
-        
-molmass = {}
-#parse the enzyme molmasses for the reactions
-for rxn, mw in molmass_dict.items():
-    if rxn[-2:] == '_f' or rxn[-2:] == '_b':
-        rxn = rxn[:-2]
-    molmass[rxn] = mw
-    
-rxn2protein = {}
-for rxn, ec in rxn2ec.items():
-    ec_dict = {**kcats[rxn], **{'molmass': molmass[rxn], 'protein_reaction_relation': [[ec]]}}
-    #add enzyme to enzymes related to reaction if these are already stored
-    if rxn in rxn2protein.keys():
-        rxn2protein[rxn] = {**rxn2protein[rxn], **{ec:ec_dict}}
-    #if not create new reaction entry
-    else:
-        rxn2protein[rxn] = {ec:ec_dict}
-
-active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein)
+#Use the mapping between reactions and proteins to generate the active enzymes sector
+active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene)
 ```
 
 #### 1.2: Translational protein sector
@@ -172,7 +155,7 @@ unused_protein_info = pd.read_excel(pam_info_file, sheet_name='ExcessEnzymes')
 
 ups_0 = unused_protein_info[unused_protein_info.Parameter == 'ups_0'].loc[2,'Value']
 smax = unused_protein_info[unused_protein_info.Parameter == 's_max_uptake'].loc[1,'Value']
-id_list =[unused_protein_info[translational_info.Parameter == 'id_list'].loc[0,'Value']]
+id_list =[unused_protein_info[unused_protein_info.Parameter == 'id_list'].loc[0,'Value']]
 
 
 unused_protein_sector = UnusedEnzymeSector(id_list=id_list,

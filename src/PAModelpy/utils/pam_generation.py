@@ -297,7 +297,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
 
         protein2gpr[enzyme_id]+= gene_reaction_relation
 
-        enzyme_info = enzyme_information(rxn_id=rxn_id,
+        enzyme_info = enzyme_information(rxn_id=rxn.id,
                                          genes=genes,
                                          protein_reaction_association=protein_reaction_relation,
                                          enzyme_id=enzyme_id,
@@ -308,7 +308,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
                                          molmass=catalytic_reaction_info.molMass.iloc[0])
         rxn_info.enzymes[enzyme_id] = enzyme_info
 
-        rxn_info2protein[rxn_id] = rxn_info
+        rxn_info2protein[rxn.id] = rxn_info
 
     # if no enzyme info is found, add dummy enzyme with median kcat and molmass
     rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model, rxn_info2protein, protein2gpr)

@@ -8,7 +8,7 @@ from cobra import DictList, Object, Reaction
 from cobra.exceptions import OptimizationError
 from cobra.util.solver import check_solver_status
 from optlang.symbolics import Zero
-from typing import Optional, Dict, Union
+from typing import Optional, Dict
 from warnings import warn
 from copy import copy, deepcopy
 import re
