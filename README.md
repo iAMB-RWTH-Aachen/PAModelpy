@@ -28,7 +28,7 @@ Note that the package has been tested with the [Gurobi](https://www.mathworks.co
 The documentation including coding examples can be found [here](https://pamodelpy.readthedocs.io/en/latest/).
 
 ## What can you find where in this repository?
-This repository contains not only the source code, but also examples and scripts which were used in [van den Bogaard et al. (2025)](https://doi.org/10.1093/bioinformatics/btae691).
+This repository contains not only the source code, but also examples and scripts which were used in [van den Bogaard et al. (2024)](https://doi.org/10.1093/bioinformatics/btae691).
 - **Data**
   - *eGFP_expression_Bienick2014*: measured growth rate and eGFP expression by [Bienick et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0109105)
   - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
