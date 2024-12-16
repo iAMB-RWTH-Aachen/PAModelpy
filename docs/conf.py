@@ -2,7 +2,7 @@
 
 # -- Project information
 
-project = 'Lumache'
+project = 'PAModelpy'
 copyright = '2024, iAMB, RWTH Aachen University'
 author = 'Samira van den Bogaard'
 
@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'myst_parser',  # Add this for Markdown support
 ]
 
 intersphinx_mapping = {
@@ -33,3 +34,11 @@ html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+# Enable specific MyST features
+myst_enable_extensions = [
+    "colon_fence",  # Support for ::: directives
+    "deflist",      # Support for definition lists
+    "html_admonition",  # HTML-style admonitions
+    "html_image",   # Use HTML-style <img> tags
+]
