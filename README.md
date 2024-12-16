@@ -6,7 +6,8 @@ Powerful tools have been created to support Python-based analysis of genome-scal
 These models, however, cannot capture all metabolic phenotypes and the simulation results have high flux variability.
 Adding protein to each reaction increases the simulation fidelity.
 The PAModelpy package is designed to integrate protein constraints and protein sectors as described by [Alter et al. (2021)](https://journals.asm.org/doi/10.1128/mSystems.00625-20) to metabolic models.
-It is the Python implementation of the [PAM MATLAB framework](https://github.com/Spherotob/PAM_public) to create GECKO like ME models.
+It is the Python implementation of the [PAM MATLAB framework](https://github.com/Spherotob/PAM_public) to create GECKO like ME models. Furthermore, it implements [sEnz](https://doi.org/10.1093/bioinformatics/btae691),
+a sensitivity analysis for finding the most influential enzymes with respect to the growth rate.
 
 The PAModelpy package builds upon the community-wide used [COBRApy](https://github.com/opencobra/cobrapy/tree/devel). 
 We have extended this package with the following features:
@@ -14,7 +15,7 @@ We have extended this package with the following features:
 - infrastructure to include isozymes and promiscuous enzymes
 - protein sectors
 - specialized objects to build protein allocation models
-- the possibility to perform a computational efficient sensitivity analysis
+- [sEnz](https://doi.org/10.1093/bioinformatics/btae691): the possibility to perform a computational efficient sensitivity analysis
 
 ## Installation
 [PAModelpy is a PiPy package](https://pypi.org/project/PAModelpy/) which allows for easy installation with pip:
@@ -24,7 +25,7 @@ We have extended this package with the following features:
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
 ## Documentation
-The documentation including coding examples can be found [here](https://iamb-rwth-aachen.github.io/PAModelpy/).
+The documentation including coding examples can be found [here](https://pamodelpy.readthedocs.io/en/latest/).
 
 ## What can you find where in this repository?
 This repository contains not only the source code, but also examples and scripts which were used in **INSERT PUBLICATION HERE**.
