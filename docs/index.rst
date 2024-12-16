@@ -11,4 +11,4 @@ Table of Contents
    :maxdepth: 2
    :caption: Table of Contents
 
-   docs/*.md
+   *.md
