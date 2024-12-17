@@ -1,7 +1,4 @@
----
-sidebar_label: PAModel
-title: PAModel
----
+# PAModel
 
 ## PAModel Objects
 

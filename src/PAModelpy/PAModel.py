@@ -17,7 +17,6 @@ from copy import copy, deepcopy
 import inspect
 import pickle
 import pytest
-from requests.compat import has_simplejson
 
 from .EnzymeSectors import (
     ActiveEnzymeSector,
@@ -1528,7 +1527,6 @@ class PAModel(Model):
             {'R1': {'f': 10.0, 'b': 5.0}, 'R2': {'f': 7.0, 'b': 3.0}}
             ```
         """
-
         if self.enzymes.has_id(enzyme_id):
             enzyme = self.enzymes.get_by_id(enzyme_id)
             # also change the active enzyme sector
@@ -1538,8 +1536,8 @@ class PAModel(Model):
             for rxn, kcat_f_b in kcats.items():
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
                 rxn2kcat, rxn_id = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
-                active_enzyme.rxn2protein[rxn_id] = {enzyme_id: kcat_f_b}
-                active_enzyme.rxn2protein[rxn] = {enzyme_id: kcat_f_b}
+                active_enzyme.change_kcat_values(rxn_id, enzyme_id, kcat_f_b)
+                active_enzyme.change_kcat_values(rxn, enzyme_id, kcat_f_b)
 
             enzyme.change_kcat_values(kcats)
 
@@ -1554,26 +1552,6 @@ class PAModel(Model):
             rxn2kcat[rxn] = kcat_dict
         return rxn2kcat,rxn
 
-
-    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
-                                                direction: str, kcat: float):
-        constraint_id = f'EC_{enzyme_id}_{direction}'
-        if isinstance(rxn, str):
-            rxn = self.reactions.get_by_id(rxn)
-        # change kcat value in the constraint
-        if kcat == 0:
-            coeff = 0
-        else:
-            coeff = 1 / (kcat * 3600 * 1e-6) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
-        if direction == 'f':
-            self.constraints[constraint_id].set_linear_coefficients({
-                rxn.forward_variable: coeff
-            })
-        elif direction == 'b':
-            self.constraints[constraint_id].set_linear_coefficients({
-                rxn.reverse_variable: coeff
-            })
-        self.solver.update()
 
     def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
                                                 direction: str, kcat: float):

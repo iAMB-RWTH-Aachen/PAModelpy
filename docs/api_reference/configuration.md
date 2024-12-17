@@ -1,7 +1,4 @@
----
-sidebar_label: configuration
-title: configuration
----
+# Configuration
 
 ## Config Objects
 

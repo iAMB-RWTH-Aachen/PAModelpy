@@ -1,7 +1,8 @@
 from warnings import warn
 from copy import copy, deepcopy
+
 from cobra import Object, Gene, Model
-from typing import Union
+from typing import Union, Literal
 
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
@@ -156,9 +157,10 @@ class ActiveEnzymeSector(Sector):
                     reaction = model.reactions.query(rxn_id)
                     for rxn in reaction:
                         rxn2protein[rxn.id] = enzymes
-
-                        del rxn2protein[rxn_id]
+                        if rxn_id in rxn2protein.keys():
+                            del rxn2protein[rxn_id]
                 except:
+                    print(model.reactions.query(rxn_id))
                     warn(
                         f"Reaction {rxn_id} is not in the model, this reaction will be skipped"
                     )
@@ -375,6 +377,10 @@ class ActiveEnzymeSector(Sector):
     #     state = self.__dict__.copy()
     #     # Handle any non-serializable attributes here
     #     return state
+    def change_kcat_values(self, rxn_id:str, enzyme_id:str,
+                           kcat_f_b:dict[Literal['f', 'b'], float]
+                           ) -> None:
+        self.rxn2protein.setdefault(rxn_id, {}).update(kcat_f_b)
 
     def __setstate__(self, state):
         # Restore state from the unpickled state

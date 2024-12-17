@@ -1,7 +1,4 @@
----
-sidebar_label: CatalyticEvent
-title: CatalyticEvent
----
+# CatalyticEvent
 
 CatalyticEvent object which relates Reaction variables to the EnzymeVariable and Enzyme objects.
 It contains multiple functions which enable easy mapping and handling of one Event of catalysis

@@ -1,7 +1,4 @@
----
-sidebar_label: PAMValidator
-title: PAMValidator
----
+# PAMValidator
 
 ## PAMValidator Objects
 
