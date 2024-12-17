@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from ..PAModel import PAModel
 from ..EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from ..MembraneSector import MembraneSector
 from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
@@ -348,9 +349,11 @@ def set_up_pam(pam_info_file:str = '',
                model:Union[str, cobra.Model] = 'Models/iML1515.xml',
                config:Config = None,
                total_protein: Union[bool, float] = True,
-               active_enzymes: bool = True,
-               translational_enzymes: bool = True,
-               unused_enzymes: bool = True,
+               active_enzymes: bool = None,
+               translational_enzymes: bool = None,
+               unused_enzymes: bool = None,
+               membrane_sector: bool = None,
+               max_area:float = 0.03,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = False) -> PAModel:
@@ -384,8 +387,6 @@ def set_up_pam(pam_info_file:str = '',
         active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
                                                   configuration=config)
 
-    else:
-        active_enzyme_sector = None
 
     if translational_enzymes:
         translational_info = pd.read_excel(pam_info_file, sheet_name='Translational')
@@ -395,8 +396,6 @@ def set_up_pam(pam_info_file:str = '',
             tps_mu=[translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
             mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']],
             configuration = config)
-    else:
-        translation_enzyme_sector = None
 
     if unused_enzymes:
         unused_protein_info = pd.read_excel(pam_info_file, sheet_name='UnusedEnzyme').set_index('Parameter')
@@ -410,14 +409,31 @@ def set_up_pam(pam_info_file:str = '',
             ups_0=[ups_0],
             mol_mass=[unused_protein_info.at['mol_mass', 'Value']],
             configuration = config)
-    else:
-        unused_protein_sector = None
+
+    if membrane_sector:
+        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
+        active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
+
+        area_avail_0 = membrane_info.at['area_avail_0','Value']
+        area_avail_mu = membrane_info.at['area_avail_mu','Value']
+        alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
+        enzyme_location = active_membrane_info.Location.to_dict()
+
+        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+                                         area_avail_mu=area_avail_mu,
+                                         alpha_numbers_dict=alpha_numbers_dict,
+                                         enzyme_location=enzyme_location,
+                                         max_area=max_area)
+
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
     pamodel = PAModel(id_or_model=model, p_tot=total_protein,
-                       active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
-                       unused_sector=unused_protein_sector, sensitivity=sensitivity, configuration = config
+                       active_sector=active_enzyme_sector,
+                      translational_sector=translation_enzyme_sector,
+                       unused_sector=unused_protein_sector,
+                      membrane_sector=membrane_sector,
+                      sensitivity=sensitivity, configuration = config
                       )
     return pamodel
 
