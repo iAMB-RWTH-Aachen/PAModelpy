@@ -157,8 +157,8 @@ class ActiveEnzymeSector(Sector):
                     reaction = model.reactions.query(rxn_id)
                     for rxn in reaction:
                         rxn2protein[rxn.id] = enzymes
-
-                        del rxn2protein[rxn_id]
+                        if rxn_id in rxn2protein.keys():
+                            del rxn2protein[rxn_id]
                 except:
                     print(model.reactions.query(rxn_id))
                     warn(
