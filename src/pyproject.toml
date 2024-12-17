@@ -5,7 +5,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages]
-find = { where = ["src"] }  # Scan the project directory with the default parameters
+find = { where = ["PAModelpy"] }  # Scan the project directory with the default parameters
 
 [project]
 name = 'PAModelpy'
