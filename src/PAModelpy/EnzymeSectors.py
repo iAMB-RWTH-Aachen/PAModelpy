@@ -380,7 +380,33 @@ class ActiveEnzymeSector(Sector):
     def change_kcat_values(self, rxn_id:str, enzyme_id:str,
                            kcat_f_b:dict[Literal['f', 'b'], float]
                            ) -> None:
-        self.rxn2protein.setdefault(rxn_id, {}).update(kcat_f_b)
+        """
+            Updates the kcat values for a specific enzyme associated with a given reaction.
+
+            This method modifies the `rxn2protein` dictionary by either adding or updating
+            the kcat values (forward and backward) for the specified enzyme in the context
+            of the provided reaction.
+
+            Args:
+                rxn_id (str): The identifier for the reaction.
+                enzyme_id (str): The identifier for the enzyme.
+                kcat_f_b (dict[Literal['f', 'b'], float]): A dictionary containing the
+                    forward ('f') and backward ('b') kcat values for the enzyme.
+                    For example: {'f': 1.5, 'b': 0.8}.
+
+            Returns:
+                None: This method updates the instance's `rxn2protein` attribute in-place.
+
+            Example:
+                ```python
+                model.change_kcat_values(
+                    rxn_id="RXN001",
+                    enzyme_id="ENZYME123",
+                    kcat_f_b={'f': 2.0, 'b': 1.0}
+                )
+                ```
+            """
+        self.rxn2protein.setdefault(rxn_id, {}).update({enzyme_id:kcat_f_b})
 
     def __setstate__(self, state):
         # Restore state from the unpickled state
