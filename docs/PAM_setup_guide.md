@@ -68,6 +68,31 @@ pip install cobra PAModelpy
 | `ups_mu`           | Change in unused enzyme fraction per unit change of the associated reaction.    |
 | `mol_mass`         | Molar mass of unused enzymes.  [kDa]                                            |
 
+#### Membrane Sheet
+*Only required if you are building a membrane-constrained PAM (mcPAM)*
+
+| **Parameter**      | **Description**                                                                                  |
+|---------------------|--------------------------------------------------------------------------------------------------|
+| `id_list`          | Identifier related to protein fraction associated with the available membrane area.              |
+| `area_avail_0`     | Available membrane area at zero growth [μm^{2}].                                             |
+| `ups_mu`           | Increase in available membrane surface area per unit increase of the growth rate [μm^{2}/h]. |
+
+
+#### MembraneEnzyme Sheet
+*Only required if you are building a membrane-constrained PAM (mcPAM)*
+
+| **Column**     | **Description**                                  |
+|----------------|--------------------------------------------------|
+| `rxn_id`       | Reaction ID from the genome-scale model.         |
+| `enzyme_id`    | Unique enzyme identifier*.                       |
+| `alpha_number` | Number of alpha helices embedded in the membrane. |
+| `location`     | Cellular location of the enzyme**.               |
+
+
+* A unique enzyme identifier is defined as a single identifier per catalytically active unit. This means that an enzyme complex has a single identifier.
+* Enzyme-complex identifiers can be parsed from peptide identifiers and gene-to-protein mapping using the `merge_enzyme_complexes` function.
+** Either 'Cell membrane', 'Cytoplasm', or 'Unknown'
+
 ---
 
 ## Building a PAM
@@ -75,7 +100,8 @@ pip install cobra PAModelpy
 ### Steps to Create a PAM
 
 1. Prepare the genome-scale model and parameter file.
-2. Use the `set_up_pam` function to initialize the model.
+2. Optionally: configure the Config object to match the identifiers of your model (see example 2)
+3. Use the `set_up_pam` function to initialize the model.
 
 #### Example Usage
 ```python
@@ -96,11 +122,15 @@ pam = set_up_pam(pam_info_file=param_file,
                  adjust_reaction_ids=False)
 ```
 
-3. Optimize the PAM:
+4. Optimize the PAM:
 ```python
 pam.optimize()
 print(f"Objective Value: {pam.objective.value}")
 ```
+### Creating a mcPAM
+To create a mcPAM, you can use the example as described above. The only alteration is that in the 
+`set_up_pam` function, you'll need to set the `membrane_sector` parameter to `True`. Optionally, you can 
+define the fraction of membrane area available for active enzymes using `max_membrane_area`.
 
 ---
 
