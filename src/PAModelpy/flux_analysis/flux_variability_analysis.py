@@ -13,9 +13,8 @@ from cobra.util import ProcessPool
 from cobra.flux_analysis.parsimonious import add_pfba
 from cobra.flux_analysis.loopless import loopless_fva_iter
 
-from PAModelpy.src.PAModelpy.Enzyme import Enzyme, EnzymeVariable
+from ..Enzyme import Enzyme, EnzymeVariable
 
-#TODO add test functions!
 
 logger = logging.getLogger(__name__)
 configuration = Configuration()
