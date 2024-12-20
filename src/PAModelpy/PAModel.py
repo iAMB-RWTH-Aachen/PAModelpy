@@ -264,8 +264,8 @@ class PAModel(Model):
 
                 # check kcat values
                 for kcatdict in kcats.values():
-                    for kcat in kcatdict.values():
-                        if kcat < 0:
+                    for kcat_dict in kcatdict.values():
+                        if kcat_dict < 0:
                             # invalid kcat value
                             warnings.warn(
                                 'Turnover number for reaction "'
@@ -276,7 +276,8 @@ class PAModel(Model):
 
                 # extract reaction from model
                 reaction = self.reactions.get_by_id(rxn_id)
-                for kcats in kcats.values():
+
+                for kcat_dict in kcats.values():
                     # check consistency between provided kcat values and reaction direction
                     if self._sensitivity:
                         lower_bound = -self.constraints[f"{rxn_id}_lb"].ub
@@ -286,7 +287,7 @@ class PAModel(Model):
                         upper_bound = reaction.upper_bound
                     if lower_bound >= 0 and upper_bound > 0:
                         # reaction is irreversible in the forward direction
-                        if "f" not in kcats:  # or 'b' in kcats:
+                        if "f" not in kcat_dict:  # or 'b' in kcats:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -294,7 +295,7 @@ class PAModel(Model):
                             return False
                     elif lower_bound < 0 and upper_bound <= 0:
                         # reaction is irreversible in the backward direction
-                        if "b" not in kcats or "f" in kcats:
+                        if "b" not in kcats or "f" in kcat_dict:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -302,7 +303,7 @@ class PAModel(Model):
                             return False
                     else:
                         # reaction is reversible
-                        if "f" not in kcats:  # or 'b' not in kcats:
+                        if "f" not in kcat_dict:  # or 'b' not in kcats:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -1338,12 +1339,14 @@ class PAModel(Model):
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
+            self.reactions.get_by_id(rxn_id).upper_bound = upper_bound*0.01
         else:
             self.reactions.get_by_id(rxn_id).upper_bound = upper_bound
 
     def change_reaction_lb(self, rxn_id: str, lower_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_lb"].ub = -lower_bound
+            self.reactions.get_by_id(rxn_id).lower_bound = lower_bound*0.01
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
 

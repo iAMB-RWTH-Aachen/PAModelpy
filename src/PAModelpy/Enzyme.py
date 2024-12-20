@@ -13,7 +13,7 @@ import optlang
 from optlang.symbolics import Zero
 
 from .CatalyticEvent import CatalyticEvent
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, Literal
 from warnings import warn
 
 def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
@@ -97,7 +97,7 @@ class Enzyme(Object):
 
     @property
     def concentration(
-        self, units: str = "mmol/gDW", return_units: bool = False
+        self, units: Literal['mmol/gDW', 'g/gDW'] = "mmol/gDW", return_units: bool = False
     ) -> float:
         """Returns the enzyme's total concentration considering any associated reactions.
 
@@ -113,11 +113,11 @@ class Enzyme(Object):
         concentration = self.enzyme_variable.concentration
         if units == 'g/gDW':
             #converting mmol to grams of protein:
-            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol] *1e-6 [solver tolerance conversion factor]
-            concentration = concentration * 1e-3 * self.molmass*1e-6
+            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol]
+            concentration = concentration * 1e-3 * self.molmass
         if return_units:
-            return concentration*1e-6, units
-        return concentration*1e-6
+            return concentration, units
+        return concentration
 
     @concentration.setter
     def concentration(self, conc):

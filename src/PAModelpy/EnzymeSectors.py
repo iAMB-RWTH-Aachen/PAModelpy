@@ -160,7 +160,6 @@ class ActiveEnzymeSector(Sector):
                         if rxn_id in rxn2protein.keys():
                             del rxn2protein[rxn_id]
                 except:
-                    print(model.reactions.query(rxn_id))
                     warn(
                         f"Reaction {rxn_id} is not in the model, this reaction will be skipped"
                     )
@@ -194,6 +193,11 @@ class ActiveEnzymeSector(Sector):
                 if enzyme_id in model.enzyme_variables and not self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                     enzyme = model.enzymes.get_by_id(enzyme_id)
                     self._add_reaction_to_enzyme(model, enzyme, rxn_id, kcat)
+                    self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
+                                                **{enzyme_id: {
+                                                    **kcat,
+                                                    'genes': enzyme.genes,
+                                                    'protein_reaction_association': protein_reaction}}}
 
                 else:
                     if self.protein2gene != {}:
@@ -208,7 +212,6 @@ class ActiveEnzymeSector(Sector):
                         molmass=molmass,
                         genes=gene_list
                     )
-
                     if self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                         for pr in protein_reaction:
                             if len(pr) > 1:
@@ -252,7 +255,6 @@ class ActiveEnzymeSector(Sector):
 
                     # adding to the enzyme sector object for easy removal
                     model.tpc += 1
-
         return model
 
     def check_kcat_values(self, model, reaction, enzyme_dict):
