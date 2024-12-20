@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import cobra
-from typing import TypedDict, Literal, Union, Tuple
+from typing import TypedDict, Literal, Union, Tuple, Iterable
 import re
 import os
 
@@ -29,27 +29,27 @@ class EnzymeInformation(TypedDict):
 class ReactionInformation:
     rxnid: str
     enzymes: defaultdict[str,EnzymeInformation]= field(default_factory=defaultdict)
-    model_reaction: cobra.Reaction = None
+    model_reactions: Iterable[cobra.Reaction] = None
 
     def get_reaction_from_model(self, model):
         if self.rxnid in model.reactions:
-            self.model_reaction = model.reactions.get_by_id(self.rxnid)
+            self.model_reactions = [model.reactions.get_by_id(self.rxnid)]
         else:
-            self.model_reaction = [rxn for rxn in model.reactions.query(self.rxnid) if '_copy' in rxn.id][0]
-        return self.model_reaction
+            self.model_reactions = [rxn for rxn in model.reactions.query(self.rxnid) if '_copy' in rxn.id]
+        return self.model_reactions
 
     def check_reaction_reversibility(self) -> Literal[-1,0,1]:
-        if self.model_reaction is None:
+        if self.model_reactions is None:
             raise AttributeError('Please first set the model reaction using ReactionInformation.get_reaction_from_model(cobra.Model)')
-        if self.model_reaction.lower_bound >= 0:
+        if all([rxn.lower_bound>=0 for rxn in self.model_reactions]):
             # irreversible reaction (forward direction)
             rev = 1
-        elif self.model_reaction.upper_bound <= 0:
+        elif all([rxn.upper_bound<=0 for rxn in self.model_reactions]):
             # irreversible reaction (reverse direction)
             rev = -1
         else:
+            # reversible reaction
             rev = 0
-            # reversible r
         return rev
 
     def to_dict(self):
@@ -205,7 +205,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
         print('No enzyme information found for reaction: ' + rxn.id)
 
         rxn_info = ReactionInformation(rxn.id)
-        rxn_info.model_reaction = rxn
+        rxn_info.model_reactions = rxn
         kwargs = {}
         if rxn_info.check_reaction_reversibility() > 0:
             kwargs = {'kcat_b':0}
@@ -283,33 +283,33 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
         if rxn_id not in filtered_model_reactions: continue
 
         rxn_info = rxn_info2protein.setdefault(rxn_id, ReactionInformation(rxn_id))
-        rxn = rxn_info.get_reaction_from_model(model)
+        #sometimes, multiple copies are associated with a single reaction
+        rxns = rxn_info.get_reaction_from_model(model)
         genes = catalytic_reaction_info.gene.iloc[0]
+        for rxn in rxns:
+            # If no genes are associated with the reaction, this reaction is not catalyzed by an enzyme
+            if (not len(rxn.genes) > 0) and (not isinstance(genes, list)):  continue
+            # enzyme_id = check_enzyme_id(gene_id, enzyme_id, gene2protein)
 
-        # If no genes are associated with the reaction, this reaction is not catalyzed by an enzyme
-        if (not len(rxn.genes) > 0) and (not isinstance(genes, list)):  continue
-        # enzyme_id = check_enzyme_id(gene_id, enzyme_id, gene2protein)
+            # get the gene-protein-reaction-associations for this specific enzyme
+            gene_reaction_relation, protein_reaction_relation = parse_gpr_information(gpr,
+                                                                                      genes,
+                                                                                      enzyme_id,
+                                                                                      gene2protein)
 
-        # get the gene-protein-reaction-associations for this specific enzyme
-        gene_reaction_relation, protein_reaction_relation = parse_gpr_information(gpr,
-                                                                                  genes,
-                                                                                  enzyme_id,
-                                                                                  gene2protein)
+            protein2gpr[enzyme_id]+= gene_reaction_relation
 
-        protein2gpr[enzyme_id]+= gene_reaction_relation
-
-        enzyme_info = enzyme_information(rxn_id=rxn.id,
-                                         genes=genes,
-                                         protein_reaction_association=protein_reaction_relation,
-                                         enzyme_id=enzyme_id,
-                                         kcat_f=_get_kcat_value_from_catalytic_reaction_df(
-                                                    catalytic_reaction_info, 'f'),
-                                         kcat_b=_get_kcat_value_from_catalytic_reaction_df(
-                                                    catalytic_reaction_info, 'b'),
-                                         molmass=catalytic_reaction_info.molMass.iloc[0])
-        rxn_info.enzymes[enzyme_id] = enzyme_info
-
-        rxn_info2protein[rxn.id] = rxn_info
+            enzyme_info = enzyme_information(rxn_id=rxn.id,
+                                             genes=genes,
+                                             protein_reaction_association=protein_reaction_relation,
+                                             enzyme_id=enzyme_id,
+                                             kcat_f=_get_kcat_value_from_catalytic_reaction_df(
+                                                        catalytic_reaction_info, 'f'),
+                                             kcat_b=_get_kcat_value_from_catalytic_reaction_df(
+                                                        catalytic_reaction_info, 'b'),
+                                             molmass=catalytic_reaction_info.molMass.iloc[0])
+            rxn_info.enzymes[enzyme_id] = enzyme_info
+            rxn_info2protein[rxn.id] = rxn_info
 
     # if no enzyme info is found, add dummy enzyme with median kcat and molmass
     rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model, rxn_info2protein, protein2gpr)
@@ -447,13 +447,14 @@ def set_up_pam(pam_info_file:str = '',
 
 def increase_kcats_in_parameter_file(kcat_increase_factor: int,
                                      pam_info_file_path_ori: str,
-                                     pam_info_file_path_out: str = os.path.join(
-    'Data', 'proteinAllocationModel_iML1515_EnzymaticData_240730_multi.xlsx')):
+                                     pam_info_file_path_out: str = None):
 
-    pam_info_file_ori = pd.read_excel(pam_info_file_path_ori, sheet_name='ActiveEnzymes')
-    transprot = pd.read_excel(pam_info_file_path_ori, sheet_name='Translational')
-    unusedenz = pd.read_excel(pam_info_file_path_ori, sheet_name='UnusedEnzyme')
+    if pam_info_file_path_out is None:
+        pam_info_file_path_out= f'{pam_info_file_path_ori.split(".")[0]}_multi.xlsx'
 
+    pam_info_dfs = pd.read_excel(pam_info_file_path_ori, sheet_name=None)
+
+    pam_info_file_ori = pam_info_dfs.pop('ActiveEnzymes')
     pam_info_file_new = pam_info_file_ori.rename({'kcat_values': 'kcat_values_ori'})
     pam_info_file_new['kcat_values'] = pam_info_file_ori['kcat_values']*kcat_increase_factor
 
@@ -466,5 +467,5 @@ def increase_kcats_in_parameter_file(kcat_increase_factor: int,
     with pd.ExcelWriter(pam_info_file_path_out, engine = 'openpyxl',
                         mode = write_mode, **kwargs) as writer:
         pam_info_file_new.to_excel(writer, sheet_name = 'ActiveEnzymes', index=False)
-        transprot.to_excel(writer, sheet_name='Translational', index=False)
-        unusedenz.to_excel(writer, sheet_name='UnusedEnzyme', index=False)
+        for sheet_name, df in pam_info_dfs.items():
+            df.to_excel(writer, sheet_name = sheet_name, index=False)
