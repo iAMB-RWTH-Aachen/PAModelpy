@@ -45,7 +45,6 @@ class MembraneSector(EnzymeSector):
 
         self.membrane_proteins = {}
 
-        self.total_occupied_membrane = 0
         coefficients = {
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
         }
@@ -109,7 +108,6 @@ class MembraneSector(EnzymeSector):
         self.max_membrane_area = new_max_area
         self.membrane_proteins = {}
 
-        self.total_occupied_membrane = 0
         coefficients = {
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
         }
