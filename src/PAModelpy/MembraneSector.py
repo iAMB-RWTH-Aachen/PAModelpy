@@ -79,13 +79,6 @@ class MembraneSector(EnzymeSector):
         model.solver.update()
         occupied_membrane.set_linear_coefficients(coefficients=coefficients)
 
-        # # Debugging
-        # for rxn, lb in model.rxn_old_bounds_lb.items():
-        #     model.reactions.get_by_id(rxn).lower_bound = lb
-        #
-        # for rxn, ub in model.rxn_old_bounds_ub.items():
-        #     model.reactions.get_by_id(rxn).upper_bound = ub
-
     def calculate_occupied_membrane(self, model):
         occupied_membrane = 0
 
