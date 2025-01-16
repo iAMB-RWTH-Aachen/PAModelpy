@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from Scripts.toy_ec_pam import build_toy_gem
-from src.utils.pam_generation import parse_reaction2protein, set_up_pam
+from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam
 
 def test_if_rxn2protein_info_is_correctly_parsed():
     # Arrange
@@ -20,6 +20,8 @@ def test_if_rxn2protein_info_is_correctly_parsed():
                                   'direction':['f','f', 'f', 'f', 'b']
                                   }
                                  )
+    print(toy_enzyme_db)
+
     toy_model = build_toy_gem()
 
     expected_rxn2protein = {
@@ -49,7 +51,9 @@ def test_if_rxn2protein_info_is_correctly_parsed():
     expected_protein2gpr = {'E1': [['gene1']], 'E2a': [['gene2a']], 'E2b_E2c': [['gene2b', 'gene2c']], 'E3': [['gene3']]}
 
     # Apply
-    rxn2protein, protein2gpr = parse_reaction2protein(toy_enzyme_db, toy_model)
+    rxn2protein, protein2gpr = parse_reaction2protein(toy_enzyme_db,
+                                                      toy_model,
+                                                      other_enzyme_id_pattern =  r'E[0-9][0-9]*[a-z]?')
 
     # Assert
     for output_dict, expected_dict in zip([rxn2protein, protein2gpr], [expected_rxn2protein, expected_protein2gpr]):
@@ -57,7 +61,7 @@ def test_if_rxn2protein_info_is_correctly_parsed():
 
 def test_if_set_up_pam_can_build_ecolicore_pam():
     #Arrange
-    pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_core.xlsx')
+    pam_data_file = os.path.join('tests','data', 'proteinAllocationModel_iML1515_EnzymaticData_core.xlsx')
     ecolicore_gem = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
 
     #Apply
@@ -74,14 +78,14 @@ def test_if_set_up_pam_can_build_ecolicore_pam():
 
 def test_if_set_up_pam_can_build_iML1515():
     #Arrange
-    pam_data_file = os.path.join('Results', '1_preprocessing', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+    pam_data_file = os.path.join('tests','data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
     iml1515 = os.path.join('Models', 'iML1515.xml')
 
     #Apply
     pam = set_up_pam(pam_data_file,
                                iml1515,
                                sensitivity=False,
-                               adjust_reaction_ids=True)
+                               adjust_reaction_ids=False)
 
     pam.optimize()
 

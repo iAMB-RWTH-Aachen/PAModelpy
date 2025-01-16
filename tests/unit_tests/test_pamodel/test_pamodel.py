@@ -1,9 +1,10 @@
 import pytest
 from cobra.io import load_json_model
+import os
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector, CatalyticEvent
-from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam, set_up_ecolicore_pam
-from tests.unit_tests.test_pamodel.test_pam_generation import set_up_toy_pam_with_isozymes_and_enzymecomplex
+from tests.unit_tests.test_pamodel.test_pam_setup import set_up_toy_pam_with_isozymes_and_enzymecomplex
+from src.PAModelpy.utils import set_up_pam
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
@@ -43,7 +44,7 @@ def test_if_pamodel_change_kcat_function_works_with_catalytic_reactions():
     #arrange
     sut = set_up_ecoli_pam(sensitivity=False)
     input_kcat = 10
-    enzyme_id = 'P0ABJ1'
+    enzyme_id = 'P0ABI8_P0ABJ1_P0ABJ3_P0ABJ6'
     rxn_id = "CYTBO3_4pp"
     ce_rxn= sut.reactions.query(f'CE_{rxn_id}_{enzyme_id}')[0]
     enzyme_complex_id = "_".join(ce_rxn.id.split("_")[3:])
@@ -173,6 +174,7 @@ def test_if_pamodel_sensitivity_can_be_changed_false_to_true():
 def test_if_pamodel_sensitivity_can_be_changed_true_to_false_ecolicore():
     # arrange
     ecolicore_pam = set_up_ecolicore_pam(sensitivity=True)
+
     glc_lb = -ecolicore_pam.constraints['EX_glc__D_e_lb'].ub
     glc_ub = ecolicore_pam.constraints['EX_glc__D_e_ub'].ub
 
@@ -269,10 +271,12 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Arrange
     sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity = False)
     enzyme_ut = 'E10'
-    associated_enzymes = ['E10', 'E3_E10_E11']
+    associated_enzymes = ['E10', 'E10_E11_E3']
 
     # Assert
     catalyzing_enzymes = sut._get_catalyzing_enzymes_for_enzyme(enzyme_ut)
+
+    print(catalyzing_enzymes)
 
     # Assert
     assert all(enz in catalyzing_enzymes for enz in associated_enzymes)
@@ -335,3 +339,23 @@ def assert_total_protein_content(model_ori, model_copy):
     assert model_ori.p_tot == model_copy.p_tot
     tot_prot_cons_id = model_ori.TOTAL_PROTEIN_CONSTRAINT_ID
     assert model_ori.constraints[tot_prot_cons_id].ub == model_copy.constraints[tot_prot_cons_id].ub
+
+def set_up_ecoli_pam(sensitivity=True):
+    pam_data_file = os.path.join('tests', 'data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+    iml1515 = os.path.join('Models', 'iML1515.xml')
+    return set_up_pam(pam_data_file,
+                     iml1515,
+                     sensitivity=sensitivity,
+                     adjust_reaction_ids=False)
+
+def set_up_ecolicore_pam(sensitivity=True):
+    pam_data_file = os.path.join('tests', 'data',
+                                 'proteinAllocationModel_iML1515_EnzymaticData_core.xlsx')
+    ecolicore_gem = load_json_model(os.path.join('Models', 'e_coli_core.json'))
+
+    # Apply
+    return set_up_pam(pam_data_file,
+                               ecolicore_gem,
+                               total_protein=0.1699,
+                               sensitivity=sensitivity,
+                               adjust_reaction_ids=True)

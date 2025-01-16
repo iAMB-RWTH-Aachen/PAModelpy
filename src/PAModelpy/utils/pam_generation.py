@@ -90,19 +90,19 @@ def parse_gpr_information(gpr_info:str,
     if genes is None: return gpr_list
 
     #convert the genes to the associated proteins
-    enzyme_relations = []
-    if '_'in enzyme_id:
-        enzyme_relations = [enzyme_id.split('_')]
-    for sublist in gpr_list:
-        enz_sublist = []
-        for item in sublist:
-            if item in gene2protein.keys():
-                if '_' not in gene2protein[item]:
-                    enz_sublist.append(gene2protein[item])
-                    enzyme_relations += [enz_sublist]
-                elif gene2protein[item].split('_') not in enzyme_relations:
-                    enzyme_relations += [gene2protein[item].split('_')]
-        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
+    # enzyme_relations = []
+    # if '_'in enzyme_id:
+    enzyme_relations = [enzyme_id.split('_')]
+    # for sublist in gpr_list:
+    #     enz_sublist = []
+    #     for item in sublist:
+    #         if item in gene2protein.keys():
+    #             if '_' not in gene2protein[item]:
+    #                 enz_sublist.append(gene2protein[item])
+    #                 enzyme_relations += enz_sublist
+    #             elif gene2protein[item].split('_') not in enzyme_relations:
+    #                 enzyme_relations += gene2protein[item].split('_')
+    #     enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
     return sorted(gpr_list), sorted(enzyme_relations)
 
 def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict]:
@@ -281,14 +281,13 @@ def _order_enzyme_complex_id(enz_id:str,
     return "_".join(sorted(proteins))
 
 
-def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
+def parse_reaction2protein(enzyme_db: pd.DataFrame,
+                           model: cobra.Model,
+                           other_enzyme_id_pattern: str = r'E[0-9][0-9]*') -> dict:
     rxn_info2protein = {}
     protein2gpr = defaultdict(list)
     #remove copy number substrings from the reaction to make it matchable to enzyme information
     filtered_model_reactions = [_extract_reaction_id(r.id) for r in model.reactions]
-
-    #make sure all enzyme complexes have an id ordered in a structured way
-    enzyme_db['enzyme_id'] = enzyme_db['enzyme_id'].map(_order_enzyme_complex_id, na_action='ignore')
 
     # replace NaN values with unique identifiers
     enzyme_db.loc[enzyme_db['enzyme_id'].isnull(), 'enzyme_id'] = [f'E{i}' for i in
@@ -296,6 +295,11 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
 
     enzyme_db.loc[enzyme_db['gene'].isnull(), 'gene'] = [[f'gene_{i}'] for i in
                                                                    range(enzyme_db['gene'].isnull().sum())]
+
+
+    #make sure all enzyme complexes have an id ordered in a structured way
+    enzyme_db['enzyme_id'] = enzyme_db['enzyme_id'].apply(_order_enzyme_complex_id,
+                                                        other_enzyme_id_pattern = other_enzyme_id_pattern)
 
     protein2gene, gene2protein = _get_genes_for_proteins(enzyme_db, model)
 
