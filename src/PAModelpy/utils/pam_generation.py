@@ -102,7 +102,7 @@ def parse_gpr_information(gpr_info:str,
                     enzyme_relations += [enz_sublist]
                 elif gene2protein[item].split('_') not in enzyme_relations:
                     enzyme_relations += [gene2protein[item].split('_')]
-        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'))
+        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
     return sorted(gpr_list), sorted(enzyme_relations)
 
 def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict]:
@@ -115,7 +115,7 @@ def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
         enzyme_id = row['enzyme_id']
-        gene_id = row['gene']
+        gene_id = row['genes']
 
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
@@ -144,7 +144,8 @@ def _parse_gpr(gpr_info):
         parsed_gpr.append(and_genes)
     return parsed_gpr
 
-def _filter_sublists(nested_list:list[list[str]], target_list:list[str]) -> list[str]:
+def _filter_sublists(nested_list:list[list[str]], target_list:list[str],
+                     how: Literal['any', 'all'] = 'any') -> list[str]:
     """
     Keeps only sublists from `nested_list` that contain at least one identifier present in `target_list`.
 
@@ -155,7 +156,10 @@ def _filter_sublists(nested_list:list[list[str]], target_list:list[str]) -> list
     Returns:
         list of lists: The filtered nested list.
     """
-    filtered_list = [sublist for sublist in nested_list if any([item in target_list for item in sublist])]
+    if how == 'any':
+        filtered_list = [sublist for sublist in nested_list if any([item in target_list for item in sublist])]
+    else:
+        filtered_list = [sublist for sublist in nested_list if all([item in target_list for item in sublist])]
 
     return filtered_list
 
@@ -189,7 +193,8 @@ def _extract_reaction_id(input_str):
 
 def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
                                                           rxn_info2protein:dict[str, ReactionInformation],
-                                                          protein2gpr:defaultdict[str,list]
+                                                          protein2gpr:defaultdict[str,list],
+                                                          gene2protein:dict[str, str]
                                                           ) -> Tuple[dict[str, ReactionInformation],defaultdict[str,list]]:
     for rxn in model.reactions:
         rxn_id = _extract_reaction_id(
@@ -205,7 +210,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
         print('No enzyme information found for reaction: ' + rxn.id)
 
         rxn_info = ReactionInformation(rxn.id)
-        rxn_info.model_reactions = rxn
+        rxn_info.model_reactions = [rxn]
         kwargs = {}
         if rxn_info.check_reaction_reversibility() > 0:
             kwargs = {'kcat_b':0}
@@ -213,10 +218,14 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
             kwargs = {'kcat_f': 0}
 
 
-        gpr_info = parse_gpr_information(rxn.gpr)
-        if gpr_info is None: gpr_info = [[f'gene_{rxn.id}']]
         enzyme_info = enzyme_information(rxn.id, rxn._genes, **kwargs)
         rxn_info.enzymes[enzyme_info['enzyme_id']] = enzyme_info
+
+        gpr_info,_ = parse_gpr_information(str(rxn.gpr),
+                                         genes=[g.id for g in rxn._genes],
+                                         enzyme_id=enzyme_info['enzyme_id'],
+                                         gene2protein=gene2protein)
+        if gpr_info is None: gpr_info = [[f'gene_{rxn.id}']]
 
         rxn_info2protein[rxn.id] = rxn_info
         protein2gpr[enzyme_info['enzyme_id']] = gpr_info
@@ -225,7 +234,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
 
 def _get_genes_for_proteins(enzyme_db: pd.DataFrame, model) -> dict:
     protein2gene = defaultdict(list)
-    gene2protein = {}
+    gene2protein = defaultdict(list)
     for index, row in enzyme_db.iterrows():
         # Parse data from the row
         rxn_id = row['rxn_id']
@@ -243,7 +252,7 @@ def _get_genes_for_proteins(enzyme_db: pd.DataFrame, model) -> dict:
             genes = [gene.id for gene in rxn.genes]
 
         for gene in genes:
-            gene2protein[gene] = enzyme_id
+            gene2protein[gene].append(enzyme_id)
         # Create gene-protein-reaction associations
         protein2gene[enzyme_id].append(genes)
         # assume that there is a single protein if the previous relation was not assigned a gene
@@ -260,12 +269,26 @@ def _get_kcat_value_from_catalytic_reaction_df(catalytic_reaction_df: pd.DataFra
         return catalytic_reaction_df.kcat_values[
             catalytic_reaction_df.direction == direction].iloc[0]
 
+def _order_enzyme_complex_id(enz_id:str,
+                              other_enzyme_id_pattern: str = r'E[0-9][0-9]*')->str:
+    # Define the regex pattern for protein IDs, obtained from UniProtKB, 2024-08-07
+    # https://www.uniprot.org/help/accession_numbers
+    protein_id_pattern = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+
+    # Define the regex pattern to match protein IDs
+    protein_id_regex = re.compile(protein_id_pattern + r'|' + other_enzyme_id_pattern)
+    proteins = [obj.group(0).strip('_') for obj in re.finditer(protein_id_regex, enz_id)]
+    return "_".join(sorted(proteins))
+
 
 def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
     rxn_info2protein = {}
     protein2gpr = defaultdict(list)
     #remove copy number substrings from the reaction to make it matchable to enzyme information
     filtered_model_reactions = [_extract_reaction_id(r.id) for r in model.reactions]
+
+    #make sure all enzyme complexes have an id ordered in a structured way
+    enzyme_db['enzyme_id'] = enzyme_db['enzyme_id'].map(_order_enzyme_complex_id, na_action='ignore')
 
     # replace NaN values with unique identifiers
     enzyme_db.loc[enzyme_db['enzyme_id'].isnull(), 'enzyme_id'] = [f'E{i}' for i in
@@ -312,11 +335,14 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model: cobra.Model) -> dict:
             rxn_info2protein[rxn.id] = rxn_info
 
     # if no enzyme info is found, add dummy enzyme with median kcat and molmass
-    rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model, rxn_info2protein, protein2gpr)
+    rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model,
+                                                                                          rxn_info2protein,
+                                                                                          protein2gpr,
+                                                                                          gene2protein)
+
 
     #convert the dataobject dict to a normal dict for correct parsing by PAModelpy
     rxn2protein = {rxn_id: dict(rxn_info.enzymes) for rxn_id, rxn_info in rxn_info2protein.items()}
-
     return rxn2protein, dict(protein2gpr)
 
 
@@ -384,6 +410,7 @@ def set_up_pam(pam_info_file:str = '',
                 enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
         # create enzyme objects for each gene-associated reaction
         rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
+
         active_enzyme_info = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
                                                   configuration=config)
     else:
