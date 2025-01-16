@@ -71,11 +71,11 @@ pip install cobra PAModelpy
 #### Membrane Sheet
 *Only required if you are building a membrane-constrained PAM (mcPAM)*
 
-| **Parameter**      | **Description**                                                                                  |
-|---------------------|--------------------------------------------------------------------------------------------------|
-| `id_list`          | Identifier related to protein fraction associated with the available membrane area.              |
-| `area_avail_0`     | Available membrane area at zero growth [μm^{2}].                                             |
-| `ups_mu`           | Increase in available membrane surface area per unit increase of the growth rate [μm^{2}/h]. |
+| **Parameter**   | **Description**                                                                                  |
+|-----------------|--------------------------------------------------------------------------------------------------|
+| `id_list`       | Identifier related to protein fraction associated with the available membrane area.              |
+| `area_avail_0`  | Available membrane area at zero growth [μm^{2}].                                             |
+| `area_avail_mu` | Increase in available membrane surface area per unit increase of the growth rate [μm^{2}/h]. |
 
 
 #### MembraneEnzyme Sheet
