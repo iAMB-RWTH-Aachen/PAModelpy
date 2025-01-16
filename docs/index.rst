@@ -9,8 +9,8 @@ In this documentation, you can find all the information you need to build and an
    :caption: Table of Contents
 
    introduction.md
-   example.md
    PAM_setup_guide.md
+   example.md
 
 .. toctree::
    :maxdepth: 1

@@ -224,7 +224,125 @@ PAModel the right naming conventions for your specific microbe. Are you more int
 the model, such as deleting or adding enzymes, changing kcats, changing enzymes upper- and lowerbounds? Then have a look
 at the following jupyter notebook: `Examples/PAModel_example_script.ipynb`. Have fun!
 
-## Example 2: Determining the most sensitive enzymes in a toy model
+## Example 2: working with the *Escherichia coli* Protein Allocation model (PAM)
+In Example 1, a detailed step-by-step guide for building a PAM is given. In this example we use methods available in PAModelpy to build a PAM
+and give you an overview of things you can do with the PAM once it is build.
+
+### 1. Building the PAM using PAModelpy.utils
+In the example above, you've learned that there are quite some steps required to build a PAM. However, in PAModelpy, there
+are methods available which help you do this. For these methods, you need a specific way of structuring the information about 
+the enzymes sectors. This makes it easier to automate generation of PAMs. The details are discussed in the 
+[PAM_setup_guide](PAM_setup_guide.md). For this example, we use the methods describes in the [PAM_setup_guide](PAM_setup_guide.md)
+to build a pam.
+
+```python
+from PAModelpy.utils import set_up_pam
+
+# Define input paths
+model_path = "Models/iML1515.xml"
+param_file = "Data/proteinAllocationModel_iML1515_EnzymaticData_new.xlsx"
+
+# Build the PAM
+pam = set_up_pam(pam_info_file=param_file,
+                 model=model_path,
+                 total_protein=0.258,  # Optional: Total protein concentration (g_prot/g_cdw)
+                 active_enzymes=True, # Do you want to include an active enzyme sector?
+                 translational_enzymes=True, # Do you want to include a translational protein sector?
+                 unused_enzymes=True, # Do you want to include an unused enzyme sector?
+                 sensitivity=False, # Do you want to perform a sensitivity analysis?
+                 adjust_reaction_ids=False) # Does your model ignore suffixes like 'pp' and 'ex'? (ofter the case in core models)
+```
+### 2. Modifying the pam
+Here are some example modifications to the PAM
+
+#### Changing kcat values
+For changing a kcat value, you need to provide the enzyme-reaction-direction mapping. For example, you want to change
+the kcat relating the forward reaction of `13PPDH2` with the enzyme abundance of `Q46856`:
+
+```python
+rxn2kcat = {'13PPDH2':{'f':10}}
+
+pam.change_kcat_values(enzyme_id = 'Q46856',
+                       kcats = rxn2kcat)
+```
+
+NB: ensure your kcat values are in the right units (1/s). The change_kcat_value function will convert the kcat values to 
+the model units for you.
+
+#### Changing enzyme concentrations
+```python
+enzyme = pam.enzymes.get_by_id('Q46856')
+enzyme.concentration = 0.1 #mmol/gCDW
+```
+
+#### Changing the enzyme sector linear equations
+If you want to do modifications to the linear relations of a sector, you can use the buiild-in function to do this. 
+This is for example usefull when you are changing carbon source and want to modify the translational sector. The 
+units of the intercept should be in g_protein/g_CDW. The units of the slope*lin_rxn should yield g_protein/g_CDW.
+```python
+translation_sector = pam.sectors.get_by_id('TranslationalProteinSector')
+
+pam. change_sector_parameters(sector = translation_sector,
+                              slope = 0.1, #in this case: g_p*h/(g_cdw*mmol_glc)
+                              intercept=0.1, # g_p/g_cdw
+                              lin_rxn_id='EX_glc__D_e', #optional: change the reaction to which the sector is related
+                              print_change = True #do you want to see the change? False by default
+                              )
+```
+The output will look like:
+`Changing the slope and intercept of the TranslationalProteinSector`
+`Changing slope from <old slope> to 10 mg/gcdw/h"`
+`Changing intercept from <old intercepts> to 10 mg/gcdw`
+
+#### Changing the total protein content
+You can change the total protein content available for the enzyme sectors (in grams_protein/g_CDW)
+```python
+pam.change_total_protein_constraint(p_tot=0.3)
+```
+#### Changing reaction bounds
+In order to calculate sensitivities, the mathematical structure with which the reaction bounds are defines are altered.
+It is therefore recommendable to use the build-in functions to change reaction bounds. Besides being more robust,
+this is also more straightforward. The units are similar to the model units (mmol/gCDW/h).
+
+```python
+pam.change_reaction_bounds(rxn_id='13PPDH2',
+                           lower_bound= 0.1,
+                           upper_bound=0.11)
+```
+
+#### Toggling sensitivity
+For some applications you need a sensitivity analysis, for some you don't. As the sensitivity analysis can slow the computation
+down, it is possible to toggle the sensitivity on and off between simulations:
+
+```python
+pam.sensitivity = True #sensitivity is on
+```
+
+### 3. Perfoming simulations with the PAM
+If you are happy with the PAM, you off course want to perform simulations! With the `change_reaction_bounds` function 
+you can change the bounds of for example the biomass production reaction or the substrate uptake rate. Changing
+the objective can be done in the same way as you are used to with a [cobrapy model](https://cobrapy.readthedocs.io/en/latest/building_model.html#Objective).
+
+The only thing you have to do is optimize!
+
+```python
+solution = pam.optimize()
+```
+
+### 4. Getting the results of the simulations
+The solution which is returned by the `optimize()` function is the same solution object as returned by a [cobrapy model](https://cobrapy.readthedocs.io/en/latest/simulating.html).
+This solution object only includes the metabolic reaction fluxes and the objective value, and NOT the enzyme concentration 
+and sensitivities. To access the enzyme concentrations you can use the attribute `enzyme.concentration`.
+
+If you enabled the sensitivity analysis, you can access the capacity sensitivity coefficients and enzyme sensitivity coefficients
+after solving the model.
+
+```python
+csc = pam.capacity_sensitivity_coefficients #pd.DataFrame with columns: ["rxn_id", "enzyme_id", "constraint", "coefficient"]
+esc = pam.enzyme_sensitivity_coefficients #pd.DataFrame with columns: ["rxn_id", "enzyme_id", "coefficient"]
+```
+
+## Example 3: Determining the most sensitive enzymes in a toy model
 
 When looking at the flux distribution resulting from our simulations, we do not get any information about which enzymes
 played an important role in prediciting the specific metabolic phenotype. However, with the right model configurations,
