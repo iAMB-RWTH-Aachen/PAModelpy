@@ -45,7 +45,6 @@ class MembraneSector(EnzymeSector):
 
         self.membrane_proteins = {}
 
-        self.total_occupied_membrane = 0
         coefficients = {
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
         }
@@ -79,13 +78,6 @@ class MembraneSector(EnzymeSector):
         model.solver.update()
         occupied_membrane.set_linear_coefficients(coefficients=coefficients)
 
-        # # Debugging
-        # for rxn, lb in model.rxn_old_bounds_lb.items():
-        #     model.reactions.get_by_id(rxn).lower_bound = lb
-        #
-        # for rxn, ub in model.rxn_old_bounds_ub.items():
-        #     model.reactions.get_by_id(rxn).upper_bound = ub
-
     def calculate_occupied_membrane(self, model):
         occupied_membrane = 0
 
@@ -116,7 +108,6 @@ class MembraneSector(EnzymeSector):
         self.max_membrane_area = new_max_area
         self.membrane_proteins = {}
 
-        self.total_occupied_membrane = 0
         coefficients = {
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
         }
