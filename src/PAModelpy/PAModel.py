@@ -1339,14 +1339,14 @@ class PAModel(Model):
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
-            self.reactions.get_by_id(rxn_id).upper_bound = upper_bound*0.01
+            self.reactions.get_by_id(rxn_id).upper_bound = upper_bound*1.01
         else:
             self.reactions.get_by_id(rxn_id).upper_bound = upper_bound
 
     def change_reaction_lb(self, rxn_id: str, lower_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_lb"].ub = -lower_bound
-            self.reactions.get_by_id(rxn_id).lower_bound = lower_bound*0.01
+            self.reactions.get_by_id(rxn_id).lower_bound = lower_bound*1.01
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
 

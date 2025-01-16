@@ -24,7 +24,9 @@ We have extended this package with the following features:
 Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
 
 ## What can you find where in this repository?
-This repository contains not only the source code, but also examples and scripts which were used in **INSERT PUBLICATION HERE**.
+This repository contains not only the source code, but also examples and scripts which were used in
+[van den Bogaard et al. (2024)](https://doi.org/10.1093/bioinformatics/btae691).
+
 - **Data**
   - *eGFP_expression_Bienick2014*: measured growth rate and eGFP expression by [Bienick et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0109105)
   - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
@@ -32,8 +34,8 @@ This repository contains not only the source code, but also examples and scripts
   - *Ecoli_phenotypes/Ecoli_phenotypes_py_rev*: experimental physiology measurements to validate the model simulations
 - **Examples**: example notebook on how to build, run and validate a PAM using the PAModelpy package
 - **Figures**: scripts used to create Figure 1-3 and supplementary figures
-- **MATLAB**: MATLAB code for doing simulations with the E.coli core PAM and the toy model (validating the sensitivity relationships)
-- **Models**: models used (iML1515 and core ecoli model)
+- **MATLAB**: MATLAB code for doing simulations with the *E. coli* core PAM and the toy model (validating the sensitivity relationships)
+- **Models**: models used (iML1515 and core *E. coli* model)
 - **Results**: results of computational performance analysis
 - **Scripts**: scripts used for gathering results
   - computational performance analysis: `compare_computational_efficiency_esc.py` and `numeric_error_estimation_schemes_esc.py`
@@ -75,7 +77,7 @@ from the `src` directory
 The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
 
 ## License
-Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2023)
+Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2024)
 
 PAModelpy is free of charge open source software, which can be used and modified for your particular purpose under the [MIT](https://opensource.org/license/mit/)
 or [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) of the users choice.

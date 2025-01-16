@@ -109,7 +109,7 @@ from Scripts.pam_generation import set_up_pam
 
 # Define input paths
 model_path = "Models/iML1515.xml"
-param_file = "Data/proteinAllocationModel_iML1515_EnzymaticData.xlsx"
+param_file = "Data/proteinAllocationModel_iML1515_EnzymaticData_new.xlsx"
 
 # Build the PAM
 pam = set_up_pam(pam_info_file=param_file,
