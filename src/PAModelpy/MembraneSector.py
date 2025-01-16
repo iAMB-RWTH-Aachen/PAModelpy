@@ -16,8 +16,10 @@ class MembraneSector(EnzymeSector):
             enzyme_location: {},
             cog_class: {} = None,
             max_area: float = 0.27,
+
             configuration=Config):
 
+        #TODO put some constants into the initiation
         self.id = 'MembraneSector'
         self.area_avail_0 = area_avail_0
         self.area_avail_mu = area_avail_mu
@@ -49,6 +51,7 @@ class MembraneSector(EnzymeSector):
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
         }
 
+        # TODO make function out of this, to get alpha helix from a complex
         for enz_complex in model.enzyme_variables:
             enzymes = enz_complex.id.split("_")
             alpha_numbers_in_complex = [0]  # zero if enzyme is not in membrane
@@ -61,6 +64,7 @@ class MembraneSector(EnzymeSector):
 
             alpha_numbers_for_complex = max(alpha_numbers_in_complex)
 
+            #TODO make function out of this
             coefficients[enz_complex.forward_variable] = (
                         1e-6 * alpha_numbers_for_complex  # correction for the solver issue
                         * self.area_alpha
