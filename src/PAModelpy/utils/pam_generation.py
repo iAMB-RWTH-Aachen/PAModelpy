@@ -4,6 +4,7 @@ import cobra
 from typing import TypedDict, Literal, Union, Tuple, Iterable
 import re
 import os
+import ast
 
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -85,14 +86,16 @@ def parse_gpr_information(gpr_info:str,
 
     # #only get the genes associated with this enzyme
     gpr_list = _parse_gpr(gpr_info)
-    gpr_list = _filter_sublists(gpr_list, genes)
-
     if genes is None: return gpr_list
+
+    gpr_list = _filter_sublists(gpr_list, genes)
 
     #convert the genes to the associated proteins
     # enzyme_relations = []
-    # if '_'in enzyme_id:
-    enzyme_relations = [enzyme_id.split('_')]
+    if any([len(info)>1 for info in gpr_list]):
+        enzyme_relations = [enzyme_id.split('_')]
+    else:
+        enzyme_relations = [[enzyme_id]]
     # for sublist in gpr_list:
     #     enz_sublist = []
     #     for item in sublist:
@@ -283,7 +286,7 @@ def _order_enzyme_complex_id(enz_id:str,
 
 def parse_reaction2protein(enzyme_db: pd.DataFrame,
                            model: cobra.Model,
-                           other_enzyme_id_pattern: str = r'E[0-9][0-9]*') -> dict:
+                           other_enzyme_id_pattern: str = r'(E[0-9][0-9]*|Enzyme_[A-Za-z0-9_]+)') -> dict:
     rxn_info2protein = {}
     protein2gpr = defaultdict(list)
     #remove copy number substrings from the reaction to make it matchable to enzyme information
@@ -312,7 +315,14 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
         rxn_info = rxn_info2protein.setdefault(rxn_id, ReactionInformation(rxn_id))
         #sometimes, multiple copies are associated with a single reaction
         rxns = rxn_info.get_reaction_from_model(model)
+        #the genes are generally stored in a list, which needs to be recovered from the string formatted column
         genes = catalytic_reaction_info.gene.iloc[0]
+        if isinstance(genes, str) and genes[-1] == ']':
+            genes = ast.literal_eval(catalytic_reaction_info.gene.iloc[0])
+        elif isinstance(genes, str):
+            genes = [genes]
+
+
         for rxn in rxns:
             # If no genes are associated with the reaction, this reaction is not catalyzed by an enzyme
             if (not len(rxn.genes) > 0) and (not isinstance(genes, list)):  continue
@@ -323,6 +333,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
                                                                                       genes,
                                                                                       enzyme_id,
                                                                                       gene2protein)
+
 
             protein2gpr[enzyme_id]+= gene_reaction_relation
 
@@ -337,6 +348,8 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
                                              molmass=catalytic_reaction_info.molMass.iloc[0])
             rxn_info.enzymes[enzyme_id] = enzyme_info
             rxn_info2protein[rxn.id] = rxn_info
+
+
 
     # if no enzyme info is found, add dummy enzyme with median kcat and molmass
     rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model,
