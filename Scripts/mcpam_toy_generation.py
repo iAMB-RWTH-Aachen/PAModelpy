@@ -15,7 +15,7 @@ from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.configuration import Config
 
 
-def build_toy_model(sensitivity:bool=True):
+def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False):
     config = Config()
     config.reset()
     config.BIOMASS_REACTION = 'R11'
@@ -28,8 +28,9 @@ def build_toy_model(sensitivity:bool=True):
     # Building Active Enzyme Sector
     kcat_fwd = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1, 10e-2, 10e-2]
     kcat_rev = [kcat for kcat in kcat_fwd]
-    gpr_string = [['gene1'], ['gene2'],['gene3'],['gene4'],['gene5'],['gene6'],['gene7'],['gene8']]
-    pra_string = ['E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9']
+    enz_complex_id = ['E1_E2_E3', 'E4', 'E5_E6', 'E7_E8_E9_E10', 'E11', 'E12', 'E13', 'E14']
+    gpr_string = [['g1', 'g2', 'g3'], ['g4'],['g5', 'g6'],['g7', 'g8', 'g9', 'g10'],['g11', 'g12'],['g13'],['g14'],['g15']]
+    pra_string = ['g1 and g2 and g3', 'g4', 'g5 and g6', 'g7 and g8 and g9 and g10', 'g11 or g12', 'g13', 'g14', 'g15']
 
     rxn2protein = {}
     protein2gene = {}
@@ -37,7 +38,7 @@ def build_toy_model(sensitivity:bool=True):
         rxn_id = f'R{i+2}'
         # 1e-6 to correct for the unit transformation in the model (meant to make the calculations preciser for different unit dimensions)
         #dummy molmass
-        rxn2protein = {**rxn2protein, **{rxn_id: {f'E{i+2}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6),
+        rxn2protein = {**rxn2protein, **{rxn_id: {f'{enz_complex_id[i]}':{'f': kcat_fwd[i]/(3600*1e-6), 'b': kcat_rev[i]/(3600*1e-6),
                                                              'molmass': 1e6, 'genes': gpr_string[i],
                                                              'protein_reaction_association': pra_string[i]}}}}
         protein2gene = {**protein2gene, **{f'E{i+2}': gpr_string[i]}}
@@ -51,27 +52,32 @@ def build_toy_model(sensitivity:bool=True):
     unused_enzyme = UnusedEnzymeSector(id_list = ['R1'], ups_mu=[-0.01*1e-3], ups_0=[0.1*1e-3], mol_mass= [1], configuration=config)
 
     # Building Membrane Sector
-    alpha_numbers_dict = {"E1": 12,
-                          "E2": 8,
-                          "E3": 1,
-                          "E4": 12,
-                          "E5": 40,
-                          "E7": 15,
-                          "E8": 30}
+    alpha_numbers_dict = {"E1_E2_E3": 20,
+                          "E4": 8,
+                          "E5_E6": 1,
+                          "E7_E8_E9_E10": 48,
+                          "E11": 12,
+                          "E12": 12,
+                          "E13": 12,
+                          "E14": 12}
 
-    enzyme_location = {"E1": "Unknown",
-                      "E2": "Cell membrane",
-                      "E3": "Cytoplasm",
-                      "E4": "Cytoplasm",
-                      "E5": "Cell membrane",
-                      "E7": "Cytoplasm",
-                      "E8": "Cytoplasm"}
-
-    membrane_sector = MembraneSector(area_avail_mu=0.1, area_avail_0=0.005, alpha_numbers_dict=alpha_numbers_dict,
-                                     enzyme_location=enzyme_location, max_area=0.132815)
+    enzyme_location = {"E1_E2_E3": "Cell membrane",
+                       "E4": "Cytosol",
+                       "E5_E6": "Cytosol",
+                       "E7_E8_E9_E10": "Cell membrane",
+                       "E11": "Cytosol",
+                       "E12": "Cytosol",
+                       "E13": "Cytosol",
+                       "E14": "Cell membrane"}
+    #mu = 0.1, 0=0.005
+    if membrane_sector:
+        membrane_sector = MembraneSector(area_avail_mu=-0.1042, area_avail_0=0.1479, alpha_numbers_dict=alpha_numbers_dict,
+                                     enzyme_location=enzyme_location, max_area=1)
+    else:
+        membrane_sector = None
 
     # Building the toy_pam
-    model = load_json_model('Models/toy_model_TS_v1.json')
+    model = load_json_model('Models/toy_model.json')
     pamodel = PAModel(model, name='toy model MCA with enzyme constraints',
                       sensitivity=sensitivity,
                       active_sector=active_enzyme,

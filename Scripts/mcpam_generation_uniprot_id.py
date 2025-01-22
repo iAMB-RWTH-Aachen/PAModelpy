@@ -209,6 +209,113 @@ def set_up_ecolicore_mcpam(total_protein: Union[bool, float] = True,
 
     return pamodel
 
+def set_up_ecolicore_mcpam_new_surface_parameter(total_protein: Union[bool, float] = True,
+                           active_enzymes: bool = True,
+                           translational_enzymes: bool = True,
+                           unused_enzymes: bool = True,
+                           membrane_sector: bool = True,
+                           max_area:float = 1,
+                           sensitivity = True):
+
+    config = Config()
+    config.reset()
+
+    pam_info_file = os.path.join('Data', 'mcPAM_iML1515_EnzymaticData.xlsx')
+
+    # some other constants
+    BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
+    TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+
+    config.BIOMASS_REACTION = BIOMASS_REACTION
+
+    # load the genome-scale information
+    model = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
+
+    # load example data for the E.coli iML1515 model
+    if active_enzymes:
+        # load active enzyme sector information
+        enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core')
+
+        for idx in enzyme_db.rxnID:
+            # transport reactions
+            if 'pp' in idx:
+                idx_new = idx.replace('pp', '')
+                if idx_new not in enzyme_db.rxnID:
+                    enzyme_db = enzyme_db.replace(idx, idx_new)
+            if 'ex' in idx:
+                idx_new = idx.replace('ex', '')
+                if idx_new not in enzyme_db.rxnID:
+                    enzyme_db = enzyme_db.replace(idx, idx_new)
+
+        # create enzyme objects for each gene-associated reaction
+        rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
+
+        active_enzyme_sector = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
+                                                  configuration=config)
+
+    else:
+        active_enzyme_sector = None
+
+    if translational_enzymes:
+        # translational protein sector parameter (substrate dependent)
+        id_list_tps = ['EX_glc__D_e']
+        tps_0 = [0.04992]  # g/gDW
+        tps_mu = [-0.002944]  # g h/gDW -> transformed to match glucose uptake variable
+        molmass_tps = [405903.94]  # g/mol
+
+        # translational protein sector
+        translation_enzyme_sector = TransEnzymeSector(
+            id_list=id_list_tps,
+            tps_0=tps_0,
+            tps_mu=tps_mu,
+            mol_mass=molmass_tps,
+        )
+    else:
+        translation_enzyme_sector = None
+
+    if unused_enzymes:
+        id_list_ups = [BIOMASS_REACTION]
+        ups_0 = [0.0407]  # g/gDW
+        ups_mu = [-0.0214]  # g h/gDW -> negative relation with growth rate
+        molmass_ups = [405903.94]  # g/mol
+
+        unused_enzyme_sector = UnusedEnzymeSector(
+            id_list=id_list_ups,
+            ups_0=ups_0,
+            ups_mu=ups_mu,
+            mol_mass=molmass_ups,
+        )
+    else:
+        unused_enzyme_sector = None
+
+    if membrane_sector:
+        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane')
+        active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core')
+
+        area_avail_0 = 0.1479
+        area_avail_mu = -0.1042
+        alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
+        enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
+
+        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+                                         area_avail_mu=area_avail_mu,
+                                         alpha_numbers_dict=alpha_numbers_dict,
+                                         enzyme_location=enzyme_location,
+                                         max_area=max_area)
+
+    else:
+        membrane_sector = None
+
+    if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
+
+    pamodel = PAModel(id_or_model=model, p_tot=total_protein,
+                       active_sector=active_enzyme_sector, translational_sector=translation_enzyme_sector,
+                       unused_sector=unused_enzyme_sector, sensitivity=sensitivity, configuration = config,
+                      membrane_sector=membrane_sector
+                      )
+
+    return pamodel
+
 def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: bool = True,
                    translational_enzymes: bool = True, unused_enzymes: bool = True, sensitivity = True):
 
