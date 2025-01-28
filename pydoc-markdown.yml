@@ -9,5 +9,5 @@ processors:
 renderer:
   type: docusaurus
   docs_base_path: docs
-  relative_output_path: docs/api_reference
+  relative_output_path: docs/api_reference1
   relative_sidebar_path: sidebar.json
