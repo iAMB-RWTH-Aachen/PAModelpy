@@ -29,6 +29,7 @@ from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
+from .MembraneSector import MembraneSector
 
 
 class PAModel(Model):
@@ -78,6 +79,7 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
+                 membrane_sector: Optional[MembraneSector]=None,
                  custom_sectors: Optional[CustomSector] =[None],
                  configuration = Config()):
         """Constants"""
@@ -129,7 +131,7 @@ class PAModel(Model):
         if sensitivity:  # perform sensitivity analysis when the model is run
             self._add_lb_ub_constraints()
 
-        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        sectors_to_add = [active_sector, translational_sector, unused_sector, membrane_sector] + custom_sectors
         for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
@@ -262,8 +264,8 @@ class PAModel(Model):
 
                 # check kcat values
                 for kcatdict in kcats.values():
-                    for kcat in kcatdict.values():
-                        if kcat < 0:
+                    for kcat_dict in kcatdict.values():
+                        if kcat_dict < 0:
                             # invalid kcat value
                             warnings.warn(
                                 'Turnover number for reaction "'
@@ -274,7 +276,8 @@ class PAModel(Model):
 
                 # extract reaction from model
                 reaction = self.reactions.get_by_id(rxn_id)
-                for kcats in kcats.values():
+
+                for kcat_dict in kcats.values():
                     # check consistency between provided kcat values and reaction direction
                     if self._sensitivity:
                         lower_bound = -self.constraints[f"{rxn_id}_lb"].ub
@@ -284,7 +287,7 @@ class PAModel(Model):
                         upper_bound = reaction.upper_bound
                     if lower_bound >= 0 and upper_bound > 0:
                         # reaction is irreversible in the forward direction
-                        if "f" not in kcats:  # or 'b' in kcats:
+                        if "f" not in kcat_dict:  # or 'b' in kcats:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -292,7 +295,7 @@ class PAModel(Model):
                             return False
                     elif lower_bound < 0 and upper_bound <= 0:
                         # reaction is irreversible in the backward direction
-                        if "b" not in kcats or "f" in kcats:
+                        if "b" not in kcats or "f" in kcat_dict:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -300,7 +303,7 @@ class PAModel(Model):
                             return False
                     else:
                         # reaction is reversible
-                        if "f" not in kcats:  # or 'b' not in kcats:
+                        if "f" not in kcat_dict:  # or 'b' not in kcats:
                             warnings.warn(
                                 rxn_id
                                 + ": Inconsistencies between the reaction reversibility and the provided kcat values"
@@ -486,6 +489,8 @@ class PAModel(Model):
         for sector in sectors:
             # different method to add the active enzyme_sector
             if isinstance(sector, ActiveEnzymeSector):
+                self = sector.add(self)
+            elif isinstance(sector, MembraneSector):
                 self = sector.add(self)
             else:
                 self.add_sector(sector)
@@ -767,7 +772,15 @@ class PAModel(Model):
                     self, rxn, rxn.lower_bound, rxn.upper_bound
                 )
                 # reset the reaction bounds
-                rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
+                # New
+                if rxn.lower_bound > 0:
+                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound - (rxn.lower_bound * 0.01), rxn.upper_bound + (
+                                rxn.upper_bound * 0.01)
+
+                if rxn.lower_bound <= 0:
+                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound + (rxn.lower_bound * 0.01), rxn.upper_bound + (
+                                rxn.upper_bound * 0.01)
+                    #
 
     def _add_lb_ub_constraints(self):
         """
@@ -775,11 +788,23 @@ class PAModel(Model):
         By adding these constraints the shadow prices of the reaction bounds can be
         calculated and used in sensitivity analysis
         """
+        #Debugging
+        self.rxn_old_bounds_lb = {} #
+        self.rxn_old_bounds_ub = {} #
+
         for rxn in self.reactions:
+
             self = self._make_lb_ub_constraint(
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
-            rxn.lower_bound, rxn.upper_bound = -1e6, 1e6
+
+            # New
+            if rxn.lower_bound > 0:
+                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound-(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
+
+            if rxn.lower_bound <= 0:
+                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound+(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
+                #
 
     @staticmethod
     def _make_lb_ub_constraint(
@@ -987,6 +1012,7 @@ class PAModel(Model):
         self.capacity_sensitivity_coefficients = pd.DataFrame(
             columns=["rxn_id", "enzyme_id", "constraint", "coefficient"]
         )
+        self.raw_coefficients = {}
         # add capacity sensitivity coefficients for sectors if they are there
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             for sector in self.sectors:
@@ -1001,11 +1027,29 @@ class PAModel(Model):
                         ].iloc[0]
                         / obj_value
                     )
+
             new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
             # add new_row to dataframe
             self.capacity_sensitivity_coefficients.loc[
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row
+
+            for sector in self.sectors:
+                if isinstance(sector, MembraneSector):
+                    constraint = "membrane"
+                    rxn_id = sector.id
+                    enzyme_id = sector.id
+                    ca_coefficient = (
+                            self.constraints[constraint].ub
+                            * mu[mu["rxn_id"] == constraint]["shadow_prices"].iloc[0]
+                            / obj_value
+                    )
+
+                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+                    # add new_row to dataframe
+                    self.capacity_sensitivity_coefficients.loc[
+                        len(self.capacity_sensitivity_coefficients)
+                    ] = new_row
 
             # treat sectors separately if there is not a total protein constraint
         else:
@@ -1036,6 +1080,7 @@ class PAModel(Model):
                 * mu_lb[mu_lb["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
                 / obj_value
             )
+
             # UB
             ca_coefficient_UB = (
                 self.constraints[f"{rxn.id}_ub"].ub
@@ -1052,6 +1097,7 @@ class PAModel(Model):
             self.capacity_sensitivity_coefficients.loc[
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row_LB
+
 
         for enzyme in self.enzymes:
             for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
@@ -1293,12 +1339,14 @@ class PAModel(Model):
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
+            self.reactions.get_by_id(rxn_id).upper_bound = upper_bound*1.01
         else:
             self.reactions.get_by_id(rxn_id).upper_bound = upper_bound
 
     def change_reaction_lb(self, rxn_id: str, lower_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_lb"].ub = -lower_bound
+            self.reactions.get_by_id(rxn_id).lower_bound = lower_bound*1.01
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
 
@@ -1372,7 +1420,7 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
-    def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
+    def get_enzymes_by_gene_reid(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
 
     def get_enzymecomplex_containing_enzyme(self, enzyme: Union[Enzyme, str]) -> list:
@@ -1608,13 +1656,13 @@ class PAModel(Model):
         catalytic_event = self.catalytic_events.get_by_id('CE_' + reaction.id)
 
         # removing catalytic event from the enzymes
-        # for enzyme in catalytic_event.enzymes:
-        #     if catalytic_event in enzyme.catalytic_events:
-        #         enzyme.remove_catalytic_event(catalytic_event)
-        #
-        # for enzyme_var in catalytic_event.enzyme_variables:
-        #     if catalytic_event in enzyme_var.catalytic_events:
-        #         enzyme_var.remove_catalytic_event(catalytic_event)
+        for enzyme in catalytic_event.enzymes:
+            if catalytic_event in enzyme.catalytic_events:
+                enzyme.remove_catalytic_event(catalytic_event)
+
+        for enzyme_var in catalytic_event.enzyme_variables:
+            if catalytic_event in enzyme_var.catalytic_events:
+                enzyme_var.remove_catalytic_event(catalytic_event)
         enzyme.remove_catalytic_event(catalytic_event.id)
         enzyme.enzyme_variable.remove_catalytic_event(catalytic_event.id)
 

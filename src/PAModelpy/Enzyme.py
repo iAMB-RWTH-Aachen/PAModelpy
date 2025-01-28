@@ -13,7 +13,7 @@ import optlang
 from optlang.symbolics import Zero
 
 from .CatalyticEvent import CatalyticEvent
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, Literal
 from warnings import warn
 
 def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
@@ -86,6 +86,7 @@ class Enzyme(Object):
         self.annotation = {
             "type": "Constraint"
         }  # you can add an annotation for an enzyme
+
     @property
     def kcat_values(self):
         """Returns a dictionary with kcat values for each associated reaction.
@@ -97,7 +98,7 @@ class Enzyme(Object):
 
     @property
     def concentration(
-        self, units: str = "mmol/gDW", return_units: bool = False
+        self, units: Literal['mmol/gDW', 'g/gDW'] = "mmol/gDW", return_units: bool = False
     ) -> float:
         """Returns the enzyme's total concentration considering any associated reactions.
 
@@ -113,14 +114,14 @@ class Enzyme(Object):
         concentration = self.enzyme_variable.concentration
         if units == 'g/gDW':
             #converting mmol to grams of protein:
-            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol] *1e-6 [solver tolerance conversion factor]
-            concentration = concentration * 1e-3 * self.molmass*1e-6
+            # [g] = [mmol]* 1e-3 [mol/mmol] * MW[g/mol]
+            concentration = concentration * 1e-3 * self.molmass
         if return_units:
-            return concentration*1e-6, units
-        return concentration*1e-6
+            return concentration, units
+        return concentration
 
     @concentration.setter
-    def concentration(self, conc):
+    def concentration(self, conc:float):
         self.enzyme_variable.concentration = conc
 
     @property
@@ -132,10 +133,10 @@ class Enzyme(Object):
         self._model = model
         self.enzyme_id_regex = model.ENZYME_ID_REGEX
 
-    def set_forward_concentration(self, conc):
+    def set_forward_concentration(self, conc:float):
         self.enzyme_variable.set_forward_concentration(conc)
 
-    def set_reverse_concentration(self, conc):
+    def set_reverse_concentration(self, conc:float):
         self.enzyme_variable.set_reverse_concentration(conc)
 
     def create_constraint(self, extension: str = None):
@@ -345,6 +346,7 @@ class Enzyme(Object):
         # Return the state to be pickled
         state = self.__dict__.copy()
         state['catalytic_events'] = list(self.catalytic_events)
+        state['transcripts'] = list(self.transcripts)
         # Handle any non-serializable attributes here
         return state
 
@@ -379,11 +381,11 @@ class EnzymeComplex(Enzyme):
         self,
         id: str,
         rxn2kcat: Dict,
-            enzymes: DictList = DictList(),
+        enzymes: DictList = DictList(),
         genes: list = [],
-            upper_bound: Union[int, float] = 1000.0,
-            name: Optional[str] = None,
-            molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS, ):
+        upper_bound: Union[int, float] = 1000.0,
+        name: Optional[str] = None,
+        molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS, ):
         super().__init__(
             id=id,
             rxn2kcat=rxn2kcat,
@@ -398,6 +400,10 @@ class EnzymeComplex(Enzyme):
         self.add_enzymes(enzymes)
 
     def add_enzymes(self, enzymes: DictList):
+        #if required: recover dictlist after pickle
+        if not isinstance(self.enzymes, DictList):
+            self.enzymes = DictList(self.enzymes)
+
         for enzyme in enzymes:
             if enzyme not in self.enzymes:# and not isinstance(enzyme, EnzymeComplex):
                 self.enzymes.append(enzyme)
@@ -450,7 +456,7 @@ class EnzymeComplex(Enzyme):
         # Return the state to be pickled
         state = self.__dict__.copy()
         state['catalytic_events'] = list(self.catalytic_events)
-
+        state['enzymes'] = list(self.enzymes)
         # Handle any non-serializable attributes here
         return state
 
