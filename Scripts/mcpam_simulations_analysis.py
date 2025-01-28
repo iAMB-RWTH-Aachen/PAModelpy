@@ -253,7 +253,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
         fluxes_list = []
         concentrations_list = [0]
 
-        if config == "PAM":  # simulating pam_core
+        if config == "PAM":  # simulating pam
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
@@ -272,7 +272,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
             fluxes_dict[config] = fluxes_list
             concentrations_dict[config] = concentrations_list
 
-        else:  # simulating mcpam_core
+        else:  # simulating mcpam
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate

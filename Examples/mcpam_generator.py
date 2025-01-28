@@ -14,25 +14,30 @@ import matplotlib.pyplot as plt; plt.rcdefaults()
 
 if __name__ == "__main__":
     # Build full scale pam new parsing
-    # pam_info_path = 'Data/proteinAllocationModel_mciML1515_EnzymaticData_241209_multi.xlsx'
-    # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
-    # mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    #
-    # models = [pam, mcpam]
-    # run_simulation_pam_mcpam(models, type="full scale")
+    pam_info_path = 'Data/proteinAllocationModel_mciML1515_EnzymaticData_241209_multi.xlsx'
+    pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
+    mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
 
+    models = [pam, mcpam]
+    run_simulation_pam_mcpam(models, type="full scale")
 
     # Build core pam
     # pam = set_up_ecolicore_pam(sensitivity=False)
     # mcpam = set_up_ecolicore_mcpam_new_surface_parameter(sensitivity=False)
     # models = [pam, mcpam]
+    # run_simulations_pam_mcpam_w_different_areas(models, type='core')
+
+    # Build core pam new parse
+    # pam = set_up_core_pam(sensitivity=False, membrane_sector=False, pam_info_file='Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
+    # mcpam = set_up_core_pam(sensitivity=False, membrane_sector=True, pam_info_file='Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
+    # models = [pam, mcpam]
     # run_simulation_pam_mcpam(models, type="core")
 
     # Build toy pam
-    toy_pam = build_toy_model(membrane_sector=True)
-    toy_pam.objective = "R11"
-    toy_pam.optimize()
-    print(toy_pam.objective.value)
+    # toy_pam = build_toy_model(membrane_sector=True)
+    # toy_pam.objective = "R11"
+    # toy_pam.optimize()
+    # print(toy_pam.objective.value)
 
 
 

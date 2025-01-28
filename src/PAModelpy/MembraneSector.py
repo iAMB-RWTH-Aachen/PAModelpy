@@ -67,7 +67,7 @@ class MembraneSector(EnzymeSector):
             enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
             alpha_number_for_complex = self.get_alpha_number_for_enz_complex(enz_complex)
             coeff = self.get_coeff_value(alpha_number_for_complex)
-            occupied_area += coeff
+            occupied_area += coeff * enz_complex_concentration
 
         available_area = self.slope * model.objective.value + self.intercept
 

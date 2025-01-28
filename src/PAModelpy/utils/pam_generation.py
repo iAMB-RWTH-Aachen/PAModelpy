@@ -379,7 +379,7 @@ def set_up_pam(pam_info_file:str = '',
                translational_enzymes: bool = True,
                unused_enzymes: bool = True,
                membrane_sector: bool = False,
-               max_membrane_area:float = 1,
+               max_membrane_area:float = 0.27,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = False) -> PAModel:
@@ -446,8 +446,8 @@ def set_up_pam(pam_info_file:str = '',
         membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
         active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
 
-        area_avail_0 = 0.1479 #membrane_info.at['area_avail_0','Value']
-        area_avail_mu = -0.1042 #membrane_info.at['area_avail_mu','Value']
+        area_avail_0 = membrane_info.at['area_avail_0','Value']
+        area_avail_mu = membrane_info.at['area_avail_mu','Value']
         alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
         enzyme_location = active_membrane_info.location.to_dict()
 

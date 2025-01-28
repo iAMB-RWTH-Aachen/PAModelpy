@@ -214,7 +214,7 @@ def set_up_ecolicore_mcpam_new_surface_parameter(total_protein: Union[bool, floa
                            translational_enzymes: bool = True,
                            unused_enzymes: bool = True,
                            membrane_sector: bool = True,
-                           max_area:float = 1,
+                           max_area:float = 0.27,
                            sensitivity = True):
 
     config = Config()
@@ -292,8 +292,8 @@ def set_up_ecolicore_mcpam_new_surface_parameter(total_protein: Union[bool, floa
         membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane')
         active_enzyme_info = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core')
 
-        area_avail_0 = 0.1479
-        area_avail_mu = -0.1042
+        area_avail_0 = 0.9812
+        area_avail_mu = 8.4243
         alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
         enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
 
