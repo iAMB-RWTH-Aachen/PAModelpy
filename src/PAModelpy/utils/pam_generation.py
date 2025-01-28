@@ -108,7 +108,8 @@ def parse_gpr_information(gpr_info:str,
     #     enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
     return sorted(gpr_list), sorted(enzyme_relations)
 
-def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict]:
+def get_protein_gene_mapping(enzyme_db: pd.DataFrame,
+                             model) -> tuple[dict, dict]:
     protein2gene = defaultdict(list)
     gene2protein = {}
     for index, row in enzyme_db.iterrows():
@@ -118,7 +119,7 @@ def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
         enzyme_id = row['enzyme_id']
-        gene_id = row['genes']
+        gene_id = row['gene']
 
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
