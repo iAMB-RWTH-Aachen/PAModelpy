@@ -1,83 +1,101 @@
 {
 "metabolites":[
 {
-"id":"Substrate",
-"name":"",
-"compartment":""
+"id":"Glc_ex",
+"name":"Glucose extracellular",
+"compartment":"ex"
 },
 {
-"id":"Intermediate",
-"name":"",
-"compartment":""
+"id":"Glc_int",
+"name":"Glucose intracellular",
+"compartment":"c"
 },
 {
-"id":"CO2",
-"name":"",
-"compartment":""
+"id":"Pyr",
+"name":"Pyruvate",
+"compartment":"c"
 },
 {
-"id":"Byproduct",
-"name":"",
-"compartment":""
+"id":"Act_int",
+"name":"Acetate intracellular",
+"compartment":"c"
 },
 {
-"id":"ATP",
-"name":"",
-"compartment":""
+"id":"Act_ex",
+"name":"Acetate extracellular",
+"compartment":"ex"
 },
 {
-"id":"Precursor",
-"name":"",
-"compartment":""
+"id":"NADH",
+"name":"NADH",
+"compartment":"c"
+},
+{
+"id":"AcoA",
+"name":"Acetyl coA",
+"compartment":"c"
+},
+{
+"id":"Intermediates",
+"name":"Intermediates",
+"compartment":"c"
 },
 {
 "id":"Biomass",
-"name":"",
-"compartment":""
+"name":"Biomass",
+"compartment":"c"
+},
+{
+"id":"ATP",
+"name":"Adenosine Triphosphate",
+"compartment":"c"
+},
+{
+"id":"CO2",
+"name":"Carbon dioxide",
+"compartment":"c"
 }
 ],
 "reactions":[
 {
 "id":"R1",
-"name":"",
+"name":"Glucose diffusion",
 "metabolites":{
-"Substrate":1
+"Glc_ex":1
+},
+"lower_bound":0,
+"upper_bound":100,
+"gene_reaction_rule":""
+},
+  {
+"id":"R2",
+"name":"Glucose uptake",
+"metabolites":{
+"Glc_ex":-1,
+"Glc_int":1
 },
 "lower_bound":1,
 "upper_bound":100,
 "gene_reaction_rule":""
 },
 {
-"id":"R2",
-"name":"",
+"id":"R3",
+"name":"Glycolysis",
 "metabolites":{
-"CO2":1,
-"Intermediate":1,
-"Substrate":-1
+"Glc_int":-1,
+"Pyr":1
 },
 "lower_bound":0,
 "upper_bound":100,
 "gene_reaction_rule":""
 },
 {
-"id":"R3",
-"name":"",
-"metabolites":{
-"ATP":1,
-"Byproduct":1,
-"Intermediate":-1
-},
-"lower_bound":-1000000.0,
-"upper_bound":100,
-"gene_reaction_rule":""
-},
-{
 "id":"R4",
-"name":"",
+"name":"TCA cycle",
 "metabolites":{
-"ATP":2,
-"CO2":1,
-"Intermediate":-1
+"Pyr":-1,
+"NADH":1,
+"AcoA":1
 },
 "lower_bound":0,
 "upper_bound":100,
@@ -85,22 +103,21 @@
 },
 {
 "id":"R5",
-"name":"",
+"name":"Respiration",
 "metabolites":{
-"Intermediate":-1,
-"Precursor":1
+"NADH":-1,
+"ATP":1
 },
-"lower_bound":-1000000.0,
+"lower_bound":0,
 "upper_bound":100,
 "gene_reaction_rule":""
 },
 {
 "id":"R6",
-"name":"",
+"name":"Fermentation",
 "metabolites":{
-"ATP":-1,
-"Biomass":1,
-"Precursor":-1
+"Pyr":-1,
+"Act_int":1
 },
 "lower_bound":0,
 "upper_bound":100,
@@ -108,7 +125,50 @@
 },
 {
 "id":"R7",
-"name":"",
+"name":"Acetate transport",
+"metabolites":{
+"Act_int":-1,
+"Act_ex":1
+},
+"lower_bound":0,
+"upper_bound":100,
+"gene_reaction_rule":""
+},
+{
+"id": "R8",
+"name": "Intermediate synthesis",
+"metabolites": {
+  "AcoA": -1,
+  "ATP": -1,
+  "Intermediates": 1,
+  "CO2": 1
+},
+"lower_bound":0,
+"upper_bound":100,
+"gene_reaction_rule":""
+},
+{"id":"R9",
+"name":"Biomass synthesis",
+"metabolites":{
+"Intermediates":-1,
+"Biomass":1
+},
+"lower_bound":0,
+"upper_bound":100,
+"gene_reaction_rule":""
+},
+{
+"id":"R10",
+"name":"Acetate diffusion",
+"metabolites":{
+"Act_ex": -1
+},
+"lower_bound":0,
+"upper_bound":100,
+"gene_reaction_rule":""
+},
+{"id":"R11",
+"name":"Growth",
 "metabolites":{
 "Biomass":-1
 },
@@ -116,29 +176,17 @@
 "upper_bound":100,
 "gene_reaction_rule":""
 },
-{
-"id":"R8",
-"name":"",
+{"id":"R12",
+"name":"CO2 exchange rate",
 "metabolites":{
 "CO2":-1
 },
 "lower_bound":0,
 "upper_bound":100,
-"gene_reaction_rule":""
-},
-{
-"id":"R9",
-"name":"",
-"metabolites":{
-"Byproduct":-1
-},
-"lower_bound":0,
-"upper_bound":100,
-"gene_reaction_rule":""
-}
+"gene_reaction_rule":""}
 ],
 "genes":[],
-"id":"toy_model",
+"id":"toy_model_TS",
 "compartments":{},
 "version":"1"
 }

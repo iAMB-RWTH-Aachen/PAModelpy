@@ -489,6 +489,117 @@ def set_up_pam(pam_info_file:str = '',
                       )
     return pamodel
 
+def set_up_core_pam(pam_info_file:str = '',
+               model:Union[str, cobra.Model] = 'Models/e_coli_core.json',
+               config:Config = None,
+               total_protein: Union[bool, float] = True,
+               active_enzymes: bool = True,
+               translational_enzymes: bool = True,
+               unused_enzymes: bool = True,
+               membrane_sector: bool = False,
+               max_membrane_area:float = 0.03,
+               sensitivity:bool = True,
+               enzyme_db:pd.DataFrame = None,
+               adjust_reaction_ids:bool = True) -> PAModel:
+
+
+    if config is None:
+        config = Config()
+        config.reset()
+
+    # some other constants
+    BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
+    config.BIOMASS_REACTION = BIOMASS_REACTION
+    TOTAL_PROTEIN_CONCENTRATION = 0.16995  # [g_prot/g_cdw]
+
+    #setup model if a path is provided
+    if isinstance(model, str):
+        model = cobra.io.load_json_model(model)
+
+    #check if a different total protein concentration is given
+    if isinstance(total_protein, float):
+        TOTAL_PROTEIN_CONCENTRATION = total_protein
+
+    # load example data for the E.coli iML1515 model
+    if active_enzymes:
+        # load active enzyme sector information
+        if enzyme_db is None:
+            enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+            #for some models, the reaction ids should not include 'pp' or 'ex'
+            if adjust_reaction_ids:
+                enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
+        # create enzyme objects for each gene-associated reaction
+        rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
+
+        active_enzyme_info = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
+                                                  configuration=config)
+    else:
+        active_enzyme_info = None
+
+    if translational_enzymes:
+        # translational protein sector parameter (substrate dependent)
+        id_list_tps = ['EX_glc__D_e']
+        tps_0 = [0.04992]  # g/gDW
+        tps_mu = [-0.002944]  # g h/gDW -> transformed to match glucose uptake variable
+        molmass_tps = [405903.94]  # g/mol
+
+        # translational protein sector
+        translation_enzyme_info = TransEnzymeSector(
+            id_list=id_list_tps,
+            tps_0=tps_0,
+            tps_mu=tps_mu,
+            mol_mass=molmass_tps,
+            configuration=config
+        )
+    else:
+        translation_enzyme_info = None
+
+    if unused_enzymes:
+        id_list_ups = [BIOMASS_REACTION]
+        ups_0 = [0.0407]  # g/gDW
+        ups_mu = [-0.0214]  # g h/gDW -> negative relation with growth rate
+        molmass_ups = [405903.94]  # g/mol
+
+        unused_enzyme_info = UnusedEnzymeSector(
+            id_list=id_list_ups,
+            ups_0=ups_0,
+            ups_mu=ups_mu,
+            mol_mass=molmass_ups,
+            configuration=config
+        )
+    else:
+        unused_enzyme_info = None
+
+    if membrane_sector:
+        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
+        active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
+
+        area_avail_0 = membrane_info.at['area_avail_0','Value']
+        area_avail_mu = membrane_info.at['area_avail_mu','Value']
+        alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
+        enzyme_location = active_membrane_info.location.to_dict()
+
+        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+                                         area_avail_mu=area_avail_mu,
+                                         alpha_numbers_dict=alpha_numbers_dict,
+                                         enzyme_location=enzyme_location,
+                                         max_area=max_membrane_area)
+
+    else:
+        membrane_sector = None
+
+
+    if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
+
+    coremodel = PAModel(id_or_model=model, p_tot=total_protein,
+                       active_sector=active_enzyme_info,
+                      translational_sector=translation_enzyme_info,
+                       unused_sector=unused_enzyme_info,
+                      membrane_sector=membrane_sector,
+                      sensitivity=sensitivity, configuration = config
+                      )
+    return coremodel
+
 def increase_kcats_in_parameter_file(kcat_increase_factor: int,
                                      pam_info_file_path_ori: str,
                                      pam_info_file_path_out: str = None):

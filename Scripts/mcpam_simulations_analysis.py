@@ -15,6 +15,7 @@ from src.PAModelpy.MembraneSector import MembraneSector
 from src.PAModelpy.configuration import Config
 from Scripts.mcpam_generation_uniprot_id import (parse_reaction2protein,
                                                  set_up_ecolicore_pam, set_up_ecolicore_mcpam,
+                                                 set_up_ecolicore_mcpam_new_surface_parameter,
                                                  set_up_ecoli_pam, set_up_ecoli_mcpam)
 
 def compare_mu_for_different_sensitivities_ecolicore_pam():
@@ -213,7 +214,131 @@ def run_pam_mcpam_core_with_optimized_kcats(sensitivity:bool=True,
 
     return pam, mcpam
 
-def run_simulations_pam_mcpam(models, print_area:bool=False, type:str="full scale"):
+def run_simulation_pam_mcpam(models, type:str="full scale"):
+    fontsize = 25
+    labelsize = 15
+
+    # load phenotype data from excel file
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls'),
+                            sheet_name='Yields', index_col=None)
+
+    # Define the biomass name based on the used model
+    if type == "full scale":
+        biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
+    else:
+        biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
+
+    # extract reaction specific data
+    rxn_to_pt = {}
+    rxn_transform = {
+        'EX_ac_e': 'EX_ac_e',
+        'EX_co2_e': 'EX_co2_e',
+        'EX_o2_e': 'EX_o2_e',
+        biomass_name: 'BIOMASS_Ec_iML1515_core_75p37M'
+    }
+    for rxn_id, pt_id in rxn_transform.items():
+        rxn_to_pt[rxn_id] = pt_data[['EX_glc__D_e', pt_id]].dropna().rename(columns={pt_id: rxn_id})
+
+    glc_uptake_rates = np.linspace(0.5, 14, 25)
+
+    # Initializing fluxes and concentrations for pam and mcpam
+    fluxes_dict = {}
+    concentrations_dict = {}
+
+    for model, config in zip(models, ["PAM", "mcPAM"]):
+
+        # disable pyruvate formate lyase (inhibited by oxygen)
+        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
+
+        fluxes_list = []
+        concentrations_list = [0]
+
+        if config == "PAM":  # simulating pam
+            for glc in glc_uptake_rates:
+                with model:
+                    # change glucose uptake rate
+                    model.reactions.EX_glc__D_e.lower_bound = -glc
+                    # disable pyruvate formate lyase (inhibited by oxygen)
+                    model.reactions.PFL.upper_bound = 0
+                    # solve the model
+                    sol_pam = model.optimize()
+                    # save data
+                    fluxes_list.append(sol_pam.fluxes)  # flux distributions
+                    concentration = 0
+                    for enz_var in model.enzyme_variables:
+                        concentration += enz_var.concentration
+                    concentrations_list.append(concentration)
+
+            fluxes_dict[config] = fluxes_list
+            concentrations_dict[config] = concentrations_list
+
+        else:  # simulating mcpam
+            for glc in glc_uptake_rates:
+                with model:
+                    # change glucose uptake rate
+                    model.reactions.EX_glc__D_e.lower_bound = -glc
+                    # disable pyruvate formate lyase (inhibited by oxygen)
+                    model.reactions.PFL.upper_bound = 0
+                    # solve the model
+                    sol_pam = model.optimize()
+                    # save data
+                    fluxes_list.append(sol_pam.fluxes)  # flux distributions
+                    concentration = 0
+                    for enz_var in model.enzyme_variables:
+                        concentration += enz_var.concentration
+                    concentrations_list.append(concentration)
+
+            fluxes_dict[config] = fluxes_list
+            concentrations_dict[config] = concentrations_list
+
+
+    # dictionary of colorblind friendly color palette
+    sns.set_palette(("colorblind"))
+
+    # plot flux changes with glucose uptake
+    rxn_id = ['EX_ac_e', 'EX_co2_e', 'EX_o2_e', biomass_name]
+    ax_title = {'EX_ac_e': 'Acetate Secretion',
+                'EX_co2_e': 'CO2 Secretion',
+                'EX_o2_e': 'O2 uptake',
+                biomass_name: 'Biomass Production'}
+    # rxn_id = ['EX_ac_e', 'EX_co2_e', 'EX_o2_e', 'BIOMASS_Ec_iML1515_core_75p37M']
+    fig, axs = plt.subplots(2, 2, dpi=90)
+    for r, ax in zip(rxn_id, axs.flatten()):
+        # plot data
+        if r in rxn_to_pt.keys():
+            ax.scatter(abs(rxn_to_pt[r]['EX_glc__D_e']), abs(rxn_to_pt[r][r]),
+                       color='firebrick', marker='o', s=30, linewidths=1.3,
+                       facecolors=None, zorder=0,
+                       label='Data')
+
+        # plot simulation for pam core
+        for model in fluxes_dict.keys():
+            if model == 'PAM':
+                ax.plot(glc_uptake_rates, [abs(f[r]) for f in fluxes_dict[model]],
+                        label=f'{model}', linewidth=2.5, linestyle='--',
+                        zorder=6)
+            else:
+                ax.plot(glc_uptake_rates, [abs(f[r]) for f in fluxes_dict[model]],
+                        label=f'{model}', linewidth=2.5,
+                        zorder=5)
+
+        # options
+        ax.tick_params(axis='both', which='major', labelsize=labelsize)
+        ax.set_xlabel('glc uptake rate [mmol/gDW/h]', fontsize=fontsize)
+        ax.set_ylabel('flux [mmol/gDW/h]', fontsize=fontsize * 0.8)
+        ax.set_title(ax_title[r], fontsize=fontsize * 0.8, fontweight="bold")
+        # set grid
+        ax.grid(True, axis='both', linestyle='--', linewidth=0.5, alpha=0.6)
+        ax.set_axisbelow(True)
+        handles, labels = ax.get_legend_handles_labels()
+        fig.legend(handles, labels, loc='center', bbox_to_anchor=(0.5, 0.95), ncol=6, fontsize=fontsize * 0.65)
+
+    # show legend
+    fig.subplots_adjust(top=0.85, wspace=0.5, hspace=0.5)
+
+    plt.show()
+
+def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, type:str="full scale"):
     fontsize = 25
     labelsize = 15
 
