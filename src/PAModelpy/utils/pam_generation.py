@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 
 from ..PAModel import PAModel
 from ..EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
-from ..MembraneSector import MembraneSector
 from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
@@ -485,7 +484,6 @@ def set_up_pam(pam_info_file:str = '',
                        active_sector=active_enzyme_info,
                       translational_sector=translation_enzyme_info,
                        unused_sector=unused_enzyme_info,
-                      membrane_sector=membrane_sector,
                       sensitivity=sensitivity, configuration = config
                       )
     return pamodel

@@ -29,7 +29,6 @@ from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
-from .MembraneSector import MembraneSector
 
 
 class PAModel(Model):
@@ -79,7 +78,6 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
-                 membrane_sector: Optional[MembraneSector]=None,
                  custom_sectors: Optional[CustomSector] =[None],
                  configuration = Config()):
         """Constants"""
@@ -131,7 +129,7 @@ class PAModel(Model):
         if sensitivity:  # perform sensitivity analysis when the model is run
             self._add_lb_ub_constraints()
 
-        sectors_to_add = [active_sector, translational_sector, unused_sector, membrane_sector] + custom_sectors
+        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
         for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
@@ -489,8 +487,6 @@ class PAModel(Model):
         for sector in sectors:
             # different method to add the active enzyme_sector
             if isinstance(sector, ActiveEnzymeSector):
-                self = sector.add(self)
-            elif isinstance(sector, MembraneSector):
                 self = sector.add(self)
             else:
                 self.add_sector(sector)
@@ -1033,23 +1029,6 @@ class PAModel(Model):
             self.capacity_sensitivity_coefficients.loc[
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row
-
-            for sector in self.sectors:
-                if isinstance(sector, MembraneSector):
-                    constraint = "membrane"
-                    rxn_id = sector.id
-                    enzyme_id = sector.id
-                    ca_coefficient = (
-                            self.constraints[constraint].ub
-                            * mu[mu["rxn_id"] == constraint]["shadow_prices"].iloc[0]
-                            / obj_value
-                    )
-
-                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
-                    # add new_row to dataframe
-                    self.capacity_sensitivity_coefficients.loc[
-                        len(self.capacity_sensitivity_coefficients)
-                    ] = new_row
 
             # treat sectors separately if there is not a total protein constraint
         else:
