@@ -49,8 +49,8 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            alpha_number_for_complex = self.get_alpha_number_for_enz_complex(enz_complex)
-            coeff = self.get_coeff_value(alpha_number_for_complex)
+            alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+            coeff = self._get_coeff_value(alpha_number_for_complex)
 
             coefficients[enz_complex.forward_variable] = coeff / self.max_membrane_area
             coefficients[enz_complex.reverse_variable] = coeff / self.max_membrane_area
@@ -65,8 +65,8 @@ class MembraneSector(EnzymeSector):
 
         for enz_complex in model.enzyme_variables:
             enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
-            alpha_number_for_complex = self.get_alpha_number_for_enz_complex(enz_complex)
-            coeff = self.get_coeff_value(alpha_number_for_complex)
+            alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+            coeff = self._get_coeff_value(alpha_number_for_complex)
             occupied_area += coeff * enz_complex_concentration
 
         available_area = self.slope * model.objective.value + self.intercept
@@ -85,8 +85,8 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            alpha_number_for_complex = self.get_alpha_number_for_enz_complex(enz_complex)
-            coeff = self.get_coeff_value(alpha_number_for_complex)
+            alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+            coeff = self._get_coeff_value(alpha_number_for_complex)
 
             coefficients[enz_complex.forward_variable] = coeff / new_max_area
             coefficients[enz_complex.reverse_variable] = coeff / new_max_area
@@ -96,7 +96,7 @@ class MembraneSector(EnzymeSector):
 
         return self
 
-    def get_alpha_number_for_enz_complex(self, enz_complex):
+    def _get_alpha_number_for_enz_complex(self, enz_complex):
         if isinstance(enz_complex, str):
             enzymes = enz_complex.split("_")
         else:
@@ -114,7 +114,7 @@ class MembraneSector(EnzymeSector):
 
         return alpha_number_for_enz_complex
 
-    def get_coeff_value(self, alpha_number_for_complex:int):
+    def _get_coeff_value(self, alpha_number_for_complex:int):
 
         coeff = (1e-6 # correction for the solver issue
                  * alpha_number_for_complex

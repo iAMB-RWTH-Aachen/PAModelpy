@@ -21,7 +21,7 @@ def test_if_get_alpha_number_for_enz_complex_works():
     expected_alpha_number = 48
 
     # Act
-    actual_alpha_number = membrane_sector.get_alpha_number_for_enz_complex(enz_complex)
+    actual_alpha_number = membrane_sector._get_alpha_number_for_enz_complex(enz_complex)
 
     # Assert
     assert expected_alpha_number == actual_alpha_number

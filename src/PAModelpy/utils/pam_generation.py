@@ -86,7 +86,6 @@ def parse_gpr_information(gpr_info:str,
     # #only get the genes associated with this enzyme
     gpr_list = _parse_gpr(gpr_info)
     gpr_list = _filter_sublists(gpr_list, genes)
-
     if genes is None: return gpr_list
 
     #convert the genes to the associated proteins
@@ -102,7 +101,9 @@ def parse_gpr_information(gpr_info:str,
                     enzyme_relations += [enz_sublist]
                 elif gene2protein[item].split('_') not in enzyme_relations:
                     enzyme_relations += [gene2protein[item].split('_')]
-        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
+        print(enzyme_relations, enzyme_id)
+        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='any')
+        print('filtered:' , enzyme_relations, enzyme_id)
     return sorted(gpr_list), sorted(enzyme_relations)
 
 def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict]:
