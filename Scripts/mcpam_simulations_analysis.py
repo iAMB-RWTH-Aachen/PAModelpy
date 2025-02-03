@@ -349,7 +349,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.1, 0.4, 4)
+        max_area_list = np.linspace(0.01, 0.04, 4)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
@@ -545,3 +545,19 @@ def perform_and_plot_single_KO(model, genes_to_be_ko:list):
     plt.legend()
 
     plt.show()
+
+def get_memprot_data_in_mcpam(memprot_dict: dict):
+    df_list = []
+    for protein_group, (flux_dict, alpha_number) in memprot_dict.items():
+        for reaction, flux_values in flux_dict.items():
+            df_list.append({
+                'Protein Group': protein_group,
+                'Reaction': reaction,
+                'Forward Flux': flux_values['f'],
+                'Backward Flux': flux_values['b'],
+                'Alpha Number': alpha_number
+            })
+
+    df = pd.DataFrame(df_list)
+
+    return df

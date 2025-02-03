@@ -50,6 +50,11 @@ class MembraneSector(EnzymeSector):
 
         for enz_complex in model.enzyme_variables:
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+
+            # Save membrane proteins (id, kcat and alpha number) inside of a dictionary
+            if not isinstance(enz_complex, str) and alpha_number_for_complex != 0:
+                self.membrane_proteins[enz_complex.id] = [enz_complex.kcats, alpha_number_for_complex]
+
             coeff = self._get_coeff_value(alpha_number_for_complex)
 
             coefficients[enz_complex.forward_variable] = coeff / self.max_membrane_area
@@ -104,11 +109,8 @@ class MembraneSector(EnzymeSector):
         alpha_numbers_in_complex = [0]  # zero if enzyme is not in membrane
 
         for enz in enzymes:
-            if enz in self.alpha_numbers_dict.keys() and self.enzyme_location[
-                enz] == 'Cell membrane':
+            if enz in self.alpha_numbers_dict.keys() and self.enzyme_location[enz] == 'Cell membrane':
                 alpha_numbers_in_complex.append(self.alpha_numbers_dict[enz])
-                if not isinstance(enz_complex, str):
-                    self.membrane_proteins[enz_complex.id] = enz_complex.kcats
 
         alpha_number_for_enz_complex = max(alpha_numbers_in_complex)
 

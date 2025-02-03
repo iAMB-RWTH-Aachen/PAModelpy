@@ -322,7 +322,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
     config = Config()
     config.reset()
 
-    pam_info_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_py_uniprot.xlsx')
+    pam_info_file = os.path.join('Data', 'mcPAM_iML1515_EnzymaticData.xlsx')
 
     # some other constants
     TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
@@ -337,7 +337,7 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
     # load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
-        enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+        enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data')
 
         # create enzyme objects for each gene-associated reaction
         rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
@@ -454,7 +454,7 @@ def set_up_ecoli_mcpam(total_protein: Union[bool, float] = True, active_enzymes:
                                          area_avail_mu=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=0.285)
+                                         max_area=0.27)
 
     else:
         membrane_sector = None

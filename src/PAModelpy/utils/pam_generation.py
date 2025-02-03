@@ -75,35 +75,71 @@ def enzyme_information(rxn_id: str,
             'molmass':molmass
             }
 
+# def parse_gpr_information(gpr_info:str,
+#                           genes:list=None,
+#                           enzyme_id:str=None,
+#                           gene2protein: dict[str, str] = None) -> tuple[list,list]:
+#     #filter out nan entries
+#     if not isinstance(gpr_info, str):
+#         return None, None
+#
+#     # #only get the genes associated with this enzyme
+#     gpr_list = _parse_gpr(gpr_info)
+#     gpr_list = _filter_sublists(gpr_list, genes)
+#     if genes is None: return gpr_list
+#
+#     #convert the genes to the associated proteins
+#     enzyme_relations = []
+#     if '_'in enzyme_id:
+#         enzyme_relations = [enzyme_id.split('_')]
+#     for sublist in gpr_list:
+#         enz_sublist = []
+#         for item in sublist:
+#             if item in gene2protein.keys():
+#                 if '_' not in gene2protein[item]:
+#                     enz_sublist.append(gene2protein[item])
+#                     enzyme_relations += [enz_sublist]
+#                 elif gene2protein[item].split('_') not in enzyme_relations:
+#                     enzyme_relations += [gene2protein[item].split('_')]
+#         print(enzyme_relations, enzyme_id)
+#         enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='any')
+#         print('filtered:' , enzyme_relations, enzyme_id)
+#     return sorted(gpr_list), sorted(enzyme_relations)
+
 def parse_gpr_information(gpr_info:str,
                           genes:list=None,
                           enzyme_id:str=None,
                           gene2protein: dict[str, str] = None) -> tuple[list,list]:
+
     #filter out nan entries
     if not isinstance(gpr_info, str):
         return None, None
 
-    # #only get the genes associated with this enzyme
+    # only get the genes associated with this enzyme
     gpr_list = _parse_gpr(gpr_info)
-    gpr_list = _filter_sublists(gpr_list, genes)
     if genes is None: return gpr_list
 
+    gpr_list = _filter_sublists(gpr_list, genes)
+
     #convert the genes to the associated proteins
-    enzyme_relations = []
-    if '_'in enzyme_id:
+    # enzyme_relations = []
+    if any([len(info)>1 for info in gpr_list]):
         enzyme_relations = [enzyme_id.split('_')]
-    for sublist in gpr_list:
-        enz_sublist = []
-        for item in sublist:
-            if item in gene2protein.keys():
-                if '_' not in gene2protein[item]:
-                    enz_sublist.append(gene2protein[item])
-                    enzyme_relations += [enz_sublist]
-                elif gene2protein[item].split('_') not in enzyme_relations:
-                    enzyme_relations += [gene2protein[item].split('_')]
-        print(enzyme_relations, enzyme_id)
-        enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='any')
-        print('filtered:' , enzyme_relations, enzyme_id)
+
+    else:
+        enzyme_relations = [[enzyme_id]]
+
+        for sublist in gpr_list:
+            enz_sublist = []
+            for item in sublist:
+                if item in gene2protein.keys():
+                    if '_' not in gene2protein[item]:
+                        enz_sublist.append(gene2protein[item])
+                        enzyme_relations += enz_sublist
+                    elif gene2protein[item].split('_') not in enzyme_relations:
+                        enzyme_relations += gene2protein[item].split('_')
+            enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
+
     return sorted(gpr_list), sorted(enzyme_relations)
 
 def get_protein_gene_mapping(enzyme_db: pd.DataFrame, model) -> tuple[dict, dict]:
@@ -358,7 +394,9 @@ def merge_enzyme_complexes(df, gene2protein):
                 row['GPR'], row['gene'], row['enzyme_id'], gene2protein
             )
             # Collapse "and" relationships into multimer ID
+
             if enzyme_relations:
+
                 for gene_list, enzyme_list in zip(gpr_list, enzyme_relations):
                     row_copy = row.copy()
                     row_copy['enzyme_id'] = "_".join(enzyme_list)  # Replace gene with multimer
