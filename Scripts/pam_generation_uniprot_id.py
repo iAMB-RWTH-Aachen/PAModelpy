@@ -207,11 +207,11 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
 
     # replace NaN values with unique identifiers
     # select the NaN values
-    nan_values = enzyme_db['uniprotID'].isnull()
+    nan_values = enzyme_db['enzyme_id'].isnull()
     # make a list with unique ids
     nan_ids = [f'E{i}' for i in range(nan_values.sum())]
     # replace nan values by unique id
-    enzyme_db.loc[nan_values, 'uniprotID'] = nan_ids
+    enzyme_db.loc[nan_values, 'enzyme_id'] = nan_ids
 
     protein2gene, gene2protein = _get_genes_for_proteins(enzyme_db, model)
 
@@ -227,7 +227,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
 
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
-        enzyme_id = row['uniprotID']
+        enzyme_id = row['enzyme_id']
         gene_id = row['m_gene']
 
         # check if there are genes associates with the reaction
@@ -298,7 +298,7 @@ def _get_genes_for_proteins(enzyme_db: pd.DataFrame, model) -> dict:
         if rxn_id not in model.reactions:continue
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
-        enzyme_id = row['uniprotID']
+        enzyme_id = row['enzyme_id']
         gene_id = row['m_gene']
 
         # check if there are genes associates with the reaction
