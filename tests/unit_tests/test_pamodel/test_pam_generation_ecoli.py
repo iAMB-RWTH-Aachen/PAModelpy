@@ -47,16 +47,15 @@ def test_gpr_information_for_protein_is_correctly_filtered():
 
 def test_if_enzyme_complex_in_toy_pam_is_parsed_correctly():
     sut = set_up_toy_pam_with_enzyme_complex(sensitivity=False)
-
-    assert all([enz in sut.enzymes for enz in ['E1', 'E2', 'E10', 'E2_E10']])
+    assert all([enz in sut.enzymes for enz in ['E1', 'E10_E2']])
     assert all([const not in sut.constraints.keys() for const in ['EC_E10_f', 'EC_E2_f']])
-    constraint = sut.constraints['EC_E2_E10_f'].get_linear_coefficients([sut.reactions.CE_R2_E2_E10.forward_variable])
-    assert constraint[sut.reactions.CE_R2_E2_E10.forward_variable] > 0
+    constraint = sut.constraints['EC_E10_E2_f'].get_linear_coefficients([sut.reactions.CE_R2_E10_E2.forward_variable])
+    assert constraint[sut.reactions.CE_R2_E10_E2.forward_variable] > 0
 
 def test_if_isozymes_in_toy_pam_are_parsed_correctly():
     sut = set_up_toy_pam_with_isozymes(sensitivity=False)
 
-    #check whether catalytic reactions are configured correclty
+    #check whether catalytic reactions are configured correctly
     neg_constraint = sut.constraints['CE_R2'].get_linear_coefficients([sut.reactions.R2.reverse_variable,
                                                                    sut.reactions.CE_R2_E2.forward_variable,
                                                                    sut.reactions.CE_R2_E10.forward_variable])
@@ -103,20 +102,20 @@ def test_if_toy_pam_with_enzyme_comples_has_same_growth_rate_as_without():
     assert sut.objective.value == pytest.approx(toy_pam.objective.value, abs = 1e-6)
 
 def test_set_up_ecolicore_pam_works():
-    sut = set_up_ecolicore_pam()
-    sut.optimize()
+    sut = set_up_ecolicore_pam(sensitivity=False)
     assert True
+
 def test_if_ecolicore_pam_optimizes():
-    sut = set_up_ecolicore_pam()
+    sut = set_up_ecolicore_pam(sensitivity = False)
     sut.optimize()
     assert sut.objective.value > 0
 
 def test_set_up_ecoli_pam_works():
-    sut = set_up_ecoli_pam()
+    sut = set_up_ecoli_pam(sensitivity=False)
     assert True
 
 def test_if_ecoli_pam_optimizes():
-    sut = set_up_ecoli_pam()
+    sut = set_up_ecoli_pam(sensitivity=False)
     sut.optimize()
     assert sut.objective.value > 0
 
@@ -151,9 +150,13 @@ def set_up_toy_pam_with_enzyme_complex(sensitivity =True):
     Etot = 0.6*1e-3
     model = build_toy_gem()
     active_enzyme = build_active_enzyme_sector(config)
+
     #add an enzyme associated to enzyme complex to the toy model
-    active_enzyme.rxn2protein['R2']['E2']['protein_reaction_association'] = [['E2', 'E10']]
-    active_enzyme.rxn2protein['R2']['E10']= active_enzyme.rxn2protein['R2']['E2'].copy()
+    active_enzyme.rxn2protein['R2']['E10_E2'] = active_enzyme.rxn2protein['R2']['E2'].copy()
+    active_enzyme.protein2gene['E10_E2'] = [['g2', 'g10']]
+
+    # need to remove the peptide because this is not an effective enzyme in the model
+    del active_enzyme.rxn2protein['R2']['E2']
 
     #build the toy model
     unused_enzyme = build_unused_protein_sector(config)
