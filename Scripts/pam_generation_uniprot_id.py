@@ -20,9 +20,9 @@ def set_up_toy_pam(sensitivity =True):
     config = Config()
     #setting the configuration for the toy model
     config.BIOMASS_REACTION = 'R7'
-    config.GLUCOSE_EXCHANGE_RXNID = 'R1'
-    config.CO2_EXHANGE_RXNID = 'R8'
-    config.ACETATE_EXCRETION_RXNID = 'R9'
+    config.GLUCOSE_EXCHANGE_rxn_id = 'R1'
+    config.CO2_EXHANGE_rxn_id = 'R8'
+    config.ACETATE_EXCRETION_rxn_id = 'R9'
 
     Etot = 0.6*1e-3
     model = build_toy_gem()
@@ -175,9 +175,9 @@ def set_up_ecoli_pam(total_protein: Union[bool, float] = True, active_enzymes: b
 def _parse_enzyme_information_from_file(file_path:str):
     # load active enzyme sector information
     enzyme_db = pd.read_excel(file_path, sheet_name='enzyme-gene-reaction')
-    # enzyme_db = enzyme_db.set_index('rxnID')
+    # enzyme_db = enzyme_db.set_index('rxn_id')
     # correct reaction IDS
-    for idx in enzyme_db.rxnID.to_list():
+    for idx in enzyme_db.rxn_id.to_list():
         # transport reactions
         if 'pp' in idx:
             idx_new = idx.replace('pp', '')
@@ -191,11 +191,11 @@ def _parse_enzyme_information_from_file(file_path:str):
                 # replace NaN values with unique identifiers
     # replace NaN enzyme ids with a dummy enzyme identifier
     # select the NaN values
-    nan_values = enzyme_db['EC_nmbr'].isnull()
+    nan_values = enzyme_db['enzyme_id'].isnull()
     # make a list with unique ids
     nan_ids = [f'E{i}' for i in range(nan_values.sum())]
     # replace nan values by unique id
-    enzyme_db.loc[nan_values, 'EC_nmbr'] = nan_ids
+    enzyme_db.loc[nan_values, 'enzyme_id'] = nan_ids
 
     return enzyme_db
 
@@ -218,7 +218,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
     # Iterate over each row in the DataFrame
     for index, row in enzyme_db.iterrows():
         # Parse data from the row
-        rxn_id = row['rxnID']
+        rxn_id = row['rxn_id']
         if rxn_id not in model.reactions: continue
         # only parse those reactions which are in the model
         kcat_f_b = [row['kcat_f'], row['kcat_b']]
@@ -228,7 +228,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
         enzyme_id = row['enzyme_id']
-        gene_id = row['m_gene']
+        gene_id = row['gene']
 
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
@@ -239,7 +239,7 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame, model:cobra.Model) -> dict:
                 gene_id = [gene.id for gene in rxn.genes][0]  # TODO
 
             # get the gene-protein-reaction-associations for this specific enzyme
-            gr, pr = parse_gpr_information_for_rxn2protein(row['m_gene_reaction_rule'],
+            gr, pr = parse_gpr_information_for_rxn2protein(row['GPR'],
                                                            gene2protein, protein2gene,enzyme_id)
 
             if pr is None: pr = [[enzyme_id]]
@@ -294,12 +294,12 @@ def _get_genes_for_proteins(enzyme_db: pd.DataFrame, model) -> dict:
     gene2protein = {}
     for index, row in enzyme_db.iterrows():
         # Parse data from the row
-        rxn_id = row['rxnID']
+        rxn_id = row['rxn_id']
         if rxn_id not in model.reactions:continue
         rxn = model.reactions.get_by_id(rxn_id)
         # get the identifiers and replace nan values by dummy placeholders
         enzyme_id = row['enzyme_id']
-        gene_id = row['m_gene']
+        gene_id = row['gene']
 
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
