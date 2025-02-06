@@ -1,1 +1,10 @@
 __pycache__/
+package-lock.json
+src/PAModelpy.egg-info/
+src/PAModelpy/PAModelpy.egg-info/
+src/dist/
+docs/.docusaurus/
+docs/_build/
+docs/build/
+docs/node_modules/
+node_modules/
