@@ -71,8 +71,12 @@ from the `src` directory
 
 The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
 
+
+## How to cite?
+Did you use this package in your work? Please cite use by clicking the 'cite this repository' botton on the right side and select your favourite format.
+
 ## License
-Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2023)
+Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2025)
 
 PAModelpy is free of charge open source software, which can be used and modified for your particular purpose under the [MIT](https://opensource.org/license/mit/)
 or [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) of the users choice.
