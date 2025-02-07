@@ -76,42 +76,6 @@ def enzyme_information(rxn_id: str,
             'molmass':molmass
             }
 
-# def parse_gpr_information(gpr_info:str,
-#                           genes:list=None,
-#                           enzyme_id:str=None,
-#                           gene2protein: dict[str, str] = None,
-#                           convert_to_complexes= False) -> tuple[list,list]:
-#     #filter out nan entries
-#     if not isinstance(gpr_info, str) or isinstance(enzyme_id, float):
-#         return None, None
-#
-#     # #only get the genes associated with this enzyme
-#     gpr_list = _parse_gpr(gpr_info)
-#     if genes is None: return gpr_list
-#
-#     gpr_list = _filter_sublists(gpr_list, genes)
-#
-#     #convert the genes to the associated proteins for a database with single protein names
-#     enzyme_relations = []
-#     if convert_to_complexes:
-#         for sublist in gpr_list:
-#             enz_sublist = []
-#             for item in sublist:
-#                 if item in gene2protein.keys():
-#                     if '_' not in gene2protein[item]:
-#                         enz_sublist.append(gene2protein[item])
-#                     elif gene2protein[item].split('_') not in enzyme_relations:
-#                         enzyme_relations += gene2protein[item].split('_')
-#
-#             enzyme_relations += [enz_sublist]
-#     # convert genes to proteins for building a model
-#     elif any([len(info)>1 for info in gpr_list]):
-#         enzyme_relations = [enzyme_id.split('_')]
-#     else:
-#         enzyme_relations = [[enzyme_id]]
-#         # enzyme_relations = _filter_sublists(enzyme_relations, enzyme_id.split('_'), how='all')
-#     return sorted(gpr_list), sorted(enzyme_relations)
-
 def parse_gpr_information(
     gpr_info: str,
     genes: Optional[List[str]] = None,
@@ -460,36 +424,6 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
     #convert the dataobject dict to a normal dict for correct parsing by PAModelpy
     rxn2protein = {rxn_id: dict(rxn_info.enzymes) for rxn_id, rxn_info in rxn_info2protein.items()}
     return rxn2protein, dict(protein2gpr)
-
-# # Function to parse GPR and determine multimer
-# def merge_enzyme_complexes(df, gene2protein):
-#     collapsed_rows = []
-#     for rxn_id, group in df.groupby('rxn_id'):
-#         for _, row in group.iterrows():
-#             #skip nan entries
-#             if isinstance(row.GPR, float) or isinstance(row.gene, float):
-#                 continue
-#                 # Parse GPR
-#             gpr_list, enzyme_relations = parse_gpr_information(
-#                 row['GPR'], row['gene'], row['enzyme_id'], gene2protein, convert_to_complexes=True
-#             )
-#             # Collapse "and" relationships into multimer ID
-#             if enzyme_relations and not all(all([isinstance(e, float) for e in er]) for er in enzyme_relations):
-#                 for gene_list, enzyme_list in zip(gpr_list, enzyme_relations):
-#                     row_copy = row.copy()
-#                     row_copy['enzyme_id'] = "_".join(enzyme_list)  # Replace gene with multimer
-#                     row_copy['gene'] = gene_list  # add all the annotations to the corresponding gene
-#                     # Compute the sum of molMass for the enzyme complex
-#                     molMass_sum = df[df.rxn_id == row.rxn_id].loc[df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
-#                     row_copy['molMass'] = molMass_sum  # Assign the new molMass
-#                     collapsed_rows.append(row_copy)
-#
-#             else:
-#                collapsed_rows.append(row)
-#     # Create a new dataframe with collapsed rows
-#     collapsed_df = pd.DataFrame(collapsed_rows)
-#
-#     return collapsed_df
 
 # Function to parse GPR and determine multimer
 def merge_enzyme_complexes(df, gene2protein):
