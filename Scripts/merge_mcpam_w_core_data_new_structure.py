@@ -8,7 +8,6 @@ data1_path = os.path.join('Data/mcPAM_iML1515_EnzymaticData.xlsx')
 data1 = pd.read_excel(data1_path, sheet_name='mcPAM_data_core')
 core_data_path = os.path.join('Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
 
-
 # Unpivot the DataFrame
 columns = ['uniprotID', 'rxnID', 'molMass', 'm_gene_reaction_rule', 'm_gene', 'direction', 'kcat']
 data1 = data1.melt(
