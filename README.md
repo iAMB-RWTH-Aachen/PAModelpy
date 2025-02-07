@@ -55,7 +55,6 @@ This repository contains not only the source code, but also examples and scripts
 ## Dependencies
 Dependencies for the scripts in this repository, not included in the PAModelpy package:
 - `PAModelpy`
-- `plotly`
 - `matplotlib`
 - `scipy`
 - `time`
