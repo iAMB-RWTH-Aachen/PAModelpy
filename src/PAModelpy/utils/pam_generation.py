@@ -431,24 +431,31 @@ def merge_enzyme_complexes(df, gene2protein):
 
     for rxn_id, group in df.groupby('rxn_id'):
         for _, row in group.iterrows():
-            #skip nan entries
+            # skip nan entries
             if isinstance(row.GPR, float) or isinstance(row.gene, float):
                 continue
+
             # Parse GPR
             gpr_list, enzyme_relations = parse_gpr_information(
                 row['GPR'], row['gene'], row['enzyme_id'], gene2protein, convert_to_complexes=True
             )
+
             # Collapse "and" relationships into multimer ID
             if enzyme_relations and not all(all([isinstance(e, float) for e in er]) for er in enzyme_relations):
                 for gene_list, enzyme_list in zip(gpr_list, enzyme_relations):
                     row_copy = row.copy()
                     row_copy['enzyme_id'] = "_".join(enzyme_list)  # Replace gene with multimer
                     row_copy['gene'] = gene_list  # add all the annotations to the corresponding gene
-                    collapsed_rows.append(row_copy)
+                    # Compute the sum of molMass for the enzyme complex
+                    molMass_sum = df[df.rxn_id == row.rxn_id].loc[df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
+                    row_copy['molMass'] = molMass_sum  # Assign the new molMass
+                    # collapsed_rows.append(row_copy)
             else:
                 collapsed_rows.append(row)
+
     # Create a new dataframe with collapsed rows
     collapsed_df = pd.DataFrame(collapsed_rows)
+
     return collapsed_df
 
 def set_up_pam(pam_info_file:str = '',
@@ -587,7 +594,7 @@ def set_up_core_pam(pam_info_file:str = '',
     if active_enzymes:
         # load active enzyme sector information
         if enzyme_db is None:
-            enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core_new_structure_w')
+            enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core_average_mm')
             #for some models, the reaction ids should not include 'pp' or 'ex'
             if adjust_reaction_ids:
                 enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
