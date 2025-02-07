@@ -1,4 +1,2 @@
 PAModelpy
-pytest
-plotly
 pydoc-markdown==4.8.2
