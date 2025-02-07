@@ -214,7 +214,7 @@ def set_up_ecolicore_mcpam_new_surface_parameter(total_protein: Union[bool, floa
                            translational_enzymes: bool = True,
                            unused_enzymes: bool = True,
                            membrane_sector: bool = True,
-                           max_area:float = 0.27,
+                           max_area:float = 0.03,
                            sensitivity = True):
 
     config = Config()
