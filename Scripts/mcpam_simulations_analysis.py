@@ -349,7 +349,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.01, 0.04, 4)
+        max_area_list = np.linspace(0.1, 0.4, 4)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
@@ -439,7 +439,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
         # plot data
         if r in rxn_to_pt.keys():
             ax.scatter(abs(rxn_to_pt[r]['EX_glc__D_e']), abs(rxn_to_pt[r][r]),
-                       color='firebrick', marker='o', s=30, linewidths=1.3,
+                       color='black', marker='o', s=30, linewidths=1.3,
                        facecolors=None, zorder=0,
                        label='Data')
 
