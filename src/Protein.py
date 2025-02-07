@@ -1,11 +1,22 @@
 import math
 
 class Protein:
-    def __init__(self, mu, total_protein_per_volume):
+    """
+    An object which holds functions to calculate the area occupied by this protein species
+    by converting the concentration of this protein species into the number of protein molecules
+    and then sum the area occupied by the protein molecules
+
+    Args:
+        mu(float): the cell's growth rate
+        total_protein_per_volume(float) = total protein concentration that the cell can host
+
+    """
+    def __init__(self, mu:float=0.67,
+                 total_protein_per_volume:float=200):
         self.mu = mu #1/h
         self.total_protein_per_volume = total_protein_per_volume #mg/mL
         self.avogadro = 6.02 * 1e23
-        self.alpha_helix_width = 0.45 * 1e-9 #m
+        self.alpha_helix_width = 0.46 * 1e-9 #m
 
     def calculate_cell_volume(self):
         self.cell_volume = -0.53*math.pow(self.mu, 2) + 2.41*self.mu + 1.62 #fL or um^3
