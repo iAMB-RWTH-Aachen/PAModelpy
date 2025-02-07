@@ -193,11 +193,13 @@ class ActiveEnzymeSector(Sector):
                 if enzyme_id in model.enzyme_variables and not self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
                     enzyme = model.enzymes.get_by_id(enzyme_id)
                     self._add_reaction_to_enzyme(model, enzyme, rxn_id, kcat)
-                    self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
-                                                **{enzyme_id: {
-                                                    **kcat,
-                                                    'genes': enzyme.genes,
-                                                    'protein_reaction_association': protein_reaction}}}
+                    self.rxn2protein[rxn_id].update({
+                        enzyme_id: {
+                            **kcat,
+                            'genes': enzyme.genes,
+                            'protein_reaction_association': protein_reaction
+                        }
+                    })
 
                 else:
                     if self.protein2gene != {}:
