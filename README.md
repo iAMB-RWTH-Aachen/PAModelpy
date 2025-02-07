@@ -34,7 +34,6 @@ This repository contains not only the source code, but also examples and scripts
   - *proteinAllocationModel_iML1515_EnzymaticData_py*: information about the proteinsectors of the PAM for *Escherichia coli* (*E.coli*)
   - *proteome_data_extract_schmidt2016*: quantitative proteomics data from [Schmidt et al. (2016)](https://www.nature.com/articles/nbt.3418) used to parametrize the *E.coli* core PAM
   - *Ecoli_phenotypes/Ecoli_phenotypes_py_rev*: experimental physiology measurements to validate the model simulations
-- **Examples**: example notebook on how to build, run and validate a PAM using the PAModelpy package
 - **Figures**: scripts used to create Figure 1-3 and supplementary figures
 - **MATLAB**: MATLAB code for doing simulations with the E.coli core PAM and the toy model (validating the sensitivity relationships)
 - **Models**: models used (iML1515 and core ecoli model)
