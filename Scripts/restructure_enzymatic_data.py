@@ -16,7 +16,7 @@ def sum_value(subdf):
 
 # Load the enzyme database, adjusting column names
 data_path = 'Data/mcPAM_iML1515_EnzymaticData.xlsx'
-enzyme_db = pd.read_excel(data_path, sheet_name='mcPAM_data_core')
+enzyme_db = pd.read_excel(data_path, sheet_name='mcPAM_data')
 enzyme_db = enzyme_db.rename(columns={'rxnID': 'rxn_id',
                                       'uniprotID': 'enzyme_id',
                                       'm_gene': 'gene',
@@ -59,7 +59,7 @@ new_enzyme_db_copy = new_enzyme_db_copy.dropna(subset=['kcat'])
 mcpam_data = new_enzyme_db_copy
 
 #Write excel datasheet
-core_data_path = os.path.join('Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
+core_data_path = os.path.join('Data/proteinAllocationModel_mciML1515_EnzymaticData_241209_multi.xlsx')
 with pd.ExcelWriter(core_data_path, engine='openpyxl', mode='a') as writer:
     # Write the new DataFrame to a new sheet
-    mcpam_data.to_excel(writer, sheet_name='mcPAM_data_core_summed_mm', index=True)
+    mcpam_data.to_excel(writer, sheet_name='mcPAM_data_summed_mm', index=True)

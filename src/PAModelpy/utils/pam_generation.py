@@ -594,7 +594,7 @@ def set_up_core_pam(pam_info_file:str = '',
     if active_enzymes:
         # load active enzyme sector information
         if enzyme_db is None:
-            enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core_average_mm')
+            enzyme_db = pd.read_excel(pam_info_file, sheet_name='mcPAM_data_core_summed_mm')
             #for some models, the reaction ids should not include 'pp' or 'ex'
             if adjust_reaction_ids:
                 enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
