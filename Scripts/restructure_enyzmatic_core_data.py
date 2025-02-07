@@ -41,14 +41,14 @@ new_enzyme_db = new_enzyme_db.melt(
 new_enzyme_db["direction"] = new_enzyme_db["direction"].replace({"kcat_f": "f", "kcat_b": "b"})
 
 # Remove duplicates in rxn_ID and average out the alpha number
-new_enzyme_db_copy = new_enzyme_db.drop_duplicates(['rxn_id', 'direction']).reset_index()
+new_enzyme_db_copy = new_enzyme_db.drop_duplicates(['rxn_id', 'direction', 'enzyme_id']).reset_index()
 
-rxn_names = new_enzyme_db['rxn_id'].drop_duplicates().to_list() # List of reaction names from data1
+rxn_names = new_enzyme_db_copy['rxn_id'].to_list() # List of reaction names from data1
 
 for i in range(0,len(rxn_names)):
     mean_kcat_f = find_average(new_enzyme_db[(new_enzyme_db['rxn_id'] == rxn_names[i]) & (new_enzyme_db['direction'] == 'f')]['kcat'])
     mean_kcat_b = find_average(new_enzyme_db[(new_enzyme_db['rxn_id'] == rxn_names[i]) & (new_enzyme_db['direction'] == 'b')]['kcat'])
-    mean_molmass = find_average(new_enzyme_db[new_enzyme_db['rxn_id'] == rxn_names[i]]['molMass'])
+    mean_molmass = sum_value(new_enzyme_db[new_enzyme_db['rxn_id'] == rxn_names[i]]['molMass'])
 
     if new_enzyme_db_copy['direction'].iloc[i] == 'f':
         new_enzyme_db_copy.loc[i, 'kcat'] = mean_kcat_f
@@ -61,8 +61,8 @@ for i in range(0,len(rxn_names)):
 new_enzyme_db_copy = new_enzyme_db_copy.dropna(subset=['kcat'])
 mcpam_data = new_enzyme_db_copy
 
-# Write excel datasheet
+#Write excel datasheet
 core_data_path = os.path.join('Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
 with pd.ExcelWriter(core_data_path, engine='openpyxl', mode='a') as writer:
     # Write the new DataFrame to a new sheet
-    mcpam_data.to_excel(writer, sheet_name='mcPAM_data_core_new_structure_w', index=True)
+    mcpam_data.to_excel(writer, sheet_name='mcPAM_data_core_summed_mm', index=True)
