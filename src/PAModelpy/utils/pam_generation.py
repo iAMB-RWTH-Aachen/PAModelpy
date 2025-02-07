@@ -449,7 +449,7 @@ def merge_enzyme_complexes(df, gene2protein):
                     # Compute the sum of molMass for the enzyme complex
                     molMass_sum = df[df.rxn_id == row.rxn_id].loc[df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
                     row_copy['molMass'] = molMass_sum  # Assign the new molMass
-                    # collapsed_rows.append(row_copy)
+                    collapsed_rows.append(row_copy)
             else:
                 collapsed_rows.append(row)
 
