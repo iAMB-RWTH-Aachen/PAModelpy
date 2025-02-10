@@ -269,7 +269,7 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Arrange
     sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity = False)
     enzyme_ut = 'E10'
-    associated_enzymes = ['E10', 'E3_E10_E11']
+    associated_enzymes = ['E10', 'E10_E11_E3']
 
     # Assert
     catalyzing_enzymes = sut._get_catalyzing_enzymes_for_enzyme(enzyme_ut)

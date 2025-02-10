@@ -204,15 +204,19 @@ def set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity =True):
     Etot = 0.6*1e-3
     model = build_toy_gem()
     active_enzyme = build_active_enzyme_sector(config)
+
     #add an enzyme associated to isozymes to the toy model
     active_enzyme.rxn2protein['R2']['E2']['protein_reaction_association'] = [['E2'], ['E10']]
     active_enzyme.rxn2protein['R2']['E10']= active_enzyme.rxn2protein['R2']['E2'].copy()
 
     #add an enzyme associated to enzyme complex to the toy model
-    active_enzyme.rxn2protein['R3']['E3']['protein_reaction_association'] = [['E3','E10', 'E11']]
-    active_enzyme.rxn2protein['R3']['E10']= active_enzyme.rxn2protein['R3']['E3'].copy()
-    active_enzyme.rxn2protein['R3']['E11']= active_enzyme.rxn2protein['R3']['E3'].copy()
+    active_enzyme.rxn2protein['R3']['E10_E11_E3'] = active_enzyme.rxn2protein['R3']['E3'].copy()
+    active_enzyme.rxn2protein['R3']['E10_E11_E3']['protein_reaction_association'] = [['E3','E10', 'E11']]
 
+    active_enzyme.protein2gene['E10_E11_E3'] = [['g10', 'g11', 'g3']]
+
+    # need to remove the peptide because this is not an effective enzyme in the model
+    del active_enzyme.rxn2protein['R3']['E3']
 
     #build the toy model
     unused_enzyme = build_unused_protein_sector(config)
