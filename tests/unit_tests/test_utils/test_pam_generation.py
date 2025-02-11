@@ -1,12 +1,11 @@
 import os.path
-
 import cobra.io
 import numpy as np
 import pandas as pd
 import pytest
 
 from Scripts.toy_ec_pam import build_toy_gem
-from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam
+from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam, merge_enzyme_complexes
 
 def test_if_rxn2protein_info_is_correctly_parsed():
     # Arrange
@@ -52,7 +51,6 @@ def test_if_rxn2protein_info_is_correctly_parsed():
     # Apply
     rxn2protein, protein2gpr = parse_reaction2protein(toy_enzyme_db, toy_model,
                                                       other_enzyme_id_pattern = enzyme_id_pattern)
-    print(rxn2protein, protein2gpr) #TODO something is wrong here
     # Assert
     for output_dict, expected_dict in zip([rxn2protein, protein2gpr], [expected_rxn2protein, expected_protein2gpr]):
         assert all([expected_dict[key] == value for key, value in output_dict.items()])
@@ -89,3 +87,47 @@ def test_if_set_up_pam_can_build_iML1515():
 
     #Assert
     assert pam.objective.value > 0
+
+def test_if_merge_enzyme_complexes_merges_enzyme_ids():
+    # Arrange
+    toy_enzyme_db = pd.DataFrame({'rxn_id': ['R1', 'R2', 'R2', 'R2', 'R3'],
+                                  'enzyme_id': ['E1', 'E2a', 'E2b', 'E2c', 'E3'],
+                                  'gene': [['gene1'], ['gene2a'], ['gene2b', 'gene2c'], ['gene2b', 'gene2c'], ['gene3']],
+                                  'GPR': ['gene1', 'gene2a or (gene2b and gene2c)', 'gene2a or (gene2b and gene2c)', 'gene2a or (gene2b and gene2c)',
+                                          'gene3'],
+                                  'molMass': [1, 2, 2, 2, 3],
+                                  'kcat_values': [1, 2, np.nan, 3, 1.5],
+                                  'direction': ['f', 'f','f', 'f', 'f']
+                                  }
+                                 )
+    gene2protein = {'gene1':'E1','gene2a': 'E2a','gene2b': 'E2b','gene2c': 'E2c', 'gene3':'E3'}
+
+    # Act
+    merged_enzyme_db = merge_enzyme_complexes(toy_enzyme_db, gene2protein)
+    print(merged_enzyme_db)
+    # Assert
+    assert_enzyme_complexes_are_merged(merged_enzyme_db)
+    assert_isozymes_are_not_merged(merged_enzyme_db)
+    assert_molmass_for_enzyme_complexes_are_summed(merged_enzyme_db)
+    assert_molmass_for_isozymes_are_not(merged_enzyme_db)
+
+#########################################################################################################################
+# HELPER FUNCTION
+#########################################################################################################################
+def assert_enzyme_complexes_are_merged(enzyme_db: pd.DataFrame):
+    assert ('E2b_E2c'==enzyme_db.enzyme_id).any()
+    assert not ('E2b'==enzyme_db.enzyme_id).any()
+    assert not ('E2c'==enzyme_db.enzyme_id).any()
+
+def assert_isozymes_are_not_merged(enzyme_db: pd.DataFrame):
+    assert ('E2a'==enzyme_db.enzyme_id).any()
+    assert not enzyme_db.enzyme_id.str.contains('_E2a', na=False).any()
+    assert not enzyme_db.enzyme_id.str.contains('E2a_', na=False).any()
+
+def assert_molmass_for_enzyme_complexes_are_summed(enzyme_db: pd.DataFrame):
+    assert (enzyme_db.molMass[enzyme_db.enzyme_id=='E2b_E2c'] == 4).all()
+
+def assert_molmass_for_isozymes_are_not(enzyme_db: pd.DataFrame):
+    assert (enzyme_db.molMass[enzyme_db.enzyme_id=='E2a'] == 2).all()
+
+

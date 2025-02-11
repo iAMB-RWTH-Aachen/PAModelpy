@@ -480,14 +480,13 @@ def merge_enzyme_complexes(df, gene2protein):
                     row_copy['enzyme_id'] = "_".join(enzyme_list)  # Replace gene with multimer
                     row_copy['gene'] = gene_list  # add all the annotations to the corresponding gene
 
-                    # Compute the sum of molMass for the enzyme complex
                     # Compute the sum of molMass only if it's a complex (more than one enzyme)
                     if len(enzyme_list) > 1:
-                        molMass_sum = df[df.rxn_id == row.rxn_id].loc[
+                        molmass_sum = df[df.rxn_id == row.rxn_id].loc[
                             df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
                     else:
-                        molMass_sum = row['molMass']  # Keep the original molMass if it's a single enzyme
-                    row_copy['molMass'] = molMass_sum  # Assign the new molMass
+                        molmass_sum = row['molMass']  # Keep the original molMass if it's a single enzyme
+                    row_copy['molMass'] = molmass_sum  # Assign the new molMass
                     collapsed_rows.append(row_copy)
             else:
                 collapsed_rows.append(row)
