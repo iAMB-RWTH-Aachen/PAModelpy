@@ -104,7 +104,6 @@ def test_if_merge_enzyme_complexes_merges_enzyme_ids():
 
     # Act
     merged_enzyme_db = merge_enzyme_complexes(toy_enzyme_db, gene2protein)
-    print(merged_enzyme_db)
     # Assert
     assert_enzyme_complexes_are_merged(merged_enzyme_db)
     assert_isozymes_are_not_merged(merged_enzyme_db)
