@@ -116,13 +116,40 @@ def test_if_merge_enzyme_complexes_merges_enzyme_ids():
                                  )
     gene2protein = {'gene1':'E1','gene2a': 'E2a','gene2b': 'E2b','gene2c': 'E2c', 'gene3':'E3'}
 
-    # Act
+    # Apply
     merged_enzyme_db = merge_enzyme_complexes(toy_enzyme_db, gene2protein)
+
     # Assert
     assert_enzyme_complexes_are_merged(merged_enzyme_db)
     assert_isozymes_are_not_merged(merged_enzyme_db)
     assert_molmass_for_enzyme_complexes_are_summed(merged_enzyme_db)
     assert_molmass_for_isozymes_are_not(merged_enzyme_db)
+
+def test_if_merge_enzyme_complex_parses_complex_gprs():
+    # Arrange
+    toy_enzyme_db = pd.DataFrame({'rxn_id': ['ANS']*3,
+                                  'enzyme_id': ['Enzyme_cg3361', 'Enzyme_cg3360', 'Enzyme_cg3359'],
+                                  'gene': [['cg3361'], ['cg3360'],['cg3359']],
+                                  'GPR': ['cg3361 or (cg3360 and cg3359) or (cg3361 and cg3359)']*3,
+                                  'molMass': [39959.4825]*3,
+                                  'kcat_values': [0.0449]*3,
+                                  'direction': ['f']*3
+                                  }
+                                 )
+    gene2protein = {'cg3361':'Enzyme_cg3361' ,  'cg3360':'Enzyme_cg3360', 'cg3359':'Enzyme_cg3359'}
+
+    # Apply
+    merged_enzyme_db = merge_enzyme_complexes(toy_enzyme_db, gene2protein)
+    print(merged_enzyme_db)
+
+    # Assert
+    assert ('Enzyme_cg3360_Enzyme_cg3359'==merged_enzyme_db.enzyme_id).any()
+    assert ('Enzyme_cg3361_Enzyme_cg3359'==merged_enzyme_db.enzyme_id).any()
+    assert ('Enzyme_cg3361'==merged_enzyme_db.enzyme_id).any()
+    assert len(merged_enzyme_db) == 5
+    assert (merged_enzyme_db.molMass[merged_enzyme_db.enzyme_id.str.contains('Enzyme_cg3359')] == 2*39959.4825).all()
+
+
 
 #########################################################################################################################
 # HELPER FUNCTION
