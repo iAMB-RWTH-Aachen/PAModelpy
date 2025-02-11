@@ -183,8 +183,6 @@ def _map_genes_to_proteins(
     if gene2protein is None:
         gene2protein = {}
 
-    enzyme_relations = []
-
     if convert_to_complexes:
         enzyme_relations = [
             [gene2protein[item] for item in sublist if item in gene2protein]
@@ -222,11 +220,13 @@ def get_protein_gene_mapping(enzyme_db: pd.DataFrame,
         gene_id = row['gene']
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
-            if not isinstance(enzyme_id, str):
-                enzyme_id = 'Enzyme_' + rxn_id
-            if not isinstance(gene_id, str):
-                gene_id = [gene.id for gene in rxn.genes][0]
-            gene2protein[gene_id] = enzyme_id
+            if isinstance(gene_id, str): #there is a gene id associated
+                gene2protein[gene_id] = enzyme_id or f"Enzyme_{gene_id}"
+            else: # if there is no gene associated, use the model genes
+                for gene in rxn.genes:
+                    enz_id = enzyme_id or f"Enzyme_{gene.id}"
+                    gene2protein[gene.id] = enz_id
+                    protein2gene[enz_id].append(gene.id)
 
             # Create gene-protein-reaction associations
             if enzyme_id not in protein2gene:
@@ -327,6 +327,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
                                          genes=[g.id for g in rxn._genes],
                                          enzyme_id=enzyme_info['enzyme_id'],
                                          gene2protein=gene2protein)
+
         if gpr_info is None: gpr_info = [[f'gene_{rxn.id}']]
 
         rxn_info2protein[rxn.id] = rxn_info
@@ -446,14 +447,11 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
             rxn_info.enzymes[enzyme_id] = enzyme_info
             rxn_info2protein[rxn.id] = rxn_info
 
-
-
     # if no enzyme info is found, add dummy enzyme with median kcat and molmass
     rxn_info2protein, protein2gpr = _check_if_all_model_reactions_are_in_rxn_info2protein(model,
                                                                                           rxn_info2protein,
                                                                                           protein2gpr,
                                                                                           gene2protein)
-
 
     #convert the dataobject dict to a normal dict for correct parsing by PAModelpy
     rxn2protein = {rxn_id: dict(rxn_info.enzymes) for rxn_id, rxn_info in rxn_info2protein.items()}
@@ -655,23 +653,23 @@ def set_up_core_pam(pam_info_file:str = '',
     else:
         unused_enzyme_info = None
 
-    if membrane_sector:
-        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
-        active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
+    # if membrane_sector:
+    #     membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
+    #     active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
+    #
+    #     area_avail_0 = membrane_info.at['area_avail_0','Value']
+    #     area_avail_mu = membrane_info.at['area_avail_mu','Value']
+    #     alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
+    #     enzyme_location = active_membrane_info.location.to_dict()
+    #
+    #     membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+    #                                      area_avail_mu=area_avail_mu,
+    #                                      alpha_numbers_dict=alpha_numbers_dict,
+    #                                      enzyme_location=enzyme_location,
+    #                                      max_area=max_membrane_area)
 
-        area_avail_0 = membrane_info.at['area_avail_0','Value']
-        area_avail_mu = membrane_info.at['area_avail_mu','Value']
-        alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
-        enzyme_location = active_membrane_info.location.to_dict()
-
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
-                                         alpha_numbers_dict=alpha_numbers_dict,
-                                         enzyme_location=enzyme_location,
-                                         max_area=max_membrane_area)
-
-    else:
-        membrane_sector = None
+    # else:
+    #     membrane_sector = None
 
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
@@ -680,7 +678,7 @@ def set_up_core_pam(pam_info_file:str = '',
                        active_sector=active_enzyme_info,
                       translational_sector=translation_enzyme_info,
                        unused_sector=unused_enzyme_info,
-                      membrane_sector=membrane_sector,
+                      # membrane_sector=membrane_sector,
                       sensitivity=sensitivity, configuration = config
                       )
     return coremodel
