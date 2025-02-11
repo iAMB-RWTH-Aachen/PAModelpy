@@ -9,10 +9,8 @@ from Scripts.pam_generation_uniprot_id import (set_up_ecolicore_pam, set_up_ecol
                                         parse_gpr_information_for_protein2genes,
                                         parse_gpr_information_for_rxn2protein)
 
-
 def test_gpr_information_is_parsed_correctly():
     # Arrange
-    enzyme_id = '1.1.5.3'
     gpr_string ='(b0902 and b0903) or (b0902 and b3114) or (b3951 and b3952) or ((b0902 and b0903) and b2579)'
 
     parsed_gpr_reference = [['b0902','b0903'], ['b0902','b3114'], ['b3951' ,'b3952'],['b0902', 'b0903','b2579']]

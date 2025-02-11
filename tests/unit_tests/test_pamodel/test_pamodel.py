@@ -5,6 +5,7 @@ from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector,
 from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam, set_up_ecolicore_pam
 from tests.unit_tests.test_pamodel.test_pam_generation_ecoli import set_up_toy_pam_with_isozymes_and_enzymecomplex
 
+
 def test_if_pamodel_change_kcat_function_works():
     #arrange
     sut = build_toy_pam(sensitivity=False)

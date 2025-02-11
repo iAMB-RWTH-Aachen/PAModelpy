@@ -1,10 +1,11 @@
-import os.path
+import os
 import cobra.io
 import numpy as np
 import pandas as pd
 import pytest
 
 from Scripts.toy_ec_pam import build_toy_gem
+from src.PAModelpy import PAModel
 from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam, merge_enzyme_complexes
 
 def test_if_rxn2protein_info_is_correctly_parsed():
@@ -54,6 +55,19 @@ def test_if_rxn2protein_info_is_correctly_parsed():
     # Assert
     for output_dict, expected_dict in zip([rxn2protein, protein2gpr], [expected_rxn2protein, expected_protein2gpr]):
         assert all([expected_dict[key] == value for key, value in output_dict.items()])
+
+
+@pytest.mark.parametrize('path_to_model', [
+    (os.path.join('Models', 'e_coli_core.json')),
+    (os.path.join('Models', 'iML1515.xml'))
+])
+def test_if_pam_can_be_build_from_path_to_gem(path_to_model:str):
+    pam = PAModel(path_to_model,
+                  sensitivity = False)
+    pam.change_reaction_bounds('EX_glc__D_e', -10,0)
+    pam.optimize()
+    assert pam.objective.value > 0
+
 
 def test_if_set_up_pam_can_build_ecolicore_pam():
     #Arrange

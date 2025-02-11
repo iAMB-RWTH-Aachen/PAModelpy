@@ -1,7 +1,7 @@
 # cobra tools
 import cobra
 from cobra import Model, DictList, Reaction, Metabolite, Solution
-from cobra.io import load_model
+from cobra.io import load_model, load_json_model, load_yaml_model, load_matlab_model, read_sbml_model
 from cobra.util.context import get_context
 
 # type checking
@@ -30,6 +30,12 @@ from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 
+
+EXTENSION2READINGFUNCTION = {'json': load_json_model,
+                        'yml': load_yaml_model,
+                        'mat': load_matlab_model,
+                        'xml': read_sbml_model,
+                             '': load_model}
 
 class PAModel(Model):
     """
@@ -91,10 +97,11 @@ class PAModel(Model):
         self.configuration = configuration
         """Initialize the Model."""
         if isinstance(id_or_model, str):
-            id_or_model = load_model(id_or_model)
+            id_or_model = EXTENSION2READINGFUNCTION[id_or_model.split('.')[-1]](id_or_model)
 
         super().__init__(id_or_model=id_or_model, name=name)
-        self.m_model = id_or_model.copy()  # save a copy of the original m_model
+        pickled_model = pickle.dumps(id_or_model)
+        self.m_model = pickle.loads(pickled_model)  # save a copy of the original m_model
 
         self.p_tot = (
             p_tot  # fraction of biomass allocated to proteins (units: g_prot/g_cdw)
