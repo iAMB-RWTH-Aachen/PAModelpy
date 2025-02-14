@@ -454,7 +454,7 @@ def set_up_ecoli_mcpam(total_protein: Union[bool, float] = True, active_enzymes:
                                          area_avail_mu=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=0.27)
+                                         max_area=0.04)
 
     else:
         membrane_sector = None

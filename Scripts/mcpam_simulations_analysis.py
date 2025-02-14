@@ -349,7 +349,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.1, 0.4, 4)
+        max_area_list = np.linspace(0.01, 0.04, 4)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
