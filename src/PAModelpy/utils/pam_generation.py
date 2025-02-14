@@ -484,12 +484,16 @@ def merge_enzyme_complexes(df, gene2protein):
                             df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
                         length_sum = df[df.rxn_id == row.rxn_id].loc[
                             df['enzyme_id'].isin(enzyme_list), 'Length'].sum()
+                        kcat_mean = df[df.rxn_id == row.rxn_id].loc[
+                            df['enzyme_id'].isin(enzyme_list), 'kcat_values'].mean()
                     else:
                         # Keep the original molMass/Length if it's a single enzyme
                         molmass_sum = row['molMass']
                         length_sum = row['Length']
+                        kcat_mean = row['kcat_values']
                     row_copy['molMass'] = molmass_sum
                     row_copy['Length'] = length_sum
+                    row_copy['kcat_values'] = kcat_mean
 
                     collapsed_rows.append(row_copy)
             else:
