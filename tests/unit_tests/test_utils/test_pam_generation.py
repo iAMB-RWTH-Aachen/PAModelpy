@@ -111,7 +111,8 @@ def test_if_merge_enzyme_complexes_merges_enzyme_ids():
                                           'gene3'],
                                   'molMass': [1, 2, 2, 2, 3],
                                   'kcat_values': [1, 2, np.nan, 3, 1.5],
-                                  'direction': ['f', 'f','f', 'f', 'f']
+                                  'direction': ['f', 'f','f', 'f', 'f'],
+                                  'Length': [1]*5
                                   }
                                  )
     gene2protein = {'gene1':'E1','gene2a': 'E2a','gene2b': 'E2b','gene2c': 'E2c', 'gene3':'E3'}
@@ -133,7 +134,8 @@ def test_if_merge_enzyme_complex_parses_complex_gprs():
                                   'GPR': ['cg3361 or (cg3360 and cg3359) or (cg3361 and cg3359)']*3,
                                   'molMass': [39959.4825]*3,
                                   'kcat_values': [0.0449]*3,
-                                  'direction': ['f']*3
+                                  'direction': ['f']*3,
+                                  'Length': [1] * 3
                                   }
                                  )
     gene2protein = {'cg3361':'Enzyme_cg3361' ,  'cg3360':'Enzyme_cg3360', 'cg3359':'Enzyme_cg3359'}
