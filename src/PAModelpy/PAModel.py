@@ -100,8 +100,7 @@ class PAModel(Model):
             id_or_model = EXTENSION2READINGFUNCTION[id_or_model.split('.')[-1]](id_or_model)
 
         super().__init__(id_or_model=id_or_model, name=name)
-        pickled_model = pickle.dumps(id_or_model)
-        self.m_model = pickle.loads(pickled_model)  # save a copy of the original m_model
+        self.m_model = id_or_model.copy()  # save a copy of the original m_model
 
         self.p_tot = (
             p_tot  # fraction of biomass allocated to proteins (units: g_prot/g_cdw)
