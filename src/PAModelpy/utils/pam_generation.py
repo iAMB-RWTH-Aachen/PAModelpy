@@ -306,7 +306,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
                 and 'EX'.lower() not in rxn.id.lower()  # is the reaction an exchange with the environment?
                 and 'BIOMASS' not in rxn.id  # is the reaction a pseudoreaction?
                 and len(rxn._genes) > 0  # is the reaction associated with enzymes?
-                and list(rxn._genes)[0].id != 's0001'
+                and rxn_id != 'ATPM' # is the reaction associated to the ATP maintenance pseudoreaction?
         ): continue
 
         print('No enzyme information found for reaction: ' + rxn.id)
