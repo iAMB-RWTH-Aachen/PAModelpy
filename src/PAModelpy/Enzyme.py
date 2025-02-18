@@ -19,7 +19,7 @@ from warnings import warn
 def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
     # return lists back to dictlist after unpickling
     if not isinstance(self.catalytic_events,DictList):
-        self.enzymes = DictList(self.catalytic_events)
+        self.catalytic_events = DictList(self.catalytic_events)
 
 class Enzyme(Object):
     """Upper level Enzyme object containing information about the enzyme and links to the EnzymeVariables for each reaction the enzyme catalyzes.
