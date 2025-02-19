@@ -188,16 +188,7 @@ def _map_genes_to_proteins(
             [gene2protein[item] for item in sublist if item in gene2protein]
             for sublist in gpr_list
         ]
-        # for sublist in gpr_list:
-            # enz_sublist = []
-            # for item in sublist:
-            #     if not item in gene2protein: continue
-            #     protein = gene2protein[item]
-            #     if "_" not in protein:
-            #         enz_sublist.append(protein)
-            #     elif protein.split("_") not in enzyme_relations:
-            #         enzyme_relations.extend(protein.split("_"))  # Corrected list handling
-            # enzyme_relations.append(enz_sublist)
+
     elif any(len(info) > 1 for info in gpr_list):  # Complex enzymes
         enzyme_relations = [enzyme_id.split("_")]
     else:
@@ -475,8 +466,10 @@ def merge_enzyme_complexes(df, gene2protein):
             if enzyme_relations and not all(all([isinstance(e, float) for e in er]) for er in enzyme_relations):
                 for gene_list, enzyme_list in zip(gpr_list, enzyme_relations):
                     row_copy = row.copy()
-                    row_copy['enzyme_id'] = "_".join(enzyme_list)  # Replace gene with multimer
-                    row_copy['gene'] = gene_list  # add all the annotations to the corresponding gene
+                    #Replace gene with multimer, make sure it is sorted to avoid duplicate entries of the same enzyme complex
+                    row_copy['enzyme_id'] = "_".join(sorted(enzyme_list))
+                    # add all the annotations to the corresponding gene
+                    row_copy['gene'] = gene_list
 
                     if len(enzyme_list) > 1:
                         # Compute the sum of molMass and length only if it's a complex (more than one enzyme)
