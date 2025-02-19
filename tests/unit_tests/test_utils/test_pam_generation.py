@@ -145,8 +145,8 @@ def test_if_merge_enzyme_complex_parses_complex_gprs():
     print(merged_enzyme_db)
 
     # Assert
-    assert ('Enzyme_cg3360_Enzyme_cg3359'==merged_enzyme_db.enzyme_id).any()
-    assert ('Enzyme_cg3361_Enzyme_cg3359'==merged_enzyme_db.enzyme_id).any()
+    assert ('Enzyme_cg3359_Enzyme_cg3360'==merged_enzyme_db.enzyme_id).any()
+    assert ('Enzyme_cg3359_Enzyme_cg3361'==merged_enzyme_db.enzyme_id).any()
     assert ('Enzyme_cg3361'==merged_enzyme_db.enzyme_id).any()
     assert len(merged_enzyme_db) == 5
     assert (merged_enzyme_db.molMass[merged_enzyme_db.enzyme_id.str.contains('Enzyme_cg3359')] == 2*39959.4825).all()
