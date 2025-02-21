@@ -459,6 +459,7 @@ def merge_enzyme_complexes(df, gene2protein):
     return collapsed_df
 
 def set_up_pam(pam_info_file:str = '',
+               sheet_name:str ='',
                model:Union[str, cobra.Model] = 'Models/iML1515.xml',
                config:Config = None,
                total_protein: Union[bool, float] = True,
@@ -466,7 +467,7 @@ def set_up_pam(pam_info_file:str = '',
                translational_enzymes: bool = True,
                unused_enzymes: bool = True,
                membrane_sector: bool = False,
-               max_membrane_area:float = 0.27,
+               max_membrane_area:float = 0.043,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = False) -> PAModel:
@@ -491,7 +492,7 @@ def set_up_pam(pam_info_file:str = '',
     if active_enzymes:
         # load active enzyme sector information
         if enzyme_db is None:
-            enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+            enzyme_db = pd.read_excel(pam_info_file, sheet_name=sheet_name)
             #for some models, the reaction ids should not include 'pp' or 'ex'
             if adjust_reaction_ids:
                 enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
