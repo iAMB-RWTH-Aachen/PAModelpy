@@ -1,0 +1,43 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: PAModelpy
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Samira Larissa
+    name-particle: van den
+    family-names: Bogaard
+    email: samira.vandenbogaard@rwth-aachen.de
+    affiliation: 'institute of Applied Microbiology, RWTH Aachen'
+    orcid: 'https://orcid.org/0000-0003-0746-4863'
+repository-code: 'https://github.com/iAMB-RWTH-Aachen/PAModelpy'
+url: 'https://pamodelpy.readthedocs.io/en/latest/'
+abstract: >-
+  Models of metabolism are powerful tools to explore the
+  metabolic potential of microorganism. Powerful tools have
+  been created to support Python-based analysis of
+  genome-scale models. These models, however, cannot capture
+  all metabolic phenotypes and the simulation results have
+  high flux variability. Adding protein to each reaction
+  increases the simulation fidelity. The PAModelpy package
+  is designed to integrate protein constraints and protein
+  sectors as described by Alter et al. (2021) to metabolic
+  models. It is the Python implementation of the PAM MATLAB
+  framework to create GECKO like ME models. Furthermore, it
+  implements sEnz, a sensitivity analysis for finding the
+  most influential enzymes with respect to the growth rate.
+
+  The PAModelpy package builds upon the community-wide used
+  COBRApy.
+keywords:
+  - metabolic models
+  - protein allocation model
+  - resource allocation
+license: MIT
+commit: 3955f40bf6fc61b9844d75f7c0408c1366495455
+version: 0.0.4.6
+date-released: '2025-01-29'

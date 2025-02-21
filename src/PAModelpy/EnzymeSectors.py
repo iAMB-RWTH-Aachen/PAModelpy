@@ -167,6 +167,7 @@ class ActiveEnzymeSector(Sector):
                         del rxn2protein[rxn_id]
 
         for rxn_id, enzymes in rxn2protein.items():
+            # print(rxn_id, enzymes)
             reaction = model.reactions.get_by_id(rxn_id)
             # skip the reaction if a problem is encountered in check_kcat_values()
             consistent = self.check_kcat_values(model, reaction, enzymes)
@@ -345,9 +346,16 @@ class ActiveEnzymeSector(Sector):
             model.add_catalytic_events([enzyme.catalytic_events.get_by_id(f'CE_{rxn_id}')])
 
     def _enzyme_is_enzyme_complex(self, protein_reaction, enzyme_id):
+        # make sure default enzyme id is not recognized as enzyme_complex
+        if 'Enzyme_' in enzyme_id:
+            sorted_enzyme_id = enzyme_id.replace('Enzyme_', '')
+        else:
+            #make sure the enzyme complex is in the right order, otherwise match will fail
+            sorted_enzyme_id = sorted(enzyme_id.split('_'))
+
         return any(
             [all(
-                [sorted(pr) == sorted(enzyme_id.split('_')) and  #enzyme should take part in enzyme complex
+                [sorted(pr) == sorted_enzyme_id and  #enzyme should take part in enzyme complex
                  len(pr)>1] # enzyme complex needs to have at least 2 proteins
             ) for pr in protein_reaction]
         )

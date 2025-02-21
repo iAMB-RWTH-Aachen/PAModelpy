@@ -19,7 +19,7 @@ from warnings import warn
 def _change_catalytic_event_list_to_dictlist_after_unpickling(self):
     # return lists back to dictlist after unpickling
     if not isinstance(self.catalytic_events,DictList):
-        self.enzymes = DictList(self.catalytic_events)
+        self.catalytic_events = DictList(self.catalytic_events)
 
 class Enzyme(Object):
     """Upper level Enzyme object containing information about the enzyme and links to the EnzymeVariables for each reaction the enzyme catalyzes.
@@ -585,17 +585,18 @@ class EnzymeVariable(Reaction):
     def concentration(self, conc:Union[float,int]) -> None:
         """
         Sets the concentration of the enzyme by creating or updating a constraint
-        that enforces the concentration to be equal to the sum of the forward and reverse
+        that enforces the concentration (in mmol/gCDW) to be equal to the sum of the forward and reverse
         variable primals.
 
         Args:
         conc : float, int
             The concentration value to be set for the enzyme. This value will be used
             as both the lower and upper bound for the constraint, effectively fixing the
-            concentration to this value.
+            concentration to this value. (in mmol/gCDW)
 
         Notes
         -----
+        - Concentration should be given in mmol/gCDW
         - If a concentration constraint for the enzyme does not already exist in the model,
           this function creates a new constraint named '<enzyme_id>_conc'.
         - The concentration constraint is defined as:

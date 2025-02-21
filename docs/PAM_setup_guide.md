@@ -139,7 +139,7 @@ define the fraction of membrane area available for active enzymes using `max_mem
 To verify the correctness of the PAM generation process, run the tests provided in `test_pam_generation.py`:
 
 ```bash
-python -m pytest test_pam_generation.py
+python -m pytest test_pam_generation_ecoli.py
 ```
 
 ---

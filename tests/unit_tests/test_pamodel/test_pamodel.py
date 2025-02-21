@@ -44,7 +44,7 @@ def test_if_pamodel_change_kcat_function_works_with_catalytic_reactions():
     #arrange
     sut = set_up_ecoli_pam(sensitivity=False)
     input_kcat = 10
-    enzyme_id = 'P0ABI8_P0ABJ1_P0ABJ3_P0ABJ6'
+    enzyme_id = 'P0ABJ1'
     rxn_id = "CYTBO3_4pp"
     ce_rxn= sut.reactions.query(f'CE_{rxn_id}_{enzyme_id}')[0]
     enzyme_complex_id = "_".join(ce_rxn.id.split("_")[3:])
@@ -271,12 +271,10 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Arrange
     sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity = False)
     enzyme_ut = 'E10'
-    associated_enzymes = ['E10', 'E10_E11_E3']
+    associated_enzymes = ['E10', 'E3_E10_E11']
 
     # Assert
     catalyzing_enzymes = sut._get_catalyzing_enzymes_for_enzyme(enzyme_ut)
-
-    print(catalyzing_enzymes)
 
     # Assert
     assert all(enz in catalyzing_enzymes for enz in associated_enzymes)

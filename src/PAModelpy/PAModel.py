@@ -1,7 +1,7 @@
 # cobra tools
 import cobra
 from cobra import Model, DictList, Reaction, Metabolite, Solution
-from cobra.io import load_model
+from cobra.io import load_model, load_json_model, load_yaml_model, load_matlab_model, read_sbml_model
 from cobra.util.context import get_context
 
 # type checking
@@ -31,6 +31,12 @@ from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
 from .MembraneSector import MembraneSector
 
+
+EXTENSION2READINGFUNCTION = {'json': load_json_model,
+                        'yml': load_yaml_model,
+                        'mat': load_matlab_model,
+                        'xml': read_sbml_model,
+                             '': load_model}
 
 class PAModel(Model):
     """
@@ -93,7 +99,7 @@ class PAModel(Model):
         self.configuration = configuration
         """Initialize the Model."""
         if isinstance(id_or_model, str):
-            id_or_model = load_model(id_or_model)
+            id_or_model = EXTENSION2READINGFUNCTION[id_or_model.split('.')[-1]](id_or_model)
 
         super().__init__(id_or_model=id_or_model, name=name)
         self.m_model = id_or_model.copy()  # save a copy of the original m_model
@@ -1121,7 +1127,9 @@ class PAModel(Model):
             enzyme_id = enzyme
 
         #get all associated constraints
-        associated_constraints = ["_".join(cid.split("_")[:-1]) for cid in self.constraints.keys() if (enzyme_id in cid)&("_max" in cid)] # enzymes always have a min and max constraint
+        associated_constraints = ["_".join(cid.split("_")[:-1])
+                                  for cid in self.constraints.keys()
+                                  if (enzyme_id in cid) & ("_max" in cid)] # enzymes always have a min and max constraint
         #remove the constraints associated with a reaction
         associated_enzymes = [cid for cid in associated_constraints if not any([rxn.id in cid for rxn in self.reactions])]
         # removing duplicates and empty strings

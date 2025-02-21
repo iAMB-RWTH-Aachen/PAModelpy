@@ -5,15 +5,15 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages]
-find = { where = ["src"] }  # Scan the project directory with the default parameters
+find = { where = ["PAModelpy"] }  # Scan the project directory with the default parameters
 
 [project]
 name = 'PAModelpy'
-version = '0.0.4.2'
+version = '0.0.4.7'
 authors = [{name='Samira van den Bogaard', email = 'samira.vandenbogaard@rwth-aachen.de'}]
 description = 'Python framework for building and analysing protein allocation models'
 readme = 'README.md'
-requires-python = '>=3.8'
+requires-python = '>=3.9, <3.12'
 classifiers = [
     'Programming Language :: Python :: 3',
     'License :: OSI Approved :: MIT License',
