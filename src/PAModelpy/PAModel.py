@@ -1106,7 +1106,9 @@ class PAModel(Model):
             enzyme_id = enzyme
 
         #get all associated constraints
-        associated_constraints = ["_".join(cid.split("_")[:-1]) for cid in self.constraints.keys() if (enzyme_id in cid)&("_max" in cid)] # enzymes always have a min and max constraint
+        associated_constraints = ["_".join(cid.split("_")[:-1])
+                                  for cid in self.constraints.keys()
+                                  if (enzyme_id in cid) & ("_max" in cid)] # enzymes always have a min and max constraint
         #remove the constraints associated with a reaction
         associated_enzymes = [cid for cid in associated_constraints if not any([rxn.id in cid for rxn in self.reactions])]
         # removing duplicates and empty strings
