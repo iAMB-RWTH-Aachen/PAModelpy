@@ -401,7 +401,7 @@ class CatalyticEvent(Object):
     @staticmethod
     def _extract_reaction_id_from_catalytic_reaction_id(input_str: str,
                                                         protein_id_pattern:str = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})',
-                                                        default_enzyme_id_pattern:str = r'E[0-9][0-9]*'
+                                                        default_enzyme_id_pattern:str = r'E[0-9][0-9]*|Enzyme_*'
                                                         ) -> str:
 
         """
