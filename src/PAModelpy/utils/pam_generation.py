@@ -497,7 +497,6 @@ def merge_enzyme_complexes(df, gene2protein):
     return collapsed_df
 
 def set_up_pam(pam_info_file:str = '',
-               sheet_name:str ='',
                model:Union[str, cobra.Model] = 'Models/iML1515.xml',
                config:Config = None,
                total_protein: Union[bool, float] = True,
