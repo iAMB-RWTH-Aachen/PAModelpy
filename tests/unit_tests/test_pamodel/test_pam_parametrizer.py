@@ -15,25 +15,39 @@ from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, 
 from Scripts.create_pamodel_from_diagnostics_file import create_pamodel_from_diagnostics_file
 from src.PAModelpy.utils.pam_generation import _order_enzyme_complex_id
 
-@pytest.mark.parametrize('case, enzyme_id, expected_kcat_f',
+@pytest.mark.parametrize('case, enzyme_id, expected_kcat_f, expected_kcat_b',
                          [
                              ('case_01',
                               'E1_E2_E3',
-                              1004),
+                              1004,
+                              1000),
 
                              ('case_02',
                               'E1_E2_E3',
-                              1004),
+                              1004,
+                              1000),
 
                              ('case_02',
                               'E10_E7_E8_E9',
-                              1014),
+                              1014,
+                              1500),
 
                               ('case_02',
                               'E10_E7_E8_E9',
-                              1014)
+                              1014,
+                              1500),
+
+                              ('case_03',
+                              'E1_E2_E3',
+                              1001,
+                              1004),
+
+                              ('case_03',
+                              'E10_E7_E8_E9',
+                              1014,
+                              1500)
                          ])
-def test_if_create_pamodel_from_diagnostics_file_is_correct(case, enzyme_id, expected_kcat_f):
+def test_if_create_pamodel_from_diagnostics_file_is_correct(case, enzyme_id, expected_kcat_f, expected_kcat_b):
     # Arrange
     toy_pam = build_toy_model()
 
@@ -41,10 +55,12 @@ def test_if_create_pamodel_from_diagnostics_file_is_correct(case, enzyme_id, exp
     data_path = 'tests/data/diagnostics_file_for_toy.xlsx'
     toy_pam = create_pamodel_from_diagnostics_file(data_path, toy_pam, case)
     kcats = toy_pam.enzyme_variables.get_by_id(enzyme_id).kcats.values()
-    actual_kcat_f = list(kcats)[0]['f'] # Getting only the forward kcat, because only f kcat is in the diagnostics file
+    actual_kcat_f = list(kcats)[0]['f'] # Getting the forward kcat
+    actual_kcat_b = list(kcats)[0]['b'] # Getting the backward kcat
 
     # Assert
     assert actual_kcat_f == expected_kcat_f
+    assert actual_kcat_b == expected_kcat_b
 
 ### Helper functions ###
 
