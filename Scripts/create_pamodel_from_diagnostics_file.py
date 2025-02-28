@@ -8,8 +8,8 @@ from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protei
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 11 #s-1
 
-def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel)-> PAModel:
-    best_individual_df = pd.read_excel(file_path, sheet_name='Best_Individuals')
+def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
+    best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)
     for _, group in best_individual_df.groupby('run_id'):
         for _, row in group.iterrows():
             rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['rxn_id'])
