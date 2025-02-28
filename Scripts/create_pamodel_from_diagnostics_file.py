@@ -1,12 +1,35 @@
 import pandas as pd
 from typing import Tuple, Literal
 import re
-
+from typing import Union
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 11 #s-1
+
+def _set_up_pamodel_for_simulations(pamodel:PAModel,
+                                   substrate_id: str,
+                                   transl_sector_config:Union[bool, dict[str, float]]) -> None:
+    if not isinstance(transl_sector_config, dict) and transl_sector_config:
+        transl_sector_config = {'slope': pamodel.sectors.get_by_id('TranslationalProteinSector').tps_mu[0],
+                                'intercept': pamodel.sectors.get_by_id('TranslationalProteinSector').tps_0[0]}
+
+    if transl_sector_config is not False:
+        change_translational_sector_with_config_dict(pamodel=pamodel,
+                                                     transl_sector_config = transl_sector_config,
+                                                     substrate_uptake_id = substrate_id)
+
+def change_translational_sector_with_config_dict(pamodel:PAModel,
+                                                 transl_sector_config:dict,
+                                                 substrate_uptake_id:str) -> None:
+    pamodel.constraints[pamodel.TOTAL_PROTEIN_CONSTRAINT_ID].lb = 0 #need to set the lb to 0 to prevent errors in the setter methods
+
+    pamodel.change_sector_parameters(pamodel.sectors.get_by_id('TranslationalProteinSector'),
+                                              slope=transl_sector_config['slope'],
+                                              intercept=transl_sector_config['intercept'],
+                                    lin_rxn_id=substrate_uptake_id
+                                     )
 
 def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
     best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)
