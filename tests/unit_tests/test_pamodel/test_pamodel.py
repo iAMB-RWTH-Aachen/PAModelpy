@@ -278,6 +278,22 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Assert
     assert all(enz in catalyzing_enzymes for enz in associated_enzymes)
 
+def test_if_rxn2protein_can_be_added_to_pam():
+    # Arrange
+    sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity=False)
+    rxn2protein = {'R1': {'E15_E21':
+                                {'f': 1,
+                                'b': 0.5,
+                                'molmass': 1e3,
+                                'genes': ['g1', 'g2'],
+                                'protein_reaction_association': [['E15_E21'], ['E11']]
+                                }}}
+    # Act
+    sut.add_rxn2protein_to_active_enzymes(rxn2protein)
+
+    # Arrange
+    assert 'E15_E21' in sut.enzymes
+    assert 'E15_E21' in sut.sectors.ActiveEnzymeSector.rxn2protein['R1'].keys()
 
 #######################################################################################################
 #HELPER METHODS
