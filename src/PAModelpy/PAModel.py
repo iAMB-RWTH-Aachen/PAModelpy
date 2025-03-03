@@ -791,7 +791,8 @@ class PAModel(Model):
                                                   Literal['f', 'b', 'molmass',
                                                   'genes', 'protein_reaction_association']
                                               ]],
-                                          protein2gene:Optional[Dict[str,list]]=None) -> None:
+                                          protein2gene:Optional[Dict[str,list]]=None,
+                                          verbose: bool = False) -> None:
         """
         Adds enzyme to the model based on the gene-protein-reaction association as defined in the rxn2protein dictionary
         to an existing PAM. This function directs to the ActiveEnzymeSector, where all active enzyme information is parsed.
@@ -800,6 +801,7 @@ class PAModel(Model):
         Args:
             rxn2protein (dict): dictionary containing gene-protein-reaction association.
             protein2gene (dict): dictionary containing mapping between peptide ids and genes
+            verbose (bool): if true, ensures all added enzymes are printed when adding
 
 
         Example:
@@ -827,7 +829,7 @@ class PAModel(Model):
         if not 'ActiveEnzymeSector' in self.sectors:
             raise KeyError('ActiveEnzymeSector is not part of the PAM, please add this first')
 
-        self.sectors.get_by_id(('ActiveEnzymeSector')).add_rxn2protein(rxn2protein, protein2gene)
+        self.sectors.get_by_id(('ActiveEnzymeSector')).add_rxn2protein(rxn2protein, protein2gene, verbose)
 
     def _add_lb_ub_constraints(self):
         """
