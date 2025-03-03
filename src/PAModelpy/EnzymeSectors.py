@@ -195,7 +195,7 @@ class ActiveEnzymeSector(Sector):
         self._add_rxn2protein_information(rxn2protein)
         model = self.model
 
-        for rxn_id, enzymes in rxn2protein.items():
+        for rxn_id, enzymes in rxn2protein.copy().items():
             # extract reaction from model
             if rxn_id not in model.reactions:
                 #     reaction = model.reactions.get_by_id(rxn_id)
