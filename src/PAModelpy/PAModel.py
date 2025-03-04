@@ -1297,7 +1297,7 @@ class PAModel(Model):
             )
             # reset the slope
             self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                {lin_rxn.forward_variable: -slope, lin_rxn.reverse_variable: slope}
+                {lin_rxn.forward_variable: sector.slope, lin_rxn.reverse_variable: -sector.slope}
             )
 
         else:
