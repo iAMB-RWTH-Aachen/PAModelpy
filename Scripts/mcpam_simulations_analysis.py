@@ -546,18 +546,26 @@ def perform_and_plot_single_KO(model, genes_to_be_ko:list):
 
     plt.show()
 
-def get_memprot_data_in_mcpam(memprot_dict: dict):
+def get_memprot_data_in_mcpam(memprot_dict: dict, diagnostics_file_nr:int):
     df_list = []
     for protein_group, (flux_dict, alpha_number) in memprot_dict.items():
-        for reaction, flux_values in flux_dict.items():
-            df_list.append({
-                'Protein Group': protein_group,
-                'Reaction': reaction,
-                'Forward Flux': flux_values['f'],
-                'Backward Flux': flux_values['b'],
-                'Alpha Number': alpha_number
-            })
+        if alpha_number >= 20:
+            for reaction, flux_values in flux_dict.items():
+                if 'b' in flux_values:
+                    kcat_b = flux_values['b']
+                else:
+                    kcat_b = 0
+                df_list.append({
+                    'Protein Group': protein_group,
+                    'Reaction': reaction,
+                    'Forward Flux': flux_values['f'],
+                    'Backward Flux': kcat_b,
+                    'Alpha Number': alpha_number
+                })
 
     df = pd.DataFrame(df_list)
 
-    return df
+    data_path = 'Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx'
+    with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
+        # Write the new DataFrame to a new sheet
+        df.to_excel(writer, sheet_name=f'diagnostics_{diagnostics_file_nr}', index=True)
