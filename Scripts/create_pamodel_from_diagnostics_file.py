@@ -31,6 +31,16 @@ def change_translational_sector_with_config_dict(pamodel:PAModel,
                                     lin_rxn_id=substrate_uptake_id
                                      )
 
+def change_memprot_kcats(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
+    memprot_df = pd.read_excel(file_path, sheet_name = sheet_name)
+    for _, row in memprot_df.iterrows():
+        rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
+        enzyme_id = _order_enzyme_complex_id(row['Protein Group'])
+        kcat_dict = {rxn_id: {'f': row['Forward Flux']}}
+        model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+
+    return model
+
 def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
     best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)
     for _, group in best_individual_df.groupby('run_id'):
