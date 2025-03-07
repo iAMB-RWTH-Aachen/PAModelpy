@@ -37,7 +37,7 @@ keywords:
   - metabolic models
   - protein allocation model
   - resource allocation
-license: MIT
+license: GNU GENERAL PUBLIC LICENSE
 commit: 3955f40bf6fc61b9844d75f7c0408c1366495455
 version: 0.0.4.6
 date-released: '2025-01-29'
