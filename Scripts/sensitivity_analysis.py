@@ -10,11 +10,16 @@ import numpy as np
 
 sys.path.append('C:\\Users\\claud\\Documents\\iamb-student-folders\\iamb-folder-template\\mcPAM_package')
 
-from src.mcPAModelpy.configuration import Config
+from src.PAModelpy.configuration import Config
 
 if os.path.split(os.getcwd())[1] == 'Figures':
     os.chdir(os.path.split(os.getcwd())[0])
-from Scripts.mcpam_generation_uniprot_id import set_up_ecolicore_pam, set_up_ecolicore_mcpam, run_pam_mcpam_core_with_optimized_kcats
+from src.PAModelpy.utils.pam_generation import set_up_pam
+from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
+                                                          _set_up_pamodel_for_simulations,
+                                                          change_memprot_kcats
+                                                          )
+
 
 Config.BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
 DATA_DIR = os.path.join('Data')  # os.path.join(os.path.split(os.getcwd())[0], 'Data')
@@ -35,8 +40,9 @@ def calculate_sensitivities(pamodel):
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
-                                           lower_bound=-glc, upper_bound=-glc)
+            # pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
+            #                                lower_bound=-glc, upper_bound=-glc)
+            pamodel.reactions.EX_glc__D_e.lower_bound = -glc
             # solve the model
             # pamodel.objective = 'EX_ac_e'
             sol_pam = pamodel.optimize()
@@ -256,10 +262,10 @@ def make_heatmap_subfigure_acetate_csc(keys, results, csc_matrix, x_csc, x_esc, 
         norm = mcolors.BoundaryNorm(bounds, combined_cmap.N)
 
     if cbar:
-        gs = gridspec.GridSpecFromSubplotSpec(4, 2, width_ratios=[len(yaxis), 0.2],
+        gs = gridspec.GridSpecFromSubplotSpec(5, 2, width_ratios=[len(yaxis), 0.2],
                                               subplot_spec=grdspc)
     else:
-        gs = gridspec.GridSpecFromSubplotSpec(4, 1, width_ratios=[len(yaxis)],
+        gs = gridspec.GridSpecFromSubplotSpec(5, 1, width_ratios=[len(yaxis)],
                                               subplot_spec=grdspc)
 
     acetate_ax = fig.add_subplot(gs[0, 0])  # acetate production
@@ -369,12 +375,12 @@ def make_heatmap_subfigure_esc(keys, results, esc_matrix, x_csc, x_esc, yaxis, f
         norm = mcolors.BoundaryNorm(bounds, combined_cmap.N)
 
     if cbar:
-        gs = gridspec.GridSpecFromSubplotSpec(3, 2, width_ratios=[len(yaxis), 0.2],
-                                              height_ratios=[1, 1, 1.5],
+        gs = gridspec.GridSpecFromSubplotSpec(4, 2, width_ratios=[len(yaxis), 0.2],
+                                              height_ratios=[1, 1, 1, 1],
                                               subplot_spec=grdspc)
     else:
-        gs = gridspec.GridSpecFromSubplotSpec(3, 1, width_ratios=[len(yaxis)],
-                                              height_ratios=[1, 1, 1.5],
+        gs = gridspec.GridSpecFromSubplotSpec(4, 1, width_ratios=[len(yaxis)],
+                                              height_ratios=[1, 1, 1, 1],
                                               subplot_spec=grdspc)
 
     esc_ax = {}
@@ -459,7 +465,7 @@ def adjust_heatmap_labels(labels):
 
         if label[-1].isdigit() and len(label) > 3:  # all enzyme ids start with a digit
 
-            rxn_ids = mcpam_core.get_reactions_with_enzyme_id(label)
+            rxn_ids = mcpam.get_reactions_with_enzyme_id(label)
             id = rxn_ids[0].split('_')
             rxn_name = id[1]
             if rxn_name in new_labels:
@@ -517,19 +523,29 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 
 ### PAM simulations
 #### 3.1 Build the mcPAModel
-mcpam_core = set_up_ecolicore_mcpam()
+diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_02_28/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_28/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
+sheet_name = 'Best_Individuals'
+
+mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
+_set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
+mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
+
+memprot_file_path = 'Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx'
+memprot_sheet_name = 'diagnostics_1'
+mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 #### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area
 results_pam = {}
 x_axis_csc_pam = {}
 x_axis_esc_pam = {}
-max_area_list = np.linspace(0.011, 0.029, 3)
+max_area_list = np.linspace(0.01, 0.04, 4)
 keys = [f'Sensitivity mcPAM with {area*100}% available area for active enzymes' for area in max_area_list]
 
 for area, key in zip(max_area_list, keys):
-    mcpam_core.change_available_membrane_area(area)
+    mcpam.sectors.get_by_id('MembraneSector').change_available_membrane_area(area, mcpam)
     print(f'Starting simulation for mcPAM with {area*100}% available area for active enzymes')
-    results_pam[key] = calculate_sensitivities(mcpam_core)
+    results_pam[key] = calculate_sensitivities(mcpam)
 
 for result, area, key in zip(results_pam.values(), max_area_list, keys):
     x_axis_csc_pam[key], x_axis_esc_pam[key] = parse_x_axis_heatmap(result['capacity coefficients'],
@@ -588,14 +604,14 @@ gs_pam = gs0[0]
 # x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
 # x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
 
-# Make figure acetate and csc
+# # Make figure acetate and csc
 # fig.set_layout_engine(layout='constrained')
 # fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
 #                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
 #                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
 #                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
-# # Make figure esc
+# Make figure esc
 fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,

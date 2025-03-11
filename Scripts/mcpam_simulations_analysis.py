@@ -562,8 +562,8 @@ def get_memprot_data_in_mcpam(memprot_dict: dict, number):
     df = pd.DataFrame(df_list)
 
     # Write excel datasheet
-    core_data_path = os.path.join('Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx')
-    with pd.ExcelWriter(core_data_path, engine='openpyxl', mode='a') as writer:
+    data_path = os.path.join('Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx')
+    with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
         # Write the new DataFrame to a new sheet
         df.to_excel(writer, sheet_name=f'diagnostics_{number}', index=True)
 

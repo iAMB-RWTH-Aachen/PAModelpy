@@ -36,7 +36,7 @@ def change_memprot_kcats(file_path:str, model: PAModel, sheet_name: str)-> PAMod
     for _, row in memprot_df.iterrows():
         rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
         enzyme_id = _order_enzyme_complex_id(row['Protein Group'])
-        kcat_dict = {rxn_id: {'f': row['Forward Flux']}}
+        kcat_dict = {rxn_id: {'f': row['Forward Flux'], 'b': row['Backward Flux']}}
         model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
 
     return model
