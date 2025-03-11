@@ -72,33 +72,34 @@ def calculate_and_plot_memprot_contribution_for_different_param(model, save_fig=
 
     # Show the plot
     plt.tight_layout()
+    plt.show()
 
     if save_fig:
         plt.savefig(f'Results/PAM_parametrizer/Simulations/2025_02_28/csc_analysis/csc_analysis_full_scale_{file_number}.png')
 
-# ### core simulations
-# mcpam_core = set_up_ecolicore_mcpam(sensitivity = False)
-# mcpam_core.optimize()
-# calculate_and_plot_memprot_contribution_for_different_param(mcpam_core)
+### core simulations
+mcpam_core = set_up_ecolicore_mcpam(sensitivity = False)
+mcpam_core.optimize()
+calculate_and_plot_memprot_contribution_for_different_param(mcpam_core)
 
 
 
-### PAM simulations
-#### 3.1 Build the mcPAModel
-for i in range(0,7):
-    file_number = i+1
-    diagnostics_data_path = f'Results/PAM_parametrizer/Files/2025_02_28/pam_parametrizer_diagnostics_mciML1515_{file_number}.xlsx'
-    sheet_name = 'Best_Individuals'
-    pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_28/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
-
-    mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
-    mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
-    calculate_and_plot_memprot_contribution_for_different_param(mcpam, save_fig=True, file_number=file_number)
-
-    # memprot_file_path = 'Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx'
-    # memprot_sheet_name = 'diagnostics_1'
-    # mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
+# ### PAM simulations
+# #### 3.1 Build the mcPAModel
+# for i in range(0,7):
+#     file_number = i+1
+#     diagnostics_data_path = f'Results/PAM_parametrizer/Files/2025_02_28/pam_parametrizer_diagnostics_mciML1515_{file_number}.xlsx'
+#     sheet_name = 'Best_Individuals'
+#     pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_28/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
+#
+#     mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+#     _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
+#     mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
+#     calculate_and_plot_memprot_contribution_for_different_param(mcpam, save_fig=True, file_number=file_number)
+#
+#     # memprot_file_path = 'Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx'
+#     # memprot_sheet_name = 'diagnostics_1'
+#     # mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 
 
