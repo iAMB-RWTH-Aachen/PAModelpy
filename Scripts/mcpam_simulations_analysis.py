@@ -387,6 +387,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
+                    # model.objective = 'EX_ac_e'
                     sol_pam = model.optimize()
                     # save data
                     fluxes_list.append(sol_pam.fluxes)  # flux distributions
@@ -562,7 +563,7 @@ def get_memprot_data_in_mcpam(memprot_dict: dict, number):
     df = pd.DataFrame(df_list)
 
     # Write excel datasheet
-    data_path = os.path.join('Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx')
+    data_path = os.path.join('Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx')
     with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
         # Write the new DataFrame to a new sheet
         df.to_excel(writer, sheet_name=f'diagnostics_{number}', index=True)

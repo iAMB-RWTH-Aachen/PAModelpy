@@ -523,16 +523,16 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 
 ### PAM simulations
 #### 3.1 Build the mcPAModel
-diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_02_28/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
-pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_28/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
+diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
 sheet_name = 'Best_Individuals'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
-_set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
+# _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
 mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
 
-memprot_file_path = 'Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx'
-memprot_sheet_name = 'diagnostics_1'
+memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
+memprot_sheet_name = 'diagnostics_2_13032025'
 mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 #### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area
@@ -604,18 +604,18 @@ gs_pam = gs0[0]
 # x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
 # x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
 
-# # Make figure acetate and csc
-# fig.set_layout_engine(layout='constrained')
-# fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
-#                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-#                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-#                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
-
-# Make figure esc
-fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+# Make figure acetate and csc
+fig.set_layout_engine(layout='constrained')
+fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+
+# # Make figure esc
+# fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+#                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
+#                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
+#                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
 plt.plasma()
 fig.set_figwidth(width)

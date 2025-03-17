@@ -89,10 +89,10 @@ class MembraneSector(EnzymeSector):
         if get_df:
             memprot_w_area_df = self.get_df_w_memprot_area(model, occupied_area)
 
-            data_path = os.path.join('Results/PAM_parametrizer/Files/2025_02_28/memprot_data.xlsx')
+            data_path = os.path.join('Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx')
             with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
                 # Write the new DataFrame to a new sheet
-                memprot_w_area_df.to_excel(writer, sheet_name=f'memprot_area_1_upd', index=True)
+                memprot_w_area_df.to_excel(writer, sheet_name=f'protein_data_act_max', index=True)
 
         available_area = self.slope * model.objective.value + self.intercept
 
@@ -117,8 +117,6 @@ class MembraneSector(EnzymeSector):
                     'Occupied Area %': coeff * enz_complex_concentration / occupied_area * 100,
                     'Contribution to protein pool': enz_complex_concentration * 1e-9 * enz_complex.molmass / model.p_tot * 100
                 })
-
-            self.percentage_of_p_tot_occupied_by_memprot
 
         memprot_w_area_df = pd.DataFrame(memprot_w_area)
 
