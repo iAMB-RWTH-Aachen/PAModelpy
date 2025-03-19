@@ -532,7 +532,7 @@ mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_secto
 mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
 
 memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-memprot_sheet_name = 'diagnostics_2_13032025'
+memprot_sheet_name = 'diagnostics_2'
 mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 #### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area

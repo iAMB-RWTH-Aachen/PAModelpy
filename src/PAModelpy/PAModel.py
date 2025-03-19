@@ -7,7 +7,7 @@ from cobra.util.context import get_context
 # type checking
 from optlang.symbolics import Zero
 from optlang.interface import Objective
-from typing import List, Optional, Union, Dict, Iterable, Tuple
+from typing import List, Optional, Union, Dict, Iterable, Tuple, Literal
 
 # other
 from functools import partial
