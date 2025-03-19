@@ -14,7 +14,7 @@ The accompanying `test_pam_generation.py` provides unit tests to validate the se
 
 ## Prerequisites
 
-### Required Python Libraries
+### Required python libraries
 
 Ensure you have `PAModelpy` installed
 
@@ -24,7 +24,7 @@ Install these dependencies via pip:
 pip install cobra PAModelpy
 ```
 
-### Input Files
+### Input files
 
 1. **Genome-scale model**: the path to metabolic model in SBML format (e.g., `iML1515.xml`) or a cobra.Model instance (e.g., build from a json file like `e_coli_core.json`).
 2. **Parameter Excel file**: Contains data on enzymatic properties. The file should have at least the following sheets:
@@ -34,11 +34,11 @@ pip install cobra PAModelpy
 
 ---
 
-## Dataset Requirements
+## Dataset requirements
 
-### Excel File Structure
+### Excel file structure
 
-#### ActiveEnzymes Sheet
+#### ActiveEnzymes sheet
 | **Column**         | **Description**                                         |
 |---------------------|---------------------------------------------------------|
 | `rxn_id`           | Reaction ID from the genome-scale model.                |
@@ -52,7 +52,7 @@ pip install cobra PAModelpy
 * A unique enzyme identifier is defined as a single identifier per catalytically active unit. This means that an enzyme complex has a single identifier.
 * Enzyme-complex identifiers can be parsed from peptide identifiers and gene-to-protein mapping using the `merge_enzyme_complexes` function.
 
-#### Translational Sheet
+#### Translational sheet
 | **Parameter**      | **Description**                                                               |
 |---------------------|-------------------------------------------------------------------------------|
 | `id_list`          | Identifier related to protein fraction associated with translational proteins |
@@ -60,7 +60,7 @@ pip install cobra PAModelpy
 | `tps_mu`           | Change in translational protein fraction per unit change of the associated reaction.  |
 | `mol_mass`         | Molar mass of the translational enzymes. [kDa]                                |
 
-#### UnusedEnzyme Sheet
+#### UnusedEnzyme sheet
 | **Parameter**      | **Description**                                                                 |
 |---------------------|---------------------------------------------------------------------------------|
 | `id_list`          | Identifier related to protein fraction associated with the unused enzyme sector |
@@ -97,21 +97,23 @@ pip install cobra PAModelpy
 
 ## Building a PAM
 
-### Steps to Create a PAM
+### Steps to create a PAM
 
 1. Prepare the genome-scale model and parameter file.
-2. Optionally: configure the Config object to match the identifiers of your model (see example 2)
+2. Optional: change defaults in the Config object to match your model identifiers
 3. Use the `set_up_pam` function to initialize the model.
+4. Optimize the PAM
 
-#### Example Usage
+#### Example usage for *E. coli*
+The model defaults are set to generate a PAM for the iML1515 model of *Escherichia coli* K-12.
 ```python
 from Scripts.pam_generation import set_up_pam
 
-# Define input paths
+#1. Define input paths
 model_path = "Models/iML1515.xml"
 param_file = "Data/proteinAllocationModel_iML1515_EnzymaticData_new.xlsx"
-
-# Build the PAM
+#2. Config is not required for iML1515
+#3. Build the PAM
 pam = set_up_pam(pam_info_file=param_file,
                  model=model_path,
                  total_protein=0.258,  # Optional: Total protein concentration (g_prot/g_cdw)
@@ -120,10 +122,43 @@ pam = set_up_pam(pam_info_file=param_file,
                  unused_enzymes=True,
                  sensitivity=True,
                  adjust_reaction_ids=False)
+#4. Optimize to find the max growth rate at a substrate uptake rate of -10 mmol/gcdw/h
+pam.optimize()
+print(f"Objective Value: {pam.objective.value}")
 ```
 
-4. Optimize the PAM:
+#### Example usage for other microorganisms
+The model defaults have to be adapted to the identifiers for another microorganism. In case of a model in the BiGG namespace,
+only the biomass reaction has to be adapted (which is the case for e.g. [iJN1463](https://onlinelibrary.wiley.com/doi/abs/10.1111/1462-2920.14843), 
+the genome-scale model for *Pseudomonas putida* KT2440). For some other models, the entire namespace has to be adapted (e.g. for the [Yeast9](https://www.embopress.org/doi/full/10.1038/s44320-024-00060-7) 
+model of *Saccharomyces cerevisiae*). This can be accomplished using a [`Config`](api_reference/configuration.md) object. 
+
+##### Example for BiGG namespace: *P. putida* iJN1463
+Please note that this is only an example, both the model, as the parameter file do not exist in this repository.
+
 ```python
+from Scripts.pam_generation import set_up_pam
+from PAModelpy import Config
+
+#1. Define input paths
+model_path = "Models/iJN1463.xml"
+param_file = "Data/proteinAllocationModel_iJN1463_EnzymaticData.xlsx"
+
+#2. Change biomass reaction id in config
+config = Config()
+config.BIOMASS_REACTION = 'BIOMASS_KT2440_WT3'
+
+#3. Build the PAM
+pam = set_up_pam(pam_info_file=param_file,
+                 model=model_path,
+                 config=config,
+                 total_protein=0.258,  # Optional: Total protein concentration (g_prot/g_cdw)
+                 active_enzymes=True,
+                 translational_enzymes=True,
+                 unused_enzymes=True,
+                 sensitivity=True,
+                 adjust_reaction_ids=False)
+#4. Optimize to find the max growth rate at a substrate uptake rate of -10 mmol/gcdw/h
 pam.optimize()
 print(f"Objective Value: {pam.objective.value}")
 ```
@@ -132,19 +167,77 @@ To create a mcPAM, you can use the example as described above. The only alterati
 `set_up_pam` function, you'll need to set the `membrane_sector` parameter to `True`. Optionally, you can 
 define the fraction of membrane area available for active enzymes using `max_membrane_area`.
 
+##### Example for non-BiGG namespace: *S. cerevisia* Yeast9
+Please note that this is only an example, both the model, as the parameter file do not exist in this repository.
+
+```python
+from Scripts.pam_generation import set_up_pam
+from PAModelpy import Config
+
+#1. Define input paths
+model_path = "Models/Yeast9.xml"
+param_file = "Data/proteinAllocationModel_yeast9_EnzymaticData.xlsx"
+
+#2. Change all the reaction ids in config and the protein regex
+config = Config()
+    config.TOTAL_PROTEIN_CONSTRAINT_ID = "TotalProteinConstraint"
+    config.P_TOT_DEFAULT = 0.388  # g_protein/g_cdw
+    config.CO2_EXHANGE_RXNID = "r_1672"
+    config.GLUCOSE_EXCHANGE_RXNID = "r_1714"
+    config.BIOMASS_REACTION = "r_2111"
+    config.OXYGEN_UPTAKE_RXNID = "r_1992"
+    config.ACETATE_EXCRETION_RXNID = "r_1634"
+    config.PHYS_RXN_IDS = [
+    config.BIOMASS_REACTION,
+    config.GLUCOSE_EXCHANGE_RXNID,
+    config.ACETATE_EXCRETION_RXNID,
+    config.CO2_EXHANGE_RXNID,
+    config.OXYGEN_UPTAKE_RXNID]
+    config.ENZYME_ID_REGEX = r'(Y[A-P][LR][0-9]{3}[CW])'
+
+#3. Build the PAM
+pam = set_up_pam(pam_info_file=param_file,
+                 model=model_path,
+                 config=config,
+                 total_protein=0.258,  # Optional: Total protein concentration (g_prot/g_cdw)
+                 active_enzymes=True,
+                 translational_enzymes=True,
+                 unused_enzymes=True,
+                 sensitivity=True,
+                 adjust_reaction_ids=False)
+#4. Optimize to find the max growth rate at a substrate uptake rate of -10 mmol/gcdw/h
+pam.optimize()
+print(f"Objective Value: {pam.objective.value}")
+```
+
+##### A short note on enzyme identifiers
+The Config object has an entry which enables the framework to find and extract enzyme identifiers from the PAModel:
+```python
+Config.ENZYME_ID_REGEX = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
+```
+This is the default [regular expression](https://www.uniprot.org/help/accession_numbers) to find UniProt identifiers, 
+as derived from the UniProt database (obtained 2024-08-07). Two other default placeholder identifiers (`E1`, `E10`, `Enzyme_GLC_D`, etx) 
+are always included in any regex search with the PAModel:
+
+```python
+default_enzyme_regex = r'E[0-9][0-9]*|Enzyme_*'
+```
+In case you would like to use other placeholders or another form of protein identifiers, please adapt the `Config.ENZYME_ID_REGEX`
+attribute with the proper regular expression.
+
 ---
 
-## Testing the Setup
+## Testing the setup
 
-To verify the correctness of the PAM generation process, run the tests provided in `test_pam_generation.py`:
+To verify the correctness of the PAM generation process, run the tests provided in `tests/unit_tests/test_utils/test_pam_generation.py`:
 
 ```bash
-python -m pytest test_pam_generation_ecoli.py
+python -m pytest tests/unit_tests/test_utils/test_pam_generation.py.py
 ```
 
 ---
 
-## Additional Features
+## Additional features
 
 ### Increasing kcat values
 The script includes a utility to scale up kcat values in the parameter file:

@@ -2,7 +2,8 @@ from warnings import warn
 from copy import copy, deepcopy
 
 from cobra import Object, Gene, Model
-from typing import Union, Literal
+from typing import Union, Literal, Dict, Optional, List
+from collections import defaultdict
 
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
@@ -147,8 +148,54 @@ class ActiveEnzymeSector(Sector):
             return model
 
         rxn2protein = self.rxn2protein.copy()
+        self.add_rxn2protein(rxn2protein)
 
-        for rxn_id, enzymes in self.rxn2protein.items():
+        return model
+
+    def add_rxn2protein(self, rxn2protein: Dict[
+        str,Dict[
+            str,
+            Literal['f', 'b', 'molmass',
+            'genes', 'protein_reaction_association']
+        ]],
+                        protein2gene:Optional[Dict[str,list]]= None,
+                        verbose: bool = False) -> None:
+        """
+        Adds enzyme  based on the gene-protein-reaction association as defined in the rxn2protein dictionary
+        to an existing PAM. Several checks are performed before adding it to the model associated with this sector.
+
+        Args:
+            rxn2protein (dict): dictionary containing gene-protein-reaction association.
+            protein2gene (dict): dictionary containing mapping between peptide ids and genes
+            verbose (bool): if true, ensures all added enzymes are printed when adding
+
+        Example:
+            ```
+            For the Parameter rxn2protein a dictionary may look like this
+            (E1 and E2 are peptides in a single enzyme complex):
+            {
+                'R1':
+                    {E1_E2:
+                                {'f': forward kcat,
+                                'b': backward kcat,
+                                'molmass': molar mass,
+                                'genes': [G1, G2],
+                                'protein_reaction_association': [[E1, E2]]
+                                }
+            }
+
+        The associated protein2gene dictionary would look like this:
+        ```
+        {E1: [[G1, G2]]}
+        ```
+
+        """
+        if protein2gene is not None:
+            self._add_protein2gene_information(protein2gene)
+        self._add_rxn2protein_information(rxn2protein)
+        model = self.model
+
+        for rxn_id, enzymes in rxn2protein.copy().items():
             # extract reaction from model
             if rxn_id not in model.reactions:
                 #     reaction = model.reactions.get_by_id(rxn_id)
@@ -167,7 +214,8 @@ class ActiveEnzymeSector(Sector):
                         del rxn2protein[rxn_id]
 
         for rxn_id, enzymes in rxn2protein.items():
-            # print(rxn_id, enzymes)
+            if verbose: print(f'\nAdding an association between reaction {rxn_id} and the following enzymes {list(enzymes.keys())}')
+
             reaction = model.reactions.get_by_id(rxn_id)
             # skip the reaction if a problem is encountered in check_kcat_values()
             consistent = self.check_kcat_values(model, reaction, enzymes)
@@ -189,9 +237,10 @@ class ActiveEnzymeSector(Sector):
                 else:
                     molmass = self.DEFAULT_MOL_MASS
 
-                # check if there already exists an Enzyme object for the EC numbers associated to this reaction,
+                # check if there already exists an Enzyme object for the enzyme associated to this reaction,
                 # otherwise create one and store all information
                 if enzyme_id in model.enzyme_variables and not self._enzyme_is_enzyme_complex(protein_reaction, enzyme_id):
+                    if verbose: print(f'\tEnzyme {enzyme_id} is already associated with {rxn_id}')
                     enzyme = model.enzymes.get_by_id(enzyme_id)
                     self._add_reaction_to_enzyme(model, enzyme, rxn_id, kcat)
                     self.rxn2protein[rxn_id].update({
@@ -231,6 +280,7 @@ class ActiveEnzymeSector(Sector):
                                         enzymes=[enzyme]
                                     )
                                     model.add_enzymes([enzyme])
+                                    if verbose: print(f'\tEnzyme complex {enzyme_complex_id} is added to the model')
                                     #add relation to rxn2protein dictionary
 
                                     self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
@@ -248,18 +298,14 @@ class ActiveEnzymeSector(Sector):
                                     enz_complex.add_enzymes([enzyme])
 
                     else:
-
+                        # in the add enzymes function the enzyme with corresponding
+                        # catalytic events will be added to the model
+                        # and connected to the reaction and total protein constraint
                         model.add_enzymes([enzyme])
+                        if verbose: print(f'\tEnzyme {enzyme.id} is added to the model')
 
                         self.constraints += [enzyme]
                         self.variables.append(enzyme.enzyme_variable)
-                    #in the add enzymes function the enzyme with corresponding catalytic events will be added to the model
-                    #and connected to the reaction and total protein constraint
-
-
-                    # adding to the enzyme sector object for easy removal
-                    model.tpc += 1
-        return model
 
     def check_kcat_values(self, model, reaction, enzyme_dict):
         """
@@ -330,6 +376,40 @@ class ActiveEnzymeSector(Sector):
                 return False
 
         return rxn_dir == "consistent"
+
+    def _add_protein2gene_information(self, protein2gene_to_add:Dict[str,List])->None:
+        merged_dict =self.protein2gene.copy()
+        for key, values in protein2gene_to_add.items():
+            if key in merged_dict:
+                for sublist in values:
+                    if sublist not in merged_dict[key]:  # Avoid duplicate sublists
+                        merged_dict[key].append(sublist)
+            else:
+                merged_dict[key] = values
+
+        self.protein2gene =  {k: list(v) for k, v in merged_dict.items()}
+
+    def _add_rxn2protein_information(self, rxn2protein_to_add:Dict[str, Dict]) -> None:
+        merged_dict = self.rxn2protein.copy()  # Start with dict1 to avoid modifying it
+
+        for rxn_id, attr_dict in rxn2protein_to_add.items():
+            if rxn_id not in merged_dict:
+                merged_dict[rxn_id] = attr_dict.copy()
+            else:
+                for enz_id, enz_dict in attr_dict.items():
+                    # Ensure the enzyme entry exists
+                    merged_dict[rxn_id].setdefault(enz_id, {})
+
+                    for attr, value in enz_dict.items():
+                        if isinstance(value, list):  # Handle protein_reaction_association values (avoid duplicates)
+                            merged_dict[rxn_id][enz_id].setdefault(attr, [])
+                            merged_dict[rxn_id][enz_id][attr].extend(
+                                v for v in value if v not in merged_dict[rxn_id][enz_id][attr]
+                            )
+                        else:  # Handle numeric or single-value attributes (overwrite)
+                            merged_dict[rxn_id][enz_id][attr] = value
+
+        self.rxn2protein = merged_dict
 
     def _add_reaction_to_enzyme(self, model, enzyme:Union[Enzyme, EnzymeComplex], rxn_id:str, kcat:dict):
         # check if catalytic event already exists:

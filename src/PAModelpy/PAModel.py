@@ -788,6 +788,53 @@ class PAModel(Model):
                                 rxn.upper_bound * 0.01)
                     #
 
+    def add_rxn2protein_to_active_enzymes(self,
+                                          rxn2protein: Dict[
+                                              str,Dict[
+                                                  str,
+                                                  Literal['f', 'b', 'molmass',
+                                                  'genes', 'protein_reaction_association']
+                                              ]],
+                                          protein2gene:Optional[Dict[str,list]]=None,
+                                          verbose: bool = False) -> None:
+        """
+        Adds enzyme to the model based on the gene-protein-reaction association as defined in the rxn2protein dictionary
+        to an existing PAM. This function directs to the ActiveEnzymeSector, where all active enzyme information is parsed.
+        Here, also several checks are performed before adding it to the model.
+
+        Args:
+            rxn2protein (dict): dictionary containing gene-protein-reaction association.
+            protein2gene (dict): dictionary containing mapping between peptide ids and genes
+            verbose (bool): if true, ensures all added enzymes are printed when adding
+
+
+        Example:
+            ```
+            For the Parameter rxn2protein a dictionary may look like this
+            (E1 and E2 are peptides in a single enzyme complex):
+            {
+                'R1':
+                    {E1_E2:
+                                {'f': forward kcat,
+                                'b': backward kcat,
+                                'molmass': molar mass,
+                                'genes': [G1, G2],
+                                'protein_reaction_association': [[E1, E2]]
+                                },
+            }
+
+        The associated protein2gene dictionary would look like this:
+        ```
+        {E1_E2: [[G1, G2]]}
+        ```
+
+
+        """
+        if not 'ActiveEnzymeSector' in self.sectors:
+            raise KeyError('ActiveEnzymeSector is not part of the PAM, please add this first')
+
+        self.sectors.get_by_id(('ActiveEnzymeSector')).add_rxn2protein(rxn2protein, protein2gene, verbose)
+
     def _add_lb_ub_constraints(self):
         """
         Makes additional constraints for the reaction lower bounds and upperbounds.
@@ -1057,7 +1104,6 @@ class PAModel(Model):
                         len(self.capacity_sensitivity_coefficients)
                     ] = new_row
 
-            # treat sectors separately if there is not a total protein constraint
         else:
             for sector in self.sectors:
                 constraint = "sector"
@@ -1297,7 +1343,7 @@ class PAModel(Model):
             )
             # reset the slope
             self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                {lin_rxn.forward_variable: -slope, lin_rxn.reverse_variable: slope}
+                {lin_rxn.forward_variable: sector.slope, lin_rxn.reverse_variable: -sector.slope}
             )
 
         else:
