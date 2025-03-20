@@ -8,9 +8,7 @@ setup(
         'PAModelpy',
         'matplotlib==0.1.6',
         'scipy',
-        'time',
         'resource',
-        'PIL',
         'jupyter'
     ]
 )
