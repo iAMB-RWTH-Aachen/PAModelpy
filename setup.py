@@ -6,11 +6,9 @@ setup(
     packages=find_packages(),
     install_requires=[
         'PAModelpy',
-        'matplotlib==0.1.6',
+        'matplotlib',
         'scipy',
-        'time',
         'resource',
-        'PIL',
         'jupyter'
     ]
 )

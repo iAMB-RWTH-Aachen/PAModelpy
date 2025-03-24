@@ -1,0 +1,10 @@
+Metadata-Version: 2.2
+Name: PAModelpy
+Version: 0.0.4.7
+License-File: LICENSE
+Requires-Dist: PAModelpy
+Requires-Dist: matplotlib
+Requires-Dist: scipy
+Requires-Dist: resource
+Requires-Dist: jupyter
+Dynamic: requires-dist
