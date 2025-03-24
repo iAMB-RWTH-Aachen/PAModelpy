@@ -212,10 +212,10 @@ def get_protein_gene_mapping(enzyme_db: pd.DataFrame,
         # check if there are genes associates with the reaction
         if len(rxn.genes) > 0 or isinstance(gene_id, str):
             if isinstance(gene_id, str): #there is a gene id associated
-                gene2protein[gene_id] = enzyme_id or f"Enzyme_{gene_id}"
+                gene2protein[gene_id] = enzyme_id if pd.notna(enzyme_id) else f"Enzyme_{gene_id}"
             else: # if there is no gene associated, use the model genes
                 for gene in rxn.genes:
-                    enz_id = enzyme_id or f"Enzyme_{gene.id}"
+                    enz_id = enzyme_id if pd.notna(enzyme_id) else f"Enzyme_{gene.id}"
                     gene2protein[gene.id] = enz_id
                     protein2gene[enz_id].append(gene.id)
 
