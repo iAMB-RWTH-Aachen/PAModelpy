@@ -23,7 +23,8 @@ classifiers = [
 dependencies = [
     'cobra==0.29.0',
     'openpyxl~=3.1',
-    'pandas==1.*',
+    'numpy>=1.20,<1.26',
+    'pandas>=1.3,<2.0',
     'python-libsbml~=5.19',
     'regex==2022.*',
     'requests==2.*',
