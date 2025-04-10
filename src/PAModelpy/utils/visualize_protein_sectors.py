@@ -37,7 +37,6 @@ def visualize_protein_sectors(pamodel:PAModel,
     sector_protein_fraction = {'ActiveEnzymeSector': total_enzyme_concentration}
     for sector in pamodel.sectors:
         if sector.id in sector_protein_fraction: continue
-        print(sector.id, sector.id_list, sector.slope,sector.intercept)
         sector_protein_fraction[sector.id] = [
             fluxes[sector.id_list[0]]*sector.slope*1e-3 +sector.intercept*1e-3 for fluxes in simulated_fluxes
         ]
@@ -58,18 +57,6 @@ def visualize_protein_sectors(pamodel:PAModel,
     ax.legend()
 
     return ax
-
-# if __name__ == '__main__':
-#     from Scripts.pam_generation import set_up_ecoli_pam
-#     import numpy as np
-#     pamodel = set_up_ecoli_pam(sensitivity=False)
-#     substrate_rates = np.arange(-11,0,1)
-#     fig, ax = plt.subplots()
-#     visualize_protein_sectors(pamodel,
-#                               substrate_rates,
-#                               sub_uptake_id = 'EX_glc__D_e',
-#                               ax=ax)
-#     fig.savefig('example.png')
 
 
 
