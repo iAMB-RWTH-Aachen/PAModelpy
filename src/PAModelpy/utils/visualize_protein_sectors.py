@@ -19,9 +19,19 @@ def run_simulations(pamodel:PAModel,
 
         print('Running simulations with ', substrate, 'mmol/g_cdw/h of substrate going into the system')
         sol_pam =pamodel.optimize()
+        tot_prot_conc = 0
         if pamodel.solver.status == 'optimal' and pamodel.objective.value>0:
             fluxes.append(sol_pam.fluxes)
-            total_enzyme_concentration.append(sum([enz.concentration*1e-3*enz.molmass for enz in pamodel.enzyme_variables]))
+            # save sum of enzymes
+            enzyme_variables = [
+                var for var in pamodel.constraints[pamodel.TOTAL_PROTEIN_CONSTRAINT_ID].variables
+                if not any([
+                sector.id_list[0] in var.name for sector in pamodel.sectors if sector.id!='ActiveEnzymeSector'
+            ])
+                          ]
+            for var, coef in pamodel.constraints[pamodel.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients(enzyme_variables).items():
+                tot_prot_conc += coef*var.primal *1e-3
+        total_enzyme_concentration.append(tot_prot_conc)
     return fluxes, total_enzyme_concentration
 
 def visualize_protein_sectors(pamodel:PAModel,
@@ -38,7 +48,7 @@ def visualize_protein_sectors(pamodel:PAModel,
     for sector in pamodel.sectors:
         if sector.id in sector_protein_fraction: continue
         sector_protein_fraction[sector.id] = [
-            fluxes[sector.id_list[0]]*sector.slope*1e-3 +sector.intercept*1e-3 for fluxes in simulated_fluxes
+            fluxes[sector.id_list[0]]*sector.slope*1e-3 + sector.intercept*1e-3 for fluxes in simulated_fluxes
         ]
     sector_protein_fraction['total'] = [sum([k[i] for k in sector_protein_fraction.values()]) for i in range(len(substrate_rates))]
 
