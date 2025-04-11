@@ -229,6 +229,7 @@ class Enzyme(Object):
         enzyme_variable = EnzymeVariable(
             id=self.id,
             kcats2rxns=self.rxn2kcat,
+            molmass=self.molmass,
             upper_bound=self.upper_bound,
         )
 
