@@ -55,7 +55,7 @@ def visualize_protein_sectors(pamodel:PAModel,
     if ax is None:
         fig, ax = plt.subplot()
 
-    ax.hlines(y=0.258,xmin=0,xmax=max([abs(s) for s in substrate_rates]),
+    ax.hlines(y=pamodel.p_tot,xmin=0,xmax=max([abs(s) for s in substrate_rates]),
               label = 'metabolic protein fraction',
               color = 'black')
     ax.set_xlabel(sub_uptake_id)
