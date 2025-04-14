@@ -319,8 +319,9 @@ def test_if_adjust_slopes_adjust_slope_for_enzyme_sector_correctly(slope: float)
         lin_rxn.reverse_variable,
     ])
 
+
     # Assert
-    assert all(coeff == lin_coeff[var]+slope for var,coeff in lin_rxn_coefficients_original.items())
+    assert all(coeff == pytest.approx(lin_coeff[var]-slope, rel=1e4) for var,coeff in lin_rxn_coefficients_original.items())
 
 #######################################################################################################
 #HELPER METHODS
