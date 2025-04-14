@@ -36,6 +36,7 @@ EXTENSION2READINGFUNCTION = {'json': load_json_model,
                         'mat': load_matlab_model,
                         'xml': read_sbml_model,
                              '': load_model}
+Sector = Union[TransEnzymeSector, UnusedEnzymeSector, CustomSector]
 
 class PAModel(Model):
     """
@@ -1321,9 +1322,9 @@ class PAModel(Model):
                 self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub - intercept_diff
             )
             # reset the slope
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                {lin_rxn.forward_variable: sector.slope, lin_rxn.reverse_variable: -sector.slope}
-            )
+            self._adjust_sector_slope_in_total_protein_constraint(sector=sector,
+                                                                  lin_rxn=lin_rxn
+                                                                  )
 
         else:
             var = self.variables["R_" + sector.id]
@@ -1338,6 +1339,22 @@ class PAModel(Model):
             # update the sector object
             sector.variables = [var]
             sector.constraints = [self.constraints[sector.id]]
+
+    def _adjust_sector_slope_in_total_protein_constraint(self,
+                                                         sector: Sector,
+                                                         lin_rxn: cobra.Reaction
+                                                         ) -> None:
+        """Resetting the slope of the linear reaction. If two sectors are related to the same reaction, the slope is
+        corrected using the sum of both slopes"""
+        slope = sector.slope
+        for sec in self.sectors:
+            if lin_rxn.id in sec.id_list and sector != sec:
+                slope += sec.slope
+
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
+            {lin_rxn.forward_variable: slope, lin_rxn.reverse_variable: -slope}
+        )
+
 
     def change_reaction_bounds(
         self, rxn_id: str, lower_bound: float = None, upper_bound: float = None
