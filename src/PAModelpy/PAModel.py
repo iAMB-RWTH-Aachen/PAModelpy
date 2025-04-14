@@ -1314,6 +1314,10 @@ class PAModel(Model):
         sector.slope = slope * 1e3
         sector.intercept = intercept * 1e3
         lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+        if lin_rxn_id not in sector.id_list:
+            self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
+            sector.id_list = [lin_rxn_id]
+
 
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
             intercept_diff = sector.intercept - prev_intercept
@@ -1357,6 +1361,14 @@ class PAModel(Model):
             {lin_rxn.forward_variable: slope, lin_rxn.reverse_variable: -slope}
         )
 
+     def _remove_linear_reaction_from_total_protein_constraint(self,
+                                                               lin_rxn_id:str
+                                                               )-> None:
+        lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
+            lin_rxn.forward_variable: 0,
+            lin_rxn.reverse_variable: 0
+        })
 
     def change_reaction_bounds(
         self, rxn_id: str, lower_bound: float = None, upper_bound: float = None
@@ -1930,11 +1942,7 @@ class PAModel(Model):
 
             # 2. remove link between flux and enzyme concentration
             # link enzyme concentration in the sector to the total enzyme concentration
-            lin_rxn = self.reactions.get_by_id(sector.id_list[0])
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
-                lin_rxn.forward_variable: 0,
-                lin_rxn.reverse_variable: 0
-            })
+            self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
 
         else:
 
