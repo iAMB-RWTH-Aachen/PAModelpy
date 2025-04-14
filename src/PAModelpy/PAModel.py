@@ -1361,7 +1361,7 @@ class PAModel(Model):
             {lin_rxn.forward_variable: slope, lin_rxn.reverse_variable: -slope}
         )
 
-     def _remove_linear_reaction_from_total_protein_constraint(self,
+    def _remove_linear_reaction_from_total_protein_constraint(self,
                                                                lin_rxn_id:str
                                                                )-> None:
         lin_rxn = self.reactions.get_by_id(lin_rxn_id)
