@@ -1314,12 +1314,12 @@ class PAModel(Model):
         sector.slope = slope * 1e3
         sector.intercept = intercept * 1e3
         lin_rxn = self.reactions.get_by_id(lin_rxn_id)
-        if lin_rxn_id not in sector.id_list:
-            self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
-            sector.id_list = [lin_rxn_id]
-
 
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
+            if lin_rxn_id not in sector.id_list:
+                self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
+                sector.id_list = [lin_rxn_id]
+
             intercept_diff = sector.intercept - prev_intercept
             # set the intercept
             self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
