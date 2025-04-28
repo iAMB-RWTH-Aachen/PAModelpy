@@ -1,4 +1,4 @@
-from src.PAModelpy import PAModel, Enzyme, EnzymeVariable
+from .. import PAModel, Enzyme, EnzymeVariable
 
 # aminoacid lookup table
 aa_lookup = {'V': 'VAL', 'I': 'ILE', 'L': 'LEU', 'E': 'GLU', 'Q': 'GLN', \
