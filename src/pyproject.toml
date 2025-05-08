@@ -9,7 +9,7 @@ find = {}  # default: scans from the project root (same directory as pyproject.t
 
 [project]
 name = 'PAModelpy'
-version = '0.0.4.8'
+version = '0.0.4.9'
 authors = [{name='Samira van den Bogaard', email = 'samira.vandenbogaard@rwth-aachen.de'}]
 description = 'Python framework for building and analysing protein allocation models'
 readme = 'README.md'
