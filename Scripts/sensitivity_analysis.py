@@ -34,15 +34,16 @@ def calculate_sensitivities(pamodel):
     fluxes = []
 
     # disable pyruvate formate lyase (inhibited by oxygen)
-    pamodel.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
+
 
     for glc in glc_uptake_rates:
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            # pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
-            #                                lower_bound=-glc, upper_bound=-glc)
-            pamodel.reactions.EX_glc__D_e.lower_bound = -glc
+            pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
+                                           lower_bound=-glc)
+            pamodel.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
+            # pamodel.reactions.EX_glc__D_e.lower_bound = -glc
             # solve the model
             # pamodel.objective = 'EX_ac_e'
             sol_pam = pamodel.optimize()
@@ -543,9 +544,10 @@ max_area_list = np.linspace(0.01, 0.04, 4)
 keys = [f'Sensitivity mcPAM with {area*100}% available area for active enzymes' for area in max_area_list]
 
 for area, key in zip(max_area_list, keys):
-    mcpam.sectors.get_by_id('MembraneSector').change_available_membrane_area(area, mcpam)
-    print(f'Starting simulation for mcPAM with {area*100}% available area for active enzymes')
-    results_pam[key] = calculate_sensitivities(mcpam)
+    with mcpam:
+        mcpam.sectors.get_by_id('MembraneSector').change_available_membrane_area(area, mcpam)
+        print(f'Starting simulation for mcPAM with {area*100}% available area for active enzymes')
+        results_pam[key] = calculate_sensitivities(mcpam)
 
 for result, area, key in zip(results_pam.values(), max_area_list, keys):
     x_axis_csc_pam[key], x_axis_esc_pam[key] = parse_x_axis_heatmap(result['capacity coefficients'],
@@ -604,18 +606,18 @@ gs_pam = gs0[0]
 # x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
 # x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
 
-# Make figure acetate and csc
-fig.set_layout_engine(layout='constrained')
-fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
-                                 ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-                                 yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-                                 phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
-
-# # Make figure esc
-# fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+# # Make figure acetate and csc
+# fig.set_layout_engine(layout='constrained')
+# fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
 #                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
 #                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
 #                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+
+# Make figure esc
+fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
+                                 ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
+                                 yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
+                                 phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
 plt.plasma()
 fig.set_figwidth(width)

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     #Build full scale pam new parsing
     # pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_20/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     # sheet_name = "diagnostics_1"
-    # pam = set_up_pam(pam_info_file=pam_info_path, sheet_name= sheet_name, sensitivity=False, membrane_sector=False)
+    # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
     # mcpam = set_up_pam(pam_info_file=pam_info_path, sheet_name= sheet_name, sensitivity=False, membrane_sector=True)
     # models = [pam, mcpam]
     # membrane_proteins = mcpam.sectors.get_by_id('MembraneSector').membrane_proteins
@@ -57,17 +57,14 @@ if __name__ == "__main__":
     mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
     models = [pam, mcpam]
 
-    for model in models:
-        memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-        memprot_sheet_name = 'diagnostics_2'
-        model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
+    # Changing the kcats using excel sheet
+    # for model in models:
+    #     memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
+    #     memprot_sheet_name = 'diagnostics_2'
+    #     model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
 
     mcpam.objective = mcpam.configuration.BIOMASS_REACTION
-    # mcpam.objective = 'EX_ac_e'
     mcpam.optimize()
-    occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
-    print('Occupied area: ', occupied_area / available_area * 100)
-    print('Growth rate: ', mcpam.objective.value)
 
     # # Get all memprots from the model
     # file_name = os.path.basename(diagnostics_data_path)  # 'pam_parametrizer_diagnostics_mciML1515_7.xlsx'
@@ -80,6 +77,7 @@ if __name__ == "__main__":
     # # Get a df for all proteins and their occupancy in the membrane
     # mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
 
+    # run_simulation_pam_mcpam(models, type='full scale')
     run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
 
     # # Build core pam

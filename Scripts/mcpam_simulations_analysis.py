@@ -349,7 +349,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.01, 0.04, 4)
+        max_area_list = np.linspace(0.1, 1, 10)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
@@ -418,6 +418,13 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                             concentration += enz_var.concentration
                         concentrations_list.append(concentration)
 
+                print(model.constraints.membrane)
+                occupied_area, available_area = model.sectors.get_by_id(
+                    'MembraneSector').calculate_occupied_membrane(model)
+                print('Available area: ', available_area, 'um2')
+                print('Occupied area: ', occupied_area, 'um2')
+                print('Occupied area: ', occupied_area / available_area * 100, '%')
+                print('Growth rate: ', model.objective.value)
                 area = float("{:.2f}".format(area))*100
                 key = f'{config} {str(area)} % area'
                 fluxes_dict[key] = fluxes_list

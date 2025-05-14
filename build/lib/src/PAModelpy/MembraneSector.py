@@ -92,7 +92,7 @@ class MembraneSector(EnzymeSector):
             data_path = os.path.join('Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx')
             with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
                 # Write the new DataFrame to a new sheet
-                memprot_w_area_df.to_excel(writer, sheet_name=f'protein_data_act_max', index=True)
+                memprot_w_area_df.to_excel(writer, sheet_name=f'memprot_area_2', index=True)
 
         available_area = self.slope * model.objective.value + self.intercept
 
