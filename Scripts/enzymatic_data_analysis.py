@@ -26,12 +26,12 @@ def find_var_for_complex(enz_complex, df):
 
 if __name__ == "__main__":
     # Generate the model
-    pam_info_path = 'Data/proteinAllocationModel_mciML1515_EnzymaticData_241209_multi.xlsx'
+    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_2.xlsx'
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
 
     # Extracting the membrane enzyme complex ids from the dictionary of membrane proteins from the model
     memprot_dict = pam.sectors.get_by_id('MembraneSector').membrane_proteins
-    enz_complex_list = memprot_dict.keys().to_list
+    enz_complex_list = list(memprot_dict.keys())
 
     # Get the enzymes from the experimental data
     data_path = "Data/E_coli_proteomics_data.xlsx"

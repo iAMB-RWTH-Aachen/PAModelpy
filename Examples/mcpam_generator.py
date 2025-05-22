@@ -17,6 +17,7 @@ from Scripts.mcpam_generation_uniprot_id import set_up_ecoli_mcpam, set_up_ecoli
 from Scripts.mcpam_toy_generation import build_toy_model
 from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 import matplotlib.pyplot as plt; plt.rcdefaults()
+import pandas as pd
 import re
 import os
 
@@ -43,18 +44,18 @@ if __name__ == "__main__":
 
     # Build full scale pam from diagnostics file
     ## Define necessary paths/sheet names
-    diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
-    pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
+    diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
+    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_1.xlsx'
     sheet_name = 'Best_Individuals'
 
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
     # _set_up_pamodel_for_simulations(pam, 'EX_glc__D_e', transl_sector_config=True)
-    pam = create_pamodel_from_diagnostics_file(diagnostics_data_path, pam, sheet_name)
+    # pam = create_pamodel_from_diagnostics_file(diagnostics_data_path, pam, sheet_name)
 
 
     mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
     # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
-    mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
+    # mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
     models = [pam, mcpam]
 
     # Changing the kcats using excel sheet
@@ -64,21 +65,27 @@ if __name__ == "__main__":
     #     model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
 
     mcpam.objective = mcpam.configuration.BIOMASS_REACTION
-    mcpam.optimize()
-
-    # # Get all memprots from the model
-    # file_name = os.path.basename(diagnostics_data_path)  # 'pam_parametrizer_diagnostics_mciML1515_7.xlsx'
-    # file_stem = os.path.splitext(file_name)[0]  # 'pam_parametrizer_diagnostics_mciML1515_7'
-    # match = re.search(r'_(\d+)$', file_stem)
-    # number = match.group(1) if match else None
-    # memprot_dict = mcpam.sectors.get_by_id('MembraneSector').membrane_proteins
-    # get_memprot_data_in_mcpam(memprot_dict, number)
+    solution = mcpam.optimize()
+    mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
+    print(solution.fluxes.ACt2rpp)
+    print(solution.fluxes.ACt4pp)
+    print(solution.fluxes.ACtex)
 
     # # Get a df for all proteins and their occupancy in the membrane
-    # mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
+    # file_name = os.path.basename(pam_info_path)  # 'proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    # file_stem = os.path.splitext(file_name)[0]  # 'proteinAllocationModel_EnzymaticData_iML1515_10'
+    # match = re.search(r'_(\d+)$', file_stem)
+    # number = match.group(1) if match else None
+    # prot_occupancy_df = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
 
-    # run_simulation_pam_mcpam(models, type='full scale')
-    run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
+    # # Write excel datasheet
+    # data_path = os.path.join('Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx')
+    # with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
+    #     # Write the new DataFrame to a new sheet
+    #     prot_occupancy_df.to_excel(writer, sheet_name=f'enzymatic_file_{number}', index=True)
+
+    # # run_simulation_pam_mcpam(models, type='full scale')
+    # run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
 
     # # Build core pam
     # pam = set_up_ecolicore_pam(sensitivity=False)

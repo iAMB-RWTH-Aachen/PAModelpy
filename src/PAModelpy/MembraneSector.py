@@ -18,7 +18,7 @@ class MembraneSector(EnzymeSector):
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            max_area: float = 0.27,
+            max_area: float = 0.043,
             r_alpha: float = 0.00023, # radius of one alpha helix [um]
             cdw_per_cell: float = 0.28 * 1e-12,  # 0.28 pg
             n_a: float = 6.02214076 * 1e23,  # avogadro number
@@ -74,6 +74,10 @@ class MembraneSector(EnzymeSector):
 
         for enz_complex in model.enzyme_variables:
             enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
+            if enz_complex.rxn_ids == "LACt2pp": # for Debugging
+                print(enz_complex.id)
+                print(enz_complex.rxn_ids)
+                print(enz_complex_concentration)
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
             coeff = self._get_coeff_value(alpha_number_for_complex)
             occupied_area += coeff * enz_complex_concentration
@@ -87,20 +91,16 @@ class MembraneSector(EnzymeSector):
             return memprot_contribution
 
         if get_df:
-            memprot_w_area_df = self.get_df_w_memprot_area(model, occupied_area)
+            df = self.get_prot_occupancy_df(model, occupied_area)
 
-            data_path = os.path.join('Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx')
-            with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
-                # Write the new DataFrame to a new sheet
-                memprot_w_area_df.to_excel(writer, sheet_name=f'memprot_area_2', index=True)
+            return df
 
         available_area = self.slope * model.objective.value + self.intercept
 
         return occupied_area, available_area
 
-    def get_df_w_memprot_area(self, model, occupied_area):
-        memprot_w_area = []
-
+    def get_prot_occupancy_df(self, model, occupied_area):
+        df = []
 
         for enz_complex in model.enzyme_variables:
             enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
@@ -108,19 +108,20 @@ class MembraneSector(EnzymeSector):
             coeff = self._get_coeff_value(alpha_number_for_complex)
 
             for rxn_id, flux_dict in enz_complex.kcats.items():
-                memprot_w_area.append({
+                df.append({
                     'enzyme_id': enz_complex.id,
                     'Reaction': rxn_id,
                     'Forward Flux': flux_dict['f'] if 'f' in flux_dict else 0,
                     'Backward Flux': flux_dict['b'] if 'b' in flux_dict else 0,
+                    'Alpha Number': alpha_number_for_complex,
                     'Occupied Area um2': coeff * enz_complex_concentration,
                     'Occupied Area %': coeff * enz_complex_concentration / occupied_area * 100,
                     'Contribution to protein pool': enz_complex_concentration * 1e-9 * enz_complex.molmass / model.p_tot * 100
                 })
 
-        memprot_w_area_df = pd.DataFrame(memprot_w_area)
+        df = pd.DataFrame(df)
 
-        return memprot_w_area_df
+        return df
 
     def change_available_membrane_area(self, new_max_area: float, model):
         self._update_membrane_constraint(new_max_area, model)
