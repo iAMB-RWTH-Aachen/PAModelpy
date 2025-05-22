@@ -74,10 +74,6 @@ class MembraneSector(EnzymeSector):
 
         for enz_complex in model.enzyme_variables:
             enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
-            if enz_complex.rxn_ids == "LACt2pp": # for Debugging
-                print(enz_complex.id)
-                print(enz_complex.rxn_ids)
-                print(enz_complex_concentration)
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
             coeff = self._get_coeff_value(alpha_number_for_complex)
             occupied_area += coeff * enz_complex_concentration
@@ -111,8 +107,8 @@ class MembraneSector(EnzymeSector):
                 df.append({
                     'enzyme_id': enz_complex.id,
                     'Reaction': rxn_id,
-                    'Forward Flux': flux_dict['f'] if 'f' in flux_dict else 0,
-                    'Backward Flux': flux_dict['b'] if 'b' in flux_dict else 0,
+                    'Forward Kcat': flux_dict['f'] if 'f' in flux_dict else 0,
+                    'Backward Kcat': flux_dict['b'] if 'b' in flux_dict else 0,
                     'Alpha Number': alpha_number_for_complex,
                     'Occupied Area um2': coeff * enz_complex_concentration,
                     'Occupied Area %': coeff * enz_complex_concentration / occupied_area * 100,
