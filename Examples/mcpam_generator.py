@@ -21,68 +21,80 @@ import pandas as pd
 import re
 import os
 
+def change_set_of_kcats_using_excel_sheet(models):
+     for model in models:
+        memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
+        memprot_sheet_name = 'diagnostics_2'
+        model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
+
+def get_info_for_proteins(pam_info_path, mcpam):
+    '''
+    Create an excel sheet with following protein (enzyme) information:
+        - enzyme_id
+        - reaction_id
+        - forward kcat
+        - backward kcat
+        - Alpha number
+        - Occupied area
+        - Contribution to protein pool
+
+    Return:
+        None, create an excel sheet in the provided data path
+    '''
+    file_name = os.path.basename(pam_info_path)  # 'proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    file_stem = os.path.splitext(file_name)[0]  # 'proteinAllocationModel_EnzymaticData_iML1515_10'
+    match = re.search(r'_(\d+)$', file_stem)
+    number = match.group(1) if match else None
+    prot_occupancy_df = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
+
+    # Write excel datasheet
+    data_path = os.path.join('Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx')
+    with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
+        # Write the new DataFrame to a new sheet
+        prot_occupancy_df.to_excel(writer, sheet_name=f'enzymatic_file_{number}', index=True)
+
 if __name__ == "__main__":
-    # Build full scale old parsing, TS enzymatic dataset
-    # pam = set_up_ecoli_pam(sensitivity=False)
-    # mcpam = set_up_ecoli_mcpam(sensitivity=False)
-    # models = [pam, mcpam]
-    #
-    # run_simulations_pam_mcpam_w_different_areas(models, type='full scale')
 
+    # Build full scale pam
 
-    #Build full scale pam new parsing
-    # pam_info_path = 'Results/PAM_parametrizer/Files/2025_02_20/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
-    # sheet_name = "diagnostics_1"
+    # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
-    # mcpam = set_up_pam(pam_info_file=pam_info_path, sheet_name= sheet_name, sensitivity=False, membrane_sector=True)
-    # models = [pam, mcpam]
-    # membrane_proteins = mcpam.sectors.get_by_id('MembraneSector').membrane_proteins
-    # for enzyme_id, (list, alpha_number) in membrane_proteins.items():
-    #     if alpha_number >= 28:
-    #         print(enzyme_id, list, alpha_number)
-    # run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
+    # pam.objective = pam.configuration.BIOMASS_REACTION
+    # solution = pam.optimize()
+    # # mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
+    # print("Acetate fluxes")
+    # print(solution.fluxes.ACt2rpp)
+    # print(solution.fluxes.ACt4pp)
+    # print(solution.fluxes.ACtex)
+
+    # for enz_complex in pam.enzyme_variables:
+    #         enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
+    #         if enz_complex.rxn_ids == "ACt2rpp": # for Debugging
+    #             print("enzyme concentration")
+    #             print(enz_complex.id)
+    #             print(enz_complex.rxn_ids)
+    #             print(enz_complex_concentration)
+
+
 
     # Build full scale pam from diagnostics file
     ## Define necessary paths/sheet names
     diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
-    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_1.xlsx'
+    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     sheet_name = 'Best_Individuals'
 
-    pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
-    # _set_up_pamodel_for_simulations(pam, 'EX_glc__D_e', transl_sector_config=True)
+    # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
+    # _set_up_pamodel_for_simulations(pam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
     # pam = create_pamodel_from_diagnostics_file(diagnostics_data_path, pam, sheet_name)
 
 
     mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
+    mcpam.optimize()
+    # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
     # mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
-    models = [pam, mcpam]
+    # models = [pam, mcpam]
 
-    # Changing the kcats using excel sheet
-    # for model in models:
-    #     memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-    #     memprot_sheet_name = 'diagnostics_2'
-    #     model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
-
-    mcpam.objective = mcpam.configuration.BIOMASS_REACTION
-    solution = mcpam.optimize()
-    mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
-    print(solution.fluxes.ACt2rpp)
-    print(solution.fluxes.ACt4pp)
-    print(solution.fluxes.ACtex)
-
-    # # Get a df for all proteins and their occupancy in the membrane
-    # file_name = os.path.basename(pam_info_path)  # 'proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
-    # file_stem = os.path.splitext(file_name)[0]  # 'proteinAllocationModel_EnzymaticData_iML1515_10'
-    # match = re.search(r'_(\d+)$', file_stem)
-    # number = match.group(1) if match else None
-    # prot_occupancy_df = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
-
-    # # Write excel datasheet
-    # data_path = os.path.join('Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx')
-    # with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
-    #     # Write the new DataFrame to a new sheet
-    #     prot_occupancy_df.to_excel(writer, sheet_name=f'enzymatic_file_{number}', index=True)
+    # change_set_of_kcats_using_excel_sheet(models)
 
     # # run_simulation_pam_mcpam(models, type='full scale')
     # run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
