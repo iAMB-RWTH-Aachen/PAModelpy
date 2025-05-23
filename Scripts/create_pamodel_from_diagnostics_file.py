@@ -1,4 +1,5 @@
 import pandas as pd
+from cobra import Model
 from typing import Tuple, Literal
 import re
 from typing import Union
@@ -31,15 +32,15 @@ def change_translational_sector_with_config_dict(pamodel:PAModel,
                                     lin_rxn_id=substrate_uptake_id
                                      )
 
-def change_memprot_kcats(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
-    memprot_df = pd.read_excel(file_path, sheet_name = sheet_name)
-    for _, row in memprot_df.iterrows():
+def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union[Model, PAModel]:
+    copy_model = model.copy()
+    for _, row in prot_df.iterrows():
         rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
-        enzyme_id = _order_enzyme_complex_id(row['Protein Group'])
-        kcat_dict = {rxn_id: {'f': row['Forward Flux'], 'b': row['Backward Flux']}}
-        model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+        enzyme_id = _order_enzyme_complex_id(row['enzyme_id'])
+        kcat_dict = {rxn_id: {'f': row['kcat_f'], 'b': row['kcat_b']}}
+        copy_model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
 
-    return model
+    return copy_model
 
 def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
     best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)

@@ -1,17 +1,11 @@
-from Scripts.mcpam_simulations_analysis import (run_pam_mcpam_core_with_optimized_kcats,
-                                                 run_simulation_pam_mcpam,
-                                                 run_simulations_pam_mcpam_w_different_areas,
-                                                 set_up_ecolicore_pam,
-                                                 set_up_ecolicore_mcpam,
-                                                 set_up_ecolicore_mcpam_new_surface_parameter,
-                                                 compare_mu_for_different_sensitivities_ecolicore_pam,
-                                                 perform_single_gene_ko_for_all_genes,
-                                                 perform_and_plot_single_KO,
-                                                 get_memprot_data_in_mcpam)
+from Scripts.mcpam_simulations_analysis import (run_simulations_pam_mcpam_w_different_areas,
+                                                get_info_for_proteins,
+                                                get_missing_backward_kcats,
+                                                fill_missing_backward_kcats)
 from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
                                                           change_translational_sector_with_config_dict,
                                                           _set_up_pamodel_for_simulations,
-                                                          change_memprot_kcats
+                                                          change_prot_kcats
                                                           )
 from Scripts.mcpam_generation_uniprot_id import set_up_ecoli_mcpam, set_up_ecoli_pam
 from Scripts.mcpam_toy_generation import build_toy_model
@@ -21,106 +15,81 @@ import pandas as pd
 import re
 import os
 
-def change_set_of_kcats_using_excel_sheet(models):
-     for model in models:
-        memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-        memprot_sheet_name = 'diagnostics_2'
-        model = change_memprot_kcats(memprot_file_path, model, memprot_sheet_name)
-
-def get_info_for_proteins(pam_info_path, mcpam):
-    '''
-    Create an excel sheet with following protein (enzyme) information:
-        - enzyme_id
-        - reaction_id
-        - forward kcat
-        - backward kcat
-        - Alpha number
-        - Occupied area
-        - Contribution to protein pool
-
-    Return:
-        None, create an excel sheet in the provided data path
-    '''
-    file_name = os.path.basename(pam_info_path)  # 'proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
-    file_stem = os.path.splitext(file_name)[0]  # 'proteinAllocationModel_EnzymaticData_iML1515_10'
-    match = re.search(r'_(\d+)$', file_stem)
-    number = match.group(1) if match else None
-    prot_occupancy_df = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
-
-    # Write excel datasheet
-    data_path = os.path.join('Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx')
-    with pd.ExcelWriter(data_path, engine='openpyxl', mode='a') as writer:
-        # Write the new DataFrame to a new sheet
-        prot_occupancy_df.to_excel(writer, sheet_name=f'enzymatic_file_{number}', index=True)
-
 if __name__ == "__main__":
 
     # Build full scale pam
 
-    # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
-    # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
-    # pam.objective = pam.configuration.BIOMASS_REACTION
-    # solution = pam.optimize()
-    # # mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
-    # print("Acetate fluxes")
-    # print(solution.fluxes.ACt2rpp)
-    # print(solution.fluxes.ACt4pp)
-    # print(solution.fluxes.ACtex)
+    diff_mu = []
 
-    # for enz_complex in pam.enzyme_variables:
-    #         enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
-    #         if enz_complex.rxn_ids == "ACt2rpp": # for Debugging
-    #             print("enzyme concentration")
-    #             print(enz_complex.id)
-    #             print(enz_complex.rxn_ids)
-    #             print(enz_complex_concentration)
+    for i in range(0,10):
+        number = i + 1
+        pam_info_path = f'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_{number}.xlsx'
+        mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+        mcpam.objective = mcpam.configuration.BIOMASS_REACTION
+        mcpam.optimize()
+        mu_missing_kcat_b = mcpam.objective.value
+        
+        missing_backward_kcats = get_missing_backward_kcats(mcpam)
+        filled_backward_kcats = fill_missing_backward_kcats(missing_backward_kcats)
+
+        change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam)
+        mcpam.optimize()
+        mu_filled_kcat_b = mcpam.objective.value
+
+        diff_mu.append({
+            'mu with missing kcat b': mu_missing_kcat_b,
+            'mu with filled kcat b': mu_filled_kcat_b
+        })
+
+    # Plot the difference 
+    x = list(range(1, 11))
+    y_missing = [entry['mu with missing kcat b'] for entry in diff_mu]
+    y_filled = [entry['mu with filled kcat b'] for entry in diff_mu]
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y_missing, 'o-b', label='Missing kcat_b')
+    ax.plot(x, y_filled, 'o-r', label='Filled kcat_b')
+
+    ax.set(
+        xlabel='Enzymatic file number',
+        ylabel='Growth rate (1/h)',
+        title='Effect of filling missing kcat_b on growth rate'
+    )
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 
 
 
     # Build full scale pam from diagnostics file
     ## Define necessary paths/sheet names
-    diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
-    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
-    sheet_name = 'Best_Individuals'
+    # diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
+    # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    # sheet_name = 'Best_Individuals'
 
     # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
     # _set_up_pamodel_for_simulations(pam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
     # pam = create_pamodel_from_diagnostics_file(diagnostics_data_path, pam, sheet_name)
 
 
-    mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    mcpam.optimize()
+    # mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+    # mcpam.optimize()
     # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
     # mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
     # models = [pam, mcpam]
 
-    # change_set_of_kcats_using_excel_sheet(models)
+    # get_info_for_proteins(mcpam=model,
+    #                       pam_info_path=pam_info_path,
+    #                       protein_info_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx")
+
+    # change_set_of_kcats_using_excel_sheet(models=models, 
+    #                                       prot_file_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx",
+    #                                       sheet="enzymatic_file_10")
 
     # # run_simulation_pam_mcpam(models, type='full scale')
     # run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
-
-    # # Build core pam
-    # pam = set_up_ecolicore_pam(sensitivity=False)
-    # mcpam = set_up_ecolicore_mcpam_new_surface_parameter(sensitivity=False)
-    # # # Get a df for all proteins and their occupancy in the membrane
-    # mcpam.objective = mcpam.configuration.BIOMASS_REACTION
-    # mcpam.optimize()
-    # mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam, get_df=True)
-    # models = [pam, mcpam]
-    # run_simulations_pam_mcpam_w_different_areas(models, type="core")
-
-    # Build core pam new parse
-    # pam = set_up_core_pam(sensitivity=False, membrane_sector=False, pam_info_file='Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
-    # mcpam = set_up_core_pam(sensitivity=False, membrane_sector=True, pam_info_file='Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx')
-    # models = [pam, mcpam]
-    # run_simulation_pam_mcpam(models, type="core")
-
-    # Build toy pam
-    # toy_pam = build_toy_model(membrane_sector=True)
-    # toy_pam.objective = "R11"
-    # toy_pam.optimize()
-    # print(toy_pam.objective.value)
-
 
 
 
