@@ -1556,9 +1556,13 @@ class PAModel(Model):
             warnings.warn(f'Reaction {rxn_id} is not in the model')
             return DictList()
         catalytic_event_id = 'CE_' + rxn_id
-        catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id)
-        enzymes = catalytic_event.enzymes
-        return enzymes
+        if catalytic_event_id in self.catalytic_events:
+            catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id)
+            enzymes = catalytic_event.enzymes
+            return enzymes
+        
+        else:
+            return None
 
     def get_reactions_with_enzyme_id(self, enz_id: str, ce_name: bool = True):
         """
