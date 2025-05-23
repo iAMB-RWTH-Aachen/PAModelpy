@@ -1,4 +1,5 @@
 from Scripts.mcpam_simulations_analysis import (run_simulations_pam_mcpam_w_different_areas,
+                                                run_simulation_pam_mcpam,
                                                 get_info_for_proteins,
                                                 get_missing_backward_kcats,
                                                 fill_missing_backward_kcats)
@@ -24,40 +25,21 @@ if __name__ == "__main__":
     for i in range(0,10):
         number = i + 1
         pam_info_path = f'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_{number}.xlsx'
-        mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-        mcpam.objective = mcpam.configuration.BIOMASS_REACTION
-        mcpam.optimize()
-        mu_missing_kcat_b = mcpam.objective.value
-        
-        missing_backward_kcats = get_missing_backward_kcats(mcpam)
+        mcpam_missing_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+        mcpam_filled_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+
+        missing_backward_kcats = get_missing_backward_kcats(mcpam_missing_kcat_b)
         filled_backward_kcats = fill_missing_backward_kcats(missing_backward_kcats)
 
-        change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam)
-        mcpam.optimize()
-        mu_filled_kcat_b = mcpam.objective.value
+        mcpam_filled_kcat_b = change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam_filled_kcat_b)
+        
+        models = [mcpam_missing_kcat_b, mcpam_filled_kcat_b]
 
-        diff_mu.append({
-            'mu with missing kcat b': mu_missing_kcat_b,
-            'mu with filled kcat b': mu_filled_kcat_b
-        })
+        fig = run_simulation_pam_mcpam(models=models)
 
-    # Plot the difference 
-    x = list(range(1, 11))
-    y_missing = [entry['mu with missing kcat b'] for entry in diff_mu]
-    y_filled = [entry['mu with filled kcat b'] for entry in diff_mu]
+        plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
 
-    fig, ax = plt.subplots()
-    ax.plot(x, y_missing, 'o-b', label='Missing kcat_b')
-    ax.plot(x, y_filled, 'o-r', label='Filled kcat_b')
-
-    ax.set(
-        xlabel='Enzymatic file number',
-        ylabel='Growth rate (1/h)',
-        title='Effect of filling missing kcat_b on growth rate'
-    )
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
+   
 
 
 

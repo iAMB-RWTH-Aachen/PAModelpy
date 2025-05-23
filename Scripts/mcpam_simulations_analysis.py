@@ -146,7 +146,9 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
     # show legend
     fig.subplots_adjust(top=0.85, wspace=0.5, hspace=0.5)
 
-    plt.show()
+    # plt.show()
+
+    return fig
 
 def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, type:str="full scale"):
     fontsize = 25

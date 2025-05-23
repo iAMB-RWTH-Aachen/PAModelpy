@@ -33,14 +33,14 @@ def change_translational_sector_with_config_dict(pamodel:PAModel,
                                      )
 
 def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union[Model, PAModel]:
-    copy_model = model.copy()
+    
     for _, row in prot_df.iterrows():
         rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
         enzyme_id = _order_enzyme_complex_id(row['enzyme_id'])
         kcat_dict = {rxn_id: {'f': row['kcat_f'], 'b': row['kcat_b']}}
-        copy_model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+        model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
 
-    return copy_model
+    return model
 
 def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
     best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)
