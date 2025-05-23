@@ -1551,7 +1551,6 @@ class PAModel(Model):
             enzymes = catalytic_event.enzymes
 
             return enzymes
-    
         else:
             return None
 
