@@ -124,6 +124,12 @@ class Enzyme(Object):
     def concentration(self, conc:float):
         self.enzyme_variable.concentration = conc
 
+    def change_concentration_bounds(self,
+                                    lower_bound:float,
+                                    upper_bound:float
+                                    ) -> None:
+        self.enzyme_variable.change_concentration_bounds(lower_bound=lower_bound, upper_bound=upper_bound)
+
     @property
     def model(self):
         return self._model
