@@ -611,14 +611,21 @@ class EnzymeVariable(Reaction):
             If `conc` is not a valid numerical value.
         """
 
+        self.change_concentration_bounds(lower_bound=conc,
+                                         upper_bound=conc)
+
+    def change_concentration_bounds(self,
+                                    lower_bound: float,
+                                    upper_bound:float) -> None:
+
         # Ensure `conc` is a valid numerical value
-        if not isinstance(conc, (int, float)):
+        if not isinstance(lower_bound, (int, float)) or not isinstance(upper_bound, (int, float)):
             raise ValueError("The concentration must be a numerical value.")
 
         # Make the constraint: concentration = forward_variable + reverse_variable
         if self.id + '_conc' not in self._model.constraints.keys():
             concentration_constraint = self._model.problem.Constraint(
-                Zero, name=self.id + '_conc', lb=conc, ub=conc)
+                Zero, name=self.id + '_conc', lb=lower_bound, ub=upper_bound)
             self._model.add_cons_vars(concentration_constraint)
 
         #units of enzyme should be *1e6 because of feasibility tolerance solver
@@ -627,6 +634,7 @@ class EnzymeVariable(Reaction):
             self.reverse_variable: 1e-6
         })
         self.enzyme._constraints[self.id+'_conc'] = self._model.constraints[self.id + '_conc']
+
 
 
     @property
