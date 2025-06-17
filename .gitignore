@@ -1,4 +1,5 @@
 __pycache__/
+*.pyc
 package-lock.json
 src/PAModelpy.egg-info/
 src/PAModelpy/PAModelpy.egg-info/
