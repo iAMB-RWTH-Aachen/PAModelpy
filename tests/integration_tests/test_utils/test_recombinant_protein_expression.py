@@ -1,13 +1,24 @@
 import pytest
 from cobra import Reaction
+import pytest
+import tempfile
 
-from tests.unit_tests.tests_pamodel import build_toy_pam
-from src.PAModelpy.utils.recombinant_protein_overexpression import *
+
+from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam
+from src.PAModelpy.utils.recombinant_protein_expression import *
 from src.PAModelpy import Enzyme
 
 @pytest.fixture
 def mock_pam():
-    return build_toy_pam()
+    return set_up_ecoli_pam(sensitivity=False)
+
+@pytest.fixture
+def dummy_sequence_file():
+    aa_seq = "MKTFFVVAL"  # A short 1-letter amino acid sequence
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
+        f.write(aa_seq)
+        f_path = f.name
+    yield f_path
 
 def test_add_protein_export_to_pam(mock_pam):
     rxn = add_protein_export(mock_pam, protein_name="testprot")

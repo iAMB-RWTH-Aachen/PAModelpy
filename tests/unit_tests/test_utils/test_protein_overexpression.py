@@ -1,7 +1,7 @@
 import pytest
 import tempfile
 
-from src.PAModelpy.utils.recombinant_protein_overexpression import *
+from src.PAModelpy.utils.recombinant_protein_expression import *
 
 @pytest.fixture
 def dummy_sequence_file():

@@ -123,19 +123,26 @@ def add_protein_export(model: Union[CobraModel, PAModel],
 
     return protein_production_rxn
 
+def add_ribosome_utilization_for_exported_protein(pam:PAModel,
+                                                  protein_production_rxn: Reaction
+                                                  )-> None:
+    pass
+
 def add_protein_export_to_pam(pam:PAModel,
                               protein_name: str,
-                              aa_seq: Dict[str, Union[int, float]]
+                              aa_seq: str
                               ) -> Reaction:
     aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq=aa_seq)
-    # add production of protein to be exported
-    prot_production_rxn = add_protein_export(pam=pam,
+    prot_production_rxn = add_protein_export(model=pam,
                                              protein_name=protein_name
-                                             ) # TODO add costs of ribosomes to total protein reaction
+                                             )
+    add_ribosome_utilization_for_exported_protein(pam = pam,
+                                                  protein_production_rxn=prot_production_rxn)
     add_aminoacid_sequence_to_production_rxns(model=pam,
                                               seq = aa_to_freq,
                                               reaction = prot_production_rxn
                                               )
+    return prot_production_rxn
 
 
 def add_recombinant_protein_production_and_export(aa_txt_file: str,
