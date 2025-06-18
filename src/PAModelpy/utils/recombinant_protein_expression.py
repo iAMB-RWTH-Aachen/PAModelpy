@@ -1,9 +1,11 @@
 from typing import Union, Dict, Optional
 from cobra import Model as CobraModel
 from cobra import Reaction, Metabolite
+
 from .. import PAModel, Enzyme, EnzymeVariable
 
 DEFAULT_PROTEIN_MOLMASS = 39959.4825 #Da
+REFERENCE_GROWTH_RATE = 0.1 #h-1, used to estimate the ribosome utilization per protein being secreted
 
 # aminoacid lookup table
 aa_lookup = {'V': 'VAL', 'I': 'ILE', 'L': 'LEU', 'E': 'GLU', 'Q': 'GLN', \
@@ -124,20 +126,57 @@ def add_protein_export(model: Union[CobraModel, PAModel],
     return protein_production_rxn
 
 def add_ribosome_utilization_for_exported_protein(pam:PAModel,
-                                                  protein_production_rxn: Reaction
+                                                  protein_production_rxn: Reaction,
+                                                  reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                                                   )-> None:
-    pass
+    transl_sector = pam.sectors.get_by_id('TranslationalProteinSector')
+
+    reference_substrate_rate = _get_subtrate_uptake_rate_for_fixed_growth_rate(pam = pam,
+                                                                               substrate_uptake_id=transl_sector.id_list[0],
+                                                                               growth_rate=reference_growth_rate
+                                                                               )
+    total_metabolic_ribosome = transl_sector.tps_mu[0]*reference_substrate_rate+transl_sector.tps_0[0] #g_tps/g_p
+    ribosome_per_protein = total_metabolic_ribosome/pam.total_protein_fraction
+
+    pam.constraints[pam.TOTAL_PROTEIN_CONSTRAINT_ID].add_linear_coefficients({
+        protein_production_rxn.forward_variable: ribosome_per_protein,
+        protein_production_rxn.reverse_variable: -ribosome_per_protein
+    })
+
+
+def _get_subtrate_uptake_rate_for_fixed_growth_rate(pam:PAModel,
+                                                    substrate_uptake_id: str,
+                                                    growth_rate: float
+                                                    )->float:
+    if substrate_uptake_id == pam.BIOMASS_REACTION: return growth_rate
+    #get max growth in model conditions:
+    pam.optimize()
+    max_mu = pam.objective.value()
+    if growth_rate>max_mu:
+        growth_rate=max_mu
+
+    pam.change_reaction_bounds(substrate_uptake_id, lower_bound=-1000)
+    pam.change_reaction_bounds(pam.BIOMASS_REACTION,
+                               lower_bound=growth_rate, upper_bound=growth_rate)
+    pam.objective.direction = 'min'
+    pam.objective = {substrate_uptake_id:1}
+    pam.optimize()
+
+    return pam.reactions.get_by_id(substrate_uptake_id).flux
 
 def add_protein_export_to_pam(pam:PAModel,
                               protein_name: str,
-                              aa_seq: str
+                              aa_seq: str,
+                              reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                               ) -> Reaction:
     aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq=aa_seq)
     prot_production_rxn = add_protein_export(model=pam,
                                              protein_name=protein_name
                                              )
     add_ribosome_utilization_for_exported_protein(pam = pam,
-                                                  protein_production_rxn=prot_production_rxn)
+                                                  protein_production_rxn=prot_production_rxn,
+                                                  reference_growth_rate=reference_growth_rate
+                                                  )
     add_aminoacid_sequence_to_production_rxns(model=pam,
                                               seq = aa_to_freq,
                                               reaction = prot_production_rxn
@@ -149,13 +188,15 @@ def add_recombinant_protein_production_and_export(aa_txt_file: str,
                                                   pam:PAModel,
                                                   protein_name: str,
                                                   export_efficiency: Union[float, int] = 1, #g_intracellular/g_exported
-                                                  molecular_weight: Optional[Union[int,float]] = DEFAULT_PROTEIN_MOLMASS#Da
+                                                  molecular_weight: Optional[Union[int,float]] = DEFAULT_PROTEIN_MOLMASS,#Da
+                                                  reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                                                   )-> Reaction:
     aa_seq = read_sequence_from_file(aa_txt_file)
 
     prot_production_rxn = add_protein_export_to_pam(pam = pam,
                                                     protein_name=protein_name,
-                                                    aa_seq = aa_seq
+                                                    aa_seq = aa_seq,
+                                                    reference_growth_rate=reference_growth_rate
                                                     )#TODO add costs of ribosomes to total protein reaction
 
     #create intracellular enzyme species staying behind in the sell
