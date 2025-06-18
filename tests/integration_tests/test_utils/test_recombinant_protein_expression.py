@@ -46,3 +46,24 @@ def test_add_recombinant_protein_production_and_export(dummy_sequence_file, mock
     assert "recombinase" in mock_pam.enzyme_variables
     assert "recombinase_c" in [m.id for m in rxn.metabolites]
     assert any(r.id == "recombinase_production" for r in mock_pam.reactions)
+
+def test_add_ribosome_utilization_for_exported_protein(mock_pam, dummy_sequence_file):
+    # Arrange
+    aa_seq = read_sequence_from_file(dummy_sequence_file)
+    growth_rate = 0.67
+    rxn = add_protein_export_to_pam(pam = mock_pam,
+                                    protein_name = "dummyprotein",
+                                    aa_seq = aa_seq
+                                    )
+
+    # Act
+    add_ribosome_utilization_for_exported_protein(pam = mock_pam,
+                                                  protein_production_rxn = rxn,
+                                                  reference_growth_rate = growth_rate
+                                                  )
+
+    # Assert
+    prot_constraint = mock_pam.constraints[mock_pam.TOTAL_PROTEIN_CONSTRAINT_ID]
+    coeffs = prot_constraint.get_linear_coefficients([rxn.forward_variable, rxn.reverse_variable])
+    assert coeffs[rxn.forward_variable] > 0
+    assert coeffs[rxn.reverse_variable] < 0

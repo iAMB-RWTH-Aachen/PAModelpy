@@ -60,10 +60,11 @@ def match_aminoacid_to_model_identifiers_and_frequency(aa_seq:str
     return aa_biggid_freq
 
 def add_aminoacid_sequence_to_intracellular_protein(model: PAModel,
-                                                    seq:dict,
-                                                    protein:EnzymeVariable) -> PAModel:
+                                                    seq:Dict[str, float],
+                                                    protein:EnzymeVariable
+                                                    ) -> PAModel:
     """
-    model: COBRA model
+    model: PAModel
     seq: dict with {aminoacid_id: freq} key, value pairs
     protein: enzyme variable
     """
@@ -131,35 +132,34 @@ def add_ribosome_utilization_for_exported_protein(pam:PAModel,
                                                   )-> None:
     transl_sector = pam.sectors.get_by_id('TranslationalProteinSector')
 
-    reference_substrate_rate = _get_subtrate_uptake_rate_for_fixed_growth_rate(pam = pam,
+    reference_substrate_rate = _get_substrate_uptake_rate_for_fixed_growth_rate(pam = pam.copy(copy_with_pickle=True),
                                                                                substrate_uptake_id=transl_sector.id_list[0],
                                                                                growth_rate=reference_growth_rate
                                                                                )
     total_metabolic_ribosome = transl_sector.tps_mu[0]*reference_substrate_rate+transl_sector.tps_0[0] #g_tps/g_p
-    ribosome_per_protein = total_metabolic_ribosome/pam.total_protein_fraction
+    ribosome_per_protein = total_metabolic_ribosome*pam.total_protein_fraction
 
-    pam.constraints[pam.TOTAL_PROTEIN_CONSTRAINT_ID].add_linear_coefficients({
+    pam.constraints[pam.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
         protein_production_rxn.forward_variable: ribosome_per_protein,
         protein_production_rxn.reverse_variable: -ribosome_per_protein
     })
 
 
-def _get_subtrate_uptake_rate_for_fixed_growth_rate(pam:PAModel,
+def _get_substrate_uptake_rate_for_fixed_growth_rate(pam:PAModel,
                                                     substrate_uptake_id: str,
                                                     growth_rate: float
                                                     )->float:
     if substrate_uptake_id == pam.BIOMASS_REACTION: return growth_rate
     #get max growth in model conditions:
     pam.optimize()
-    max_mu = pam.objective.value()
+    max_mu = pam.objective.value
     if growth_rate>max_mu:
         growth_rate=max_mu
 
     pam.change_reaction_bounds(substrate_uptake_id, lower_bound=-1000)
     pam.change_reaction_bounds(pam.BIOMASS_REACTION,
                                lower_bound=growth_rate, upper_bound=growth_rate)
-    pam.objective.direction = 'min'
-    pam.objective = {substrate_uptake_id:1}
+    pam.objective = {pam.reactions.get_by_id(substrate_uptake_id):-1}
     pam.optimize()
 
     return pam.reactions.get_by_id(substrate_uptake_id).flux
