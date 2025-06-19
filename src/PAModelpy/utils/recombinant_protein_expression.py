@@ -64,9 +64,15 @@ def add_aminoacid_sequence_to_intracellular_protein(model: PAModel,
                                                     protein:EnzymeVariable
                                                     ) -> PAModel:
     """
-    model: PAModel
-    seq: dict with {aminoacid_id: freq} key, value pairs
-    protein: enzyme variable
+    Adds amino acid consumption constraints to the total protein constraint for an intracellular recombinant protein.
+
+    Args:
+        model (PAModel): The protein allocation model.
+        seq (Dict[str, float]): Mapping from amino acid metabolite IDs to their stoichiometric frequency in the protein.
+        protein (EnzymeVariable): The enzyme variable representing the recombinant protein.
+
+    Returns:
+        PAModel: The updated protein allocation model with new amino acid constraints added.
     """
     for aa, freq in seq.items():
         if aa not in model.constraints.keys(): continue
@@ -79,6 +85,17 @@ def add_aminoacid_sequence_to_intracellular_protein(model: PAModel,
 def add_recombinant_intracellular_protein_to_pam(pam:PAModel,
                                    protein:Enzyme,
                                    aa_seq: str) -> PAModel:
+    """
+    Adds an intracellular recombinant enzyme to a PAModel, including amino acid usage constraints.
+
+    Args:
+        pam (PAModel): The protein allocation model.
+        protein (Enzyme): The Enzyme object representing the intracellular form.
+        aa_seq (str): The amino acid sequence of the protein (single-letter format).
+
+    Returns:
+        PAModel: The updated PAModel with the enzyme and its amino acid costs added.
+    """
     pam.add_enzymes(protein)
     aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq.replace(' ', ''))
     add_aminoacid_sequence_to_intracellular_protein(pam, aa_to_freq, pam.enzyme_variables.get_by_id(protein.id))
@@ -90,9 +107,15 @@ def add_aminoacid_sequence_to_production_rxns(model: Union[CobraModel, PAModel],
                                               reaction:Reaction
                                               )-> Union[CobraModel, PAModel]:
     """
-    model: COBRA model
-    seq: dict with {aminoacid_id: freq} key, value pairs
-    reaction: reaction variable to which the aa sequence should be added
+    Adds amino acid metabolites with appropriate stoichiometry to a protein production reaction.
+
+    Args:
+        model (Union[CobraModel, PAModel]): The metabolic model.
+        seq (Dict[str, float]): Mapping from amino acid metabolite IDs to usage frequency.
+        reaction (Reaction): The COBRApy Reaction to modify.
+
+    Returns:
+        Union[CobraModel, PAModel]: The updated model with amino acid costs added to the reaction.
     """
     seq_metabolites = {model.metabolites.get_by_id(aa):-coeff for aa, coeff in seq.items()}
     reaction.add_metabolites(seq_metabolites)
@@ -101,6 +124,16 @@ def add_aminoacid_sequence_to_production_rxns(model: Union[CobraModel, PAModel],
 def add_protein_export(model: Union[CobraModel, PAModel],
                        protein_name:str
                        )-> Reaction:
+    """
+    Adds transport and exchange reactions for a recombinant protein exported from the cytosol to the extracellular space.
+
+    Args:
+        model (Union[CobraModel, PAModel]): The COBRA or PAM model.
+        protein_name (str): Name of the protein to be exported.
+
+    Returns:
+        Reaction: The intracellular protein production reaction.
+    """
     recombinant_protein_c = Metabolite(f"{protein_name}_c",
                                        name= protein_name,
                                        formula='C20H34ClNO',
@@ -130,6 +163,17 @@ def add_ribosome_utilization_for_exported_protein(pam:PAModel,
                                                   protein_production_rxn: Reaction,
                                                   reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                                                   )-> None:
+    """
+    Adds ribosome usage coefficients for a recombinant protein to the total protein constraint.
+
+    Args:
+        pam (PAModel): The protein allocation model.
+        protein_production_rxn (Reaction): Reaction representing the production of the exported protein.
+        reference_growth_rate (float, optional): Growth rate used to estimate ribosomal demand. Defaults to REFERENCE_GROWTH_RATE.
+
+    Returns:
+        None
+    """
     transl_sector = pam.sectors.get_by_id('TranslationalProteinSector')
 
     reference_substrate_rate = _get_substrate_uptake_rate_for_fixed_growth_rate(pam = pam.copy(copy_with_pickle=True),
@@ -149,6 +193,17 @@ def _get_substrate_uptake_rate_for_fixed_growth_rate(pam:PAModel,
                                                     substrate_uptake_id: str,
                                                     growth_rate: float
                                                     )->float:
+    """
+    Computes the substrate uptake rate required to achieve a fixed growth rate.
+
+    Args:
+        pam (PAModel): The protein allocation model.
+        substrate_uptake_id (str): The ID of the substrate uptake reaction.
+        growth_rate (float): The target growth rate.
+
+    Returns:
+        float: The flux through the substrate uptake reaction at the specified growth rate.
+    """
     if substrate_uptake_id == pam.BIOMASS_REACTION: return growth_rate
     #get max growth in model conditions:
     pam.optimize()
@@ -169,6 +224,18 @@ def add_protein_export_to_pam(pam:PAModel,
                               aa_seq: str,
                               reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                               ) -> Reaction:
+    """
+    Adds all components for exporting a recombinant protein, including amino acid usage and ribosomal demand.
+
+    Args:
+        pam (PAModel): The protein allocation model.
+        protein_name (str): The name of the protein to add.
+        aa_seq (str): The amino acid sequence of the protein (single-letter format).
+        reference_growth_rate (float, optional): Growth rate used for estimating ribosomal demand. Defaults to REFERENCE_GROWTH_RATE.
+
+    Returns:
+        Reaction: The protein production reaction.
+    """
     aa_to_freq = match_aminoacid_to_model_identifiers_and_frequency(aa_seq=aa_seq)
     prot_production_rxn = add_protein_export(model=pam,
                                              protein_name=protein_name
@@ -191,13 +258,27 @@ def add_recombinant_protein_production_and_export(aa_txt_file: str,
                                                   molecular_weight: Optional[Union[int,float]] = DEFAULT_PROTEIN_MOLMASS,#Da
                                                   reference_growth_rate: Optional[float] = REFERENCE_GROWTH_RATE
                                                   )-> Reaction:
+    """
+        Adds a recombinant protein to a PAModel, including intracellular and exported forms, transport, amino acid usage, and ribosome cost.
+
+        Args:
+            aa_txt_file (str): Path to a text file containing the protein sequence (single-letter amino acid codes).
+            pam (PAModel): The protein allocation model.
+            protein_name (str): Name of the recombinant protein.
+            export_efficiency (Union[float, int], optional): Fraction of intracellular protein exported (g_intra / g_exported). Defaults to 1.
+            molecular_weight (Union[int, float], optional): Molecular weight of the protein in Daltons. Defaults to DEFAULT_PROTEIN_MOLMASS.
+            reference_growth_rate (float, optional): Growth rate used to estimate ribosomal demand. Defaults to REFERENCE_GROWTH_RATE.
+
+        Returns:
+            Reaction: The protein production reaction associated with export.
+        """
     aa_seq = read_sequence_from_file(aa_txt_file)
 
     prot_production_rxn = add_protein_export_to_pam(pam = pam,
                                                     protein_name=protein_name,
                                                     aa_seq = aa_seq,
                                                     reference_growth_rate=reference_growth_rate
-                                                    )#TODO add costs of ribosomes to total protein reaction
+                                                    )
 
     #create intracellular enzyme species staying behind in the sell
     enzyme = Enzyme(protein_name,
