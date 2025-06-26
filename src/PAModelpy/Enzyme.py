@@ -634,12 +634,15 @@ class EnzymeVariable(Reaction):
                 Zero, name=self.id + '_conc', lb=lower_bound, ub=upper_bound)
             self._model.add_cons_vars(concentration_constraint)
 
-        #units of enzyme should be *1e6 because of feasibility tolerance solver
-        self._model.constraints[self.id + '_conc'].set_linear_coefficients({
-            self.forward_variable: 1e-6,
-            self.reverse_variable: 1e-6
-        })
-        self.enzyme._constraints[self.id+'_conc'] = self._model.constraints[self.id + '_conc']
+            #units of enzyme should be *1e6 because of feasibility tolerance solver
+            self._model.constraints[self.id + '_conc'].set_linear_coefficients({
+                self.forward_variable: 1e-6,
+                self.reverse_variable: 1e-6
+            })
+            self.enzyme._constraints[self.id+'_conc'] = self._model.constraints[self.id + '_conc']
+        else:
+            self._model.constraints[self.id + '_conc'].lb = lower_bound
+            self._model.constraints[self.id + '_conc'].lb = upper_bound
 
 
 
