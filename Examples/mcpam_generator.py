@@ -35,9 +35,9 @@ if __name__ == "__main__":
         
         models = [mcpam_missing_kcat_b, mcpam_filled_kcat_b]
 
-        fig = run_simulation_pam_mcpam(models=models)
+        # fig = run_simulation_pam_mcpam(models=models)
 
-        plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
+        # plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
 
    
 
