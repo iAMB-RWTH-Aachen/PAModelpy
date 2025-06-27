@@ -37,6 +37,7 @@ EXTENSION2READINGFUNCTION = {'json': load_json_model,
                         'mat': load_matlab_model,
                         'xml': read_sbml_model,
                              '': load_model}
+Sector = Union[TransEnzymeSector, UnusedEnzymeSector, CustomSector]
 
 class PAModel(Model):
     """
@@ -1336,15 +1337,19 @@ class PAModel(Model):
         lin_rxn = self.reactions.get_by_id(lin_rxn_id)
 
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
+            if lin_rxn_id not in sector.id_list:
+                self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
+                sector.id_list = [lin_rxn_id]
+
             intercept_diff = sector.intercept - prev_intercept
             # set the intercept
             self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
                 self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub - intercept_diff
             )
             # reset the slope
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
-                {lin_rxn.forward_variable: sector.slope, lin_rxn.reverse_variable: -sector.slope}
-            )
+            self._adjust_sector_slope_in_total_protein_constraint(sector=sector,
+                                                                  lin_rxn=lin_rxn
+                                                                  )
 
         else:
             var = self.variables["R_" + sector.id]
@@ -1359,6 +1364,32 @@ class PAModel(Model):
             # update the sector object
             sector.variables = [var]
             sector.constraints = [self.constraints[sector.id]]
+
+    def _adjust_sector_slope_in_total_protein_constraint(self,
+                                                         sector: Sector,
+                                                         lin_rxn: cobra.Reaction
+                                                         ) -> None:
+        """Resetting the slope of the linear reaction. If two sectors are related to the same reaction, the slope is
+        corrected using the sum of both slopes"""
+        slope = sector.slope
+        for sec in self.sectors:
+            # ActiveEnzymeSector does not have an 'id_list' as it is not linearly dependent on a reaction
+            if isinstance(sec, ActiveEnzymeSector): continue
+            if lin_rxn.id in sec.id_list and sector != sec:
+                slope += sec.slope
+
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
+            {lin_rxn.forward_variable: slope, lin_rxn.reverse_variable: -slope}
+        )
+
+    def _remove_linear_reaction_from_total_protein_constraint(self,
+                                                               lin_rxn_id:str
+                                                               )-> None:
+        lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
+            lin_rxn.forward_variable: 0,
+            lin_rxn.reverse_variable: 0
+        })
 
     def change_reaction_bounds(
         self, rxn_id: str, lower_bound: float = None, upper_bound: float = None
@@ -1934,11 +1965,7 @@ class PAModel(Model):
 
             # 2. remove link between flux and enzyme concentration
             # link enzyme concentration in the sector to the total enzyme concentration
-            lin_rxn = self.reactions.get_by_id(sector.id_list[0])
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients({
-                lin_rxn.forward_variable: 0,
-                lin_rxn.reverse_variable: 0
-            })
+            self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
 
         else:
 

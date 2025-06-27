@@ -296,6 +296,34 @@ def test_if_rxn2protein_can_be_added_to_pam():
     assert 'E15_E21' in sut.enzymes
     assert 'E15_E21' in sut.sectors.ActiveEnzymeSector.rxn2protein['R1'].keys()
 
+@pytest.mark.parametrize('slope', [
+    (1e-3),(-1e-3)
+])
+def test_if_adjust_slopes_adjust_slope_for_enzyme_sector_correctly(slope: float):
+    # arrange
+    sut = build_toy_pam(sensitivity=False)
+    sector1 = sut.sectors.get_by_id('TranslationalProteinSector')
+    sector2 = sut.sectors.get_by_id('UnusedEnzymeSector')
+    sector2.slope = slope
+
+    lin_rxn = sut.reactions.get_by_id(sector1.id_list[0])
+    lin_rxn_coefficients_original = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients(
+        [lin_rxn.forward_variable, lin_rxn.reverse_variable]
+    )
+
+    # act'
+    sut._adjust_sector_slope_in_total_protein_constraint(sector2,
+                                                         lin_rxn=lin_rxn)
+    #make sure the linear coefficients associated to the sector in the total protein constriant are 0
+    lin_coeff = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID].get_linear_coefficients([
+        lin_rxn.forward_variable,
+        lin_rxn.reverse_variable,
+    ])
+
+
+    # Assert
+    assert all(coeff == pytest.approx(lin_coeff[var]-slope, rel=1e4) for var,coeff in lin_rxn_coefficients_original.items())
+
 #######################################################################################################
 #HELPER METHODS
 #######################################################################################################

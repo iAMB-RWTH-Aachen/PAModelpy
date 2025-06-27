@@ -5,11 +5,11 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages]
-find = { where = ["PAModelpy"] }  # Scan the project directory with the default parameters
+find = {}  # default: scans from the project root (same directory as pyproject.toml)
 
 [project]
 name = 'PAModelpy'
-version = '0.0.4.7'
+version = '0.0.5.1'
 authors = [{name='Samira van den Bogaard', email = 'samira.vandenbogaard@rwth-aachen.de'}]
 description = 'Python framework for building and analysing protein allocation models'
 readme = 'README.md'
@@ -23,12 +23,14 @@ classifiers = [
 dependencies = [
     'cobra==0.29.0',
     'openpyxl~=3.1',
-    'pandas==1.*',
+    'numpy>=1.20,<1.26',
+    'pandas>=1.3,<2.0',
     'python-libsbml~=5.19',
     'regex==2022.*',
     'requests==2.*',
     'tabulate~=0.9',
     'xlrd==2.*',
     'xlwt~=1.3',
-    'pytest~=8.3'
+    'pytest~=8.3',
+    'matplotlib==3.*'
 ]
