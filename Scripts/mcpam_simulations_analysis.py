@@ -146,7 +146,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
     # show legend
     fig.subplots_adjust(top=0.85, wspace=0.5, hspace=0.5)
 
-    # plt.show()
+    plt.show()
 
     return fig
 

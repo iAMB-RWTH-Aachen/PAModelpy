@@ -18,34 +18,31 @@ import os
 
 if __name__ == "__main__":
 
-    # Build full scale pam
+    ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
+    
 
-    diff_mu = []
+    ### Compare mcPAM using full scale GEM for kcat dataset with missing backward kcats vs. dataset with filled backward kcats.
+    # diff_mu = []
 
-    for i in range(0,10):
-        number = i + 1
-        pam_info_path = f'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_{number}.xlsx'
-        mcpam_missing_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-        mcpam_filled_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+    # for i in range(0,10):
+    #     number = i + 1
+    #     pam_info_path = f'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_{number}.xlsx'
+    #     mcpam_missing_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+    #     mcpam_filled_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
 
-        missing_backward_kcats = get_missing_backward_kcats(mcpam_missing_kcat_b)
-        filled_backward_kcats = fill_missing_backward_kcats(missing_backward_kcats)
+    #     missing_backward_kcats = get_missing_backward_kcats(mcpam_missing_kcat_b)
+    #     filled_backward_kcats = fill_missing_backward_kcats(missing_backward_kcats)
 
-        mcpam_filled_kcat_b = change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam_filled_kcat_b)
+    #     mcpam_filled_kcat_b = change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam_filled_kcat_b)
         
-        models = [mcpam_missing_kcat_b, mcpam_filled_kcat_b]
+    #     models = [mcpam_missing_kcat_b, mcpam_filled_kcat_b]
 
-        # fig = run_simulation_pam_mcpam(models=models)
+    #     fig = run_simulation_pam_mcpam(models=models)
 
-        # plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
-
-   
+    #     plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
 
 
-
-
-
-    # Build full scale pam from diagnostics file
+    ### Build full scale pam from diagnostics file
     ## Define necessary paths/sheet names
     # diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
     # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
