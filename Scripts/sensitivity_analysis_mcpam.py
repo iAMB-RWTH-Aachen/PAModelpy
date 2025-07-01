@@ -17,8 +17,8 @@ if os.path.split(os.getcwd())[1] == 'Figures':
 from src.PAModelpy.utils.pam_generation import set_up_pam
 from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
                                                           _set_up_pamodel_for_simulations,
-                                                          change_memprot_kcats
                                                           )
+from Scripts.mcpam_simulations_analysis import change_set_of_kcats_using_excel_sheet
 
 
 Config.BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
@@ -524,17 +524,25 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 
 ### PAM simulations
 #### 3.1 Build the mcPAModel
-diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
-pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
-sheet_name = 'Best_Individuals'
+pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+model_path = 'Models/iML1515.xml'
+mcpam = set_up_pam(pam_info_file=pam_info_path, 
+                    model=model_path,
+                    sensitivity=True, 
+                    membrane_sector=False)
+# # Change kcats based on diagnostics file
+# diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
+# pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
+# sheet_name = 'Best_Individuals'
 
-mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
-# _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
-mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
+# mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
+# # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
+# mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
 
-memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-memprot_sheet_name = 'diagnostics_2'
-mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
+# # Change kcats manually
+# memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
+# memprot_sheet_name = 'diagnostics_2'
+# mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 #### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area
 results_pam = {}

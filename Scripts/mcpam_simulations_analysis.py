@@ -20,9 +20,9 @@ from Scripts.mcpam_generation_uniprot_id import (parse_reaction2protein,
 from Scripts.create_pamodel_from_diagnostics_file import change_prot_kcats
 
 def change_set_of_kcats_using_excel_sheet(models:list, prot_file_path:str, sheet:str):
-     prot_df = pd.read_excel(file_path = prot_file_path, sheet_name = sheet)
+     prot_df = pd.read_excel(io = prot_file_path, sheet_name = sheet)
      for model in models:
-        model = change_prot_kcats(prot_df)
+        model = change_prot_kcats(prot_df=prot_df, model=model)
 
 def run_simulation_pam_mcpam(models, type:str="full scale"):
     fontsize = 25
@@ -67,7 +67,9 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    model.reactions.EX_glc__D_e.lower_bound = -glc
+                    # model.reactions.EX_glc__D_e.lower_bound = -glc
+                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
+                                            lower_bound = -glc, upper_bound = -glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
@@ -86,7 +88,9 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    model.reactions.EX_glc__D_e.lower_bound = -glc
+                    # model.reactions.EX_glc__D_e.lower_bound = -glc
+                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
+                                            lower_bound = -glc, upper_bound = -glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
@@ -161,7 +165,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.01, 0.04, 4)
+        max_area_list = np.linspace(0.01, 0.1, 10)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
@@ -195,7 +199,9 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    model.reactions.EX_glc__D_e.lower_bound = -glc
+                    # model.reactions.EX_glc__D_e.lower_bound = -glc
+                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
+                                            lower_bound = -glc, upper_bound = -glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model

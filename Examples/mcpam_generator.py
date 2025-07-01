@@ -1,12 +1,12 @@
-from Scripts.mcpam_simulations_analysis import (run_simulations_pam_mcpam_w_different_areas,
+from Scripts.mcpam_simulations_analysis import (change_set_of_kcats_using_excel_sheet,
+                                                run_simulations_pam_mcpam_w_different_areas,
                                                 run_simulation_pam_mcpam,
                                                 get_info_for_proteins,
                                                 get_missing_backward_kcats,
                                                 fill_missing_backward_kcats)
 from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
                                                           change_translational_sector_with_config_dict,
-                                                          _set_up_pamodel_for_simulations,
-                                                          change_prot_kcats
+                                                          _set_up_pamodel_for_simulations
                                                           )
 from Scripts.mcpam_generation_uniprot_id import set_up_ecoli_mcpam, set_up_ecoli_pam
 from Scripts.mcpam_toy_generation import build_toy_model
@@ -19,7 +19,48 @@ import os
 if __name__ == "__main__":
 
     ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
+
+    # Load iML1515 PAM and mcPAM
+    pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+    model_path = 'Models/iML1515.xml'
+    pam = set_up_pam(pam_info_file=pam_info_path,
+                    model=model_path,
+                    sensitivity=False,
+                    membrane_sector=False
+                    )
+    mcpam = set_up_pam(pam_info_file=pam_info_path, 
+                       model=model_path,
+                       sensitivity=False, 
+                       membrane_sector=True)
+    models = [pam, mcpam]
     
+    # Change sector parameters
+    ue_sector = pam.sectors.get_by_id('UnusedEnzymeSector')
+    te_sector = pam.sectors.get_by_id('TranslationalProteinSector')
+    for model in models:
+        # Change unused enzyme sector parameters
+        model.change_sector_parameters(sector = ue_sector,
+                                    slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
+                                    intercept=0.17, # g_p/g_cdw
+                                    lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
+                                    print_change = True #do you want to see the change? False by default
+                                    )
+        # Change translational enzyme sector parameters
+        model.change_sector_parameters(sector = te_sector,
+                                    slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
+                                    intercept=0.038, # g_p/g_cdw
+                                    lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
+                                    print_change = True #do you want to see the change? False by default
+                                    )
+        model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
+    
+    change_set_of_kcats_using_excel_sheet(models=models, 
+                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
+                        sheet="edited_kcats")
+
+    # Run simulation for both PAM and mcPAM with the changed sector parameters
+    run_simulations_pam_mcpam_w_different_areas(models, type='full scale')
+
 
     ### Compare mcPAM using full scale GEM for kcat dataset with missing backward kcats vs. dataset with filled backward kcats.
     # diff_mu = []

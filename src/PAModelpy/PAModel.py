@@ -1374,7 +1374,7 @@ class PAModel(Model):
         slope = sector.slope
         for sec in self.sectors:
             # ActiveEnzymeSector does not have an 'id_list' as it is not linearly dependent on a reaction
-            if isinstance(sec, ActiveEnzymeSector): continue
+            if isinstance(sec, ActiveEnzymeSector) or isinstance(sec, MembraneSector): continue
             if lin_rxn.id in sec.id_list and sector != sec:
                 slope += sec.slope
 

@@ -37,7 +37,7 @@ def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union
     for _, row in prot_df.iterrows():
         rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
         enzyme_id = _order_enzyme_complex_id(row['enzyme_id'])
-        kcat_dict = {rxn_id: {'f': row['kcat_f'], 'b': row['kcat_b']}}
+        kcat_dict = {rxn_id: {'f': row['Forward Flux'], 'b': row['Backward Flux']}}
         model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
 
     return model
