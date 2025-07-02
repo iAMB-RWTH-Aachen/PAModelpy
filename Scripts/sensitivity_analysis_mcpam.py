@@ -40,8 +40,8 @@ def calculate_sensitivities(pamodel):
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e',
-                                           lower_bound=-glc)
+            pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+            pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
             pamodel.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
             # pamodel.reactions.EX_glc__D_e.lower_bound = -glc
             # solve the model
@@ -529,7 +529,29 @@ model_path = 'Models/iML1515.xml'
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
                     sensitivity=True, 
-                    membrane_sector=False)
+                    membrane_sector=True)
+
+ue_sector = mcpam.sectors.get_by_id('UnusedEnzymeSector')
+te_sector = mcpam.sectors.get_by_id('TranslationalProteinSector')
+# Change unused enzyme sector parameters
+mcpam.change_sector_parameters(sector = ue_sector,
+                            slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
+                            intercept=0.17, # g_p/g_cdw
+                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
+                            print_change = True #do you want to see the change? False by default
+                            )
+# Change translational enzyme sector parameters
+mcpam.change_sector_parameters(sector = te_sector,
+                            slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
+                            intercept=0.038, # g_p/g_cdw
+                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
+                            print_change = True #do you want to see the change? False by default
+                            )
+
+change_set_of_kcats_using_excel_sheet(models=[mcpam], 
+                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
+                        sheet="edited_kcats 20250702")
+
 # # Change kcats based on diagnostics file
 # diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
 # pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
@@ -538,11 +560,6 @@ mcpam = set_up_pam(pam_info_file=pam_info_path,
 # mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
 # # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
 # mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
-
-# # Change kcats manually
-# memprot_file_path = 'Results/PAM_parametrizer/Files/2025_03_11/memprot_data.xlsx'
-# memprot_sheet_name = 'diagnostics_2'
-# mcpam = change_memprot_kcats(memprot_file_path, mcpam, memprot_sheet_name)
 
 #### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area
 results_pam = {}
@@ -621,7 +638,7 @@ gs_pam = gs0[0]
 #                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
 #                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
 
-# Make figure esc
+# # Make figure esc
 fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,

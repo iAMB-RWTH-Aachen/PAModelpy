@@ -41,8 +41,8 @@ def calculate_sensitivities(pamodel):
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            pamodel.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
-                                            lower_bound = -glc)
+            pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+            pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
             # solve the model
             sol_pam = pamodel.optimize()
             fluxes.append(sol_pam.fluxes)
@@ -303,12 +303,29 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold = 0.05):
 
 
 ### Build PAM
-pam_info_path = 'Data/proteinAllocationModel_mc-core_EnzymaticData_241209_multi.xlsx'
-model_path = 'Models/e_coli_core.json'
-pamodel = set_up_core_pam(pam_info_file=pam_info_path, 
+pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+model_path = 'Models/iML1515.xml'
+pamodel = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
                     sensitivity=True, 
                     membrane_sector=False)
+
+ue_sector = pamodel.sectors.get_by_id('UnusedEnzymeSector')
+te_sector = pamodel.sectors.get_by_id('TranslationalProteinSector')
+# Change unused enzyme sector parameters
+pamodel.change_sector_parameters(sector = ue_sector,
+                            slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
+                            intercept=0.17, # g_p/g_cdw
+                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
+                            print_change = True #do you want to see the change? False by default
+                            )
+# Change translational enzyme sector parameters
+pamodel.change_sector_parameters(sector = te_sector,
+                            slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
+                            intercept=0.038, # g_p/g_cdw
+                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
+                            print_change = True #do you want to see the change? False by default
+                            )
 
 results_pam = calculate_sensitivities(pamodel)
 x_axis_csc_pam,x_axis_esc_pam = parse_x_axis_heatmap(results_pam['capacity coefficients'], results_pam['enzyme coefficients'])

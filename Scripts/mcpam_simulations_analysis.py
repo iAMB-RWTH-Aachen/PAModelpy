@@ -1,6 +1,7 @@
 from cobra import Model
 import pandas as pd
 import numpy as np
+import re
 import os
 from typing import Union
 import seaborn as sns
@@ -68,8 +69,8 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
                 with model:
                     # change glucose uptake rate
                     # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
-                                            lower_bound = -glc, upper_bound = -glc)
+                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
@@ -89,8 +90,8 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
                 with model:
                     # change glucose uptake rate
                     # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
-                                            lower_bound = -glc, upper_bound = -glc)
+                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
@@ -165,7 +166,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.linspace(0.01, 0.1, 10)
+        max_area_list = np.linspace(0.01, 0.04, 4)
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
         max_area_list = np.linspace(0.01, 0.04, 4)
@@ -200,8 +201,8 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                 with model:
                     # change glucose uptake rate
                     # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.change_reaction_bounds(rxn_id = 'EX_glc__D_e', 
-                                            lower_bound = -glc, upper_bound = -glc)
+                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
                     # disable pyruvate formate lyase (inhibited by oxygen)
                     model.reactions.PFL.upper_bound = 0
                     # solve the model
@@ -222,7 +223,8 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.EX_glc__D_e.lower_bound = -glc
+                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
                         # disable pyruvate formate lyase (inhibited by oxygen)
                         model.reactions.PFL.upper_bound = 0
                         # change max available membrane area
@@ -235,14 +237,14 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                         for enz_var in model.enzyme_variables:
                             concentration += enz_var.concentration
                         concentrations_list.append(concentration)
+                        print("Dual value of membrane constraint:", area, glc, model.constraints['membrane'].dual)
 
-                print(model.constraints.membrane)
-                occupied_area, available_area = model.sectors.get_by_id(
-                    'MembraneSector').calculate_occupied_membrane(model)
-                print('Available area: ', available_area, 'um2')
-                print('Occupied area: ', occupied_area, 'um2')
-                print('Occupied area: ', occupied_area / available_area * 100, '%')
-                print('Growth rate: ', model.objective.value)
+                # occupied_area, available_area = model.sectors.get_by_id(
+                #     'MembraneSector').calculate_occupied_membrane(model)
+                # print('Available area: ', available_area, 'um2')
+                # print('Occupied area: ', occupied_area, 'um2')
+                # print('Occupied area: ', occupied_area / available_area * 100, '%')
+                # print('Growth rate: ', model.objective.value)
                 area = float("{:.2f}".format(area))*100
                 key = f'{config} {str(area)} % area'
                 fluxes_dict[key] = fluxes_list
@@ -269,7 +271,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                        facecolors=None, zorder=0,
                        label='Data')
 
-        # plot simulation for pam core
+        # plot simulation for pam 
         for model in fluxes_dict.keys():
             if model == 'PAM':
                 ax.plot(glc_uptake_rates, [abs(f[r]) for f in fluxes_dict[model]],

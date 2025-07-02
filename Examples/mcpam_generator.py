@@ -35,9 +35,9 @@ if __name__ == "__main__":
     models = [pam, mcpam]
     
     # Change sector parameters
-    ue_sector = pam.sectors.get_by_id('UnusedEnzymeSector')
-    te_sector = pam.sectors.get_by_id('TranslationalProteinSector')
     for model in models:
+        ue_sector = model.sectors.get_by_id('UnusedEnzymeSector')
+        te_sector = model.sectors.get_by_id('TranslationalProteinSector')
         # Change unused enzyme sector parameters
         model.change_sector_parameters(sector = ue_sector,
                                     slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
@@ -53,10 +53,14 @@ if __name__ == "__main__":
                                     print_change = True #do you want to see the change? False by default
                                     )
         model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
-    
+
+    # get_info_for_proteins(mcpam=mcpam,
+    #                       pam_info_path=pam_info_path,
+    #                       protein_info_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx")
+
     change_set_of_kcats_using_excel_sheet(models=models, 
                         prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-                        sheet="edited_kcats")
+                        sheet="edited_kcats 20250702")
 
     # Run simulation for both PAM and mcPAM with the changed sector parameters
     run_simulations_pam_mcpam_w_different_areas(models, type='full scale')
