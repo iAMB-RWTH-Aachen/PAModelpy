@@ -107,8 +107,8 @@ class MembraneSector(EnzymeSector):
                 df.append({
                     'enzyme_id': enz_complex.id,
                     'Reaction': rxn_id,
-                    'Forward Kcat': flux_dict['f'] if 'f' in flux_dict else 0,
-                    'Backward Kcat': flux_dict['b'] if 'b' in flux_dict else 0,
+                    'Forward Flux': flux_dict['f'] if 'f' in flux_dict else 0,
+                    'Backward Flux': flux_dict['b'] if 'b' in flux_dict else 0,
                     'Alpha Number': alpha_number_for_complex,
                     'Occupied Area um2': coeff * enz_complex_concentration,
                     'Occupied Area %': coeff * enz_complex_concentration / occupied_area * 100,

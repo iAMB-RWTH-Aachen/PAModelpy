@@ -35,10 +35,16 @@ def change_translational_sector_with_config_dict(pamodel:PAModel,
 def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union[Model, PAModel]:
     
     for _, row in prot_df.iterrows():
-        rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
+        if row['Reaction'].startswith('CE_'):
+            rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['Reaction'])
+        else:
+            rxn_id = row['Reaction']
         enzyme_id = _order_enzyme_complex_id(row['enzyme_id'])
         kcat_dict = {rxn_id: {'f': row['Forward Flux'], 'b': row['Backward Flux']}}
+    
         model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+        if rxn_id == 'TSULabcpp':
+            print(model.enzyme_variables.get_by_id(enzyme_id).kcats)
 
     return model
 

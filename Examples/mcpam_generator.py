@@ -21,7 +21,7 @@ if __name__ == "__main__":
     ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
 
     # Load iML1515 PAM and mcPAM
-    pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+    pam_info_path = 'Results/From_kcat_dataset_20250627/result_enzymatic_files/proteinAllocationModel_EnzymaticData_iML1515_20250702.xlsx'
     model_path = 'Models/iML1515.xml'
     pam = set_up_pam(pam_info_file=pam_info_path,
                     model=model_path,
@@ -52,15 +52,16 @@ if __name__ == "__main__":
                                     lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
                                     print_change = True #do you want to see the change? False by default
                                     )
+        # change_set_of_kcats_using_excel_sheet(model=model, 
+        #                 prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
+        #                 sheet="edited_kcats 20250702 (2)")
+        
         model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
+
 
     # get_info_for_proteins(mcpam=mcpam,
     #                       pam_info_path=pam_info_path,
-    #                       protein_info_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx")
-
-    change_set_of_kcats_using_excel_sheet(models=models, 
-                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-                        sheet="edited_kcats 20250702")
+    #                       protein_info_path="Results/From_kcat_dataset_20250627/protein_occupancy_data_updated_kcats.xlsx")
 
     # Run simulation for both PAM and mcPAM with the changed sector parameters
     run_simulations_pam_mcpam_w_different_areas(models, type='full scale')
@@ -87,8 +88,8 @@ if __name__ == "__main__":
     #     plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
 
 
-    ### Build full scale pam from diagnostics file
-    ## Define necessary paths/sheet names
+    # ## Build full scale pam from diagnostics file
+    # # Define necessary paths/sheet names
     # diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
     # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     # sheet_name = 'Best_Individuals'

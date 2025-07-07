@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.colors as mcolors
 import seaborn as sns
-
+import time
 import pandas as pd
 import os
 import sys
@@ -41,8 +41,10 @@ def calculate_sensitivities(pamodel):
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-            pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+            pamodel.change_reaction_ub(rxn_id='EX_glc__D_e', upper_bound=-glc)
+            pamodel.change_reaction_lb(rxn_id='EX_glc__D_e', lower_bound=-glc)
+            # pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+            # pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
             # solve the model
             sol_pam = pamodel.optimize()
             fluxes.append(sol_pam.fluxes)
@@ -303,6 +305,7 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold = 0.05):
 
 
 ### Build PAM
+start = time.time()
 pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
 model_path = 'Models/iML1515.xml'
 pamodel = set_up_pam(pam_info_file=pam_info_path, 
@@ -376,5 +379,8 @@ fig.subplots_adjust(left=0.3)
 fig.set_figwidth(width)
 fig.set_figheight(height)
 fig.align_labels()
+end = time.time()
+computing_time = end-start
+print('Computing time sensitivity_analysis_pam:', computing_time)
 plt.show()
 # fig.savefig('Figures/Figure2_sensitivities_pam.png', dpi =275,bbox_inches='tight')
