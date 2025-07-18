@@ -20,8 +20,8 @@ if __name__ == "__main__":
 
     ## Build full scale pam from diagnostics file
     # Define necessary paths/sheet names
-    diagnostics_data_path = 'Results/PAM_parametrizer/Diagnostics_files/2025_07_10/pam_parametrizer_diagnostics_iML1515.xlsx'
-    pam_info_path = 'Results/From_kcat_dataset_20250627/result_enzymatic_files/proteinAllocationModel_EnzymaticData_mciML1515_20250702.xlsx'
+    diagnostics_data_path = 'Results/PAM_parametrizer/Diagnostics_files/2025_07_18/pam_parametrizer_diagnostics_7_uescaling_after.xlsx'
+    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_07_18/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     sheet_name = 'Best_Individuals'
 
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
@@ -39,15 +39,15 @@ if __name__ == "__main__":
         te_sector = model.sectors.get_by_id('TranslationalProteinSector')
         # Change unused enzyme sector parameters
         model.change_sector_parameters(sector = ue_sector,
-                                    slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
-                                    intercept=0.17, # g_p/g_cdw
+                                    slope = 0.013452, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
+                                    intercept=0.172231, # g_p/g_cdw
                                     lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
                                     print_change = True #do you want to see the change? False by default
                                     )
         # Change translational enzyme sector parameters
         model.change_sector_parameters(sector = te_sector,
-                                    slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
-                                    intercept=0.038, # g_p/g_cdw
+                                    slope = -0.00434, #in this case: g_p*h/(g_cdw*mmol_glc)
+                                    intercept=0.046137, # g_p/g_cdw
                                     lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
                                     print_change = True #do you want to see the change? False by default
                                     )
@@ -56,9 +56,9 @@ if __name__ == "__main__":
     #                       pam_info_path=pam_info_path,
     #                       protein_info_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx")
 
-    # change_set_of_kcats_using_excel_sheet(models=models, 
-    #                                       prot_file_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx",
-    #                                       sheet="enzymatic_file_10")
+    change_set_of_kcats_using_excel_sheet(model=model, 
+                        prot_file_path="Results/From_kcat_dataset_20250627/kcats_sensitive_membrane_enzymes_manually_curated.xlsx",
+                        sheet="enzymes_changed_kcats")
 
     # run_simulation_pam_mcpam(models, type='full scale')
     run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
