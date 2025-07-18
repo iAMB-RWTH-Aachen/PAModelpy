@@ -21,7 +21,7 @@ if __name__ == "__main__":
     ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
 
     # Load iML1515 PAM and mcPAM
-    pam_info_path = 'Results/From_kcat_dataset_20250627/result_enzymatic_files/proteinAllocationModel_EnzymaticData_iML1515_20250702.xlsx'
+    pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
     model_path = 'Models/iML1515.xml'
     pam = set_up_pam(pam_info_file=pam_info_path,
                     model=model_path,
@@ -52,9 +52,9 @@ if __name__ == "__main__":
                                     lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
                                     print_change = True #do you want to see the change? False by default
                                     )
-        # change_set_of_kcats_using_excel_sheet(model=model, 
-        #                 prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-        #                 sheet="edited_kcats 20250702 (2)")
+        change_set_of_kcats_using_excel_sheet(model=model, 
+                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
+                        sheet="edited_kcats 20250702 (2)")
         
         model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
 

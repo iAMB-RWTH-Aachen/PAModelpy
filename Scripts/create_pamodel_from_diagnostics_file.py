@@ -43,8 +43,6 @@ def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union
         kcat_dict = {rxn_id: {'f': row['Forward Flux'], 'b': row['Backward Flux']}}
     
         model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
-        if rxn_id == 'TSULabcpp':
-            print(model.enzyme_variables.get_by_id(enzyme_id).kcats)
 
     return model
 
