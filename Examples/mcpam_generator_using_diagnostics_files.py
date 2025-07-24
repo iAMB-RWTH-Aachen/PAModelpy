@@ -58,10 +58,12 @@ if __name__ == "__main__":
 
     change_set_of_kcats_using_excel_sheet(model=model, 
                         prot_file_path="Results/From_kcat_dataset_20250627/kcats_sensitive_membrane_enzymes_manually_curated.xlsx",
-                        sheet="enzymes_changed_kcats")
+                        sheet="bulky_ME")
 
     # run_simulation_pam_mcpam(models, type='full scale')
     run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
+
+    print(mcpam.enzyme_variables.get_kcat_values("ATPS4rpp"))
 
 
 
