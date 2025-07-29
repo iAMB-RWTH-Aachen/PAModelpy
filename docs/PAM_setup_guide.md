@@ -16,13 +16,20 @@ The accompanying `test_pam_generation.py` provides unit tests to validate the se
 
 ### Required python libraries
 
-Ensure you have `PAModelpy` installed
+Ensure you have `PAModelpy` installed on Python >=3.9 and <=3.11
 
 Install these dependencies via pip:
 
 ```bash
 pip install cobra PAModelpy
 ```
+
+Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver. In order for Gurobi to work properly, please install
+[gurobipy](https://pypi.org/project/gurobipy/) with a version matching your license.
+
+For example for the version used for the development of PAModelpy:
+
+`pip install gurobipy==9.5.2`
 
 ### Input files
 
@@ -151,20 +158,20 @@ param_file = "Data/proteinAllocationModel_yeast9_EnzymaticData.xlsx"
 
 #2. Change all the reaction ids in config and the protein regex
 config = Config()
-    config.TOTAL_PROTEIN_CONSTRAINT_ID = "TotalProteinConstraint"
-    config.P_TOT_DEFAULT = 0.388  # g_protein/g_cdw
-    config.CO2_EXHANGE_RXNID = "r_1672"
-    config.GLUCOSE_EXCHANGE_RXNID = "r_1714"
-    config.BIOMASS_REACTION = "r_2111"
-    config.OXYGEN_UPTAKE_RXNID = "r_1992"
-    config.ACETATE_EXCRETION_RXNID = "r_1634"
-    config.PHYS_RXN_IDS = [
-    config.BIOMASS_REACTION,
-    config.GLUCOSE_EXCHANGE_RXNID,
-    config.ACETATE_EXCRETION_RXNID,
-    config.CO2_EXHANGE_RXNID,
-    config.OXYGEN_UPTAKE_RXNID]
-    config.ENZYME_ID_REGEX = r'(Y[A-P][LR][0-9]{3}[CW])'
+config.TOTAL_PROTEIN_CONSTRAINT_ID = "TotalProteinConstraint"
+config.P_TOT_DEFAULT = 0.388  # g_protein/g_cdw
+config.CO2_EXHANGE_RXNID = "r_1672"
+config.GLUCOSE_EXCHANGE_RXNID = "r_1714"
+config.BIOMASS_REACTION = "r_2111"
+config.OXYGEN_UPTAKE_RXNID = "r_1992"
+config.ACETATE_EXCRETION_RXNID = "r_1634"
+config.PHYS_RXN_IDS = [
+config.BIOMASS_REACTION,
+config.GLUCOSE_EXCHANGE_RXNID,
+config.ACETATE_EXCRETION_RXNID,
+config.CO2_EXHANGE_RXNID,
+config.OXYGEN_UPTAKE_RXNID]
+config.ENZYME_ID_REGEX = r'(Y[A-P][LR][0-9]{3}[CW])'
 
 #3. Build the PAM
 pam = set_up_pam(pam_info_file=param_file,
