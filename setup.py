@@ -9,6 +9,7 @@ setup(
         'matplotlib==0.1.6',
         'scipy',
         'resource',
-        'jupyter'
+        'jupyter',
+        'gurobipy==9.5.2'
     ]
 )

@@ -18,11 +18,18 @@ We have extended this package with the following features:
 - the possibility to perform a computational efficient sensitivity analysis
 
 ## Installation
+**IMPORTANT: PAModelpy is only compatible with Python >= 3.9 and <=3.11**
+
 [PAModelpy is a PiPy package](https://pypi.org/project/PAModelpy/) which allows for easy installation with pip:
 
 `pip install PAModelpy`
 
-Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
+Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver. In order for Gurobi to work properly, please install
+[gurobipy](https://pypi.org/project/gurobipy/) with a version matching your license.
+
+For example for the version used for the development of PAModelpy:
+
+`pip install gurobipy==9.5.2`
 
 ## Code structure:
 - **EnzymeSectors**: The objects which are used to store the data of the different enzyme sectors which are added to the genome-scale model
@@ -32,7 +39,8 @@ Note that the package has been tested with the [Gurobi](https://www.mathworks.co
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
 
 ## Dependencies
-The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
+The dependencies of the PAModelpy package can be found in `src/pyproject.toml`.
+Because of the version of numpy used, the PAModelpy is only compatible with Python >= 3.9 and <=3.11.
 
 ## License
 Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2023)
