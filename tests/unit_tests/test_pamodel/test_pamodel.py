@@ -154,6 +154,22 @@ def test_if_pamodel_change_enzyme_bounds_function_can_change_when_lb_geq_ub():
     assert new_E1_min == new_toy_E1_min
     assert new_E1_max == new_toy_E1_max
 
+def test_if_pamodel_change_enzyme_bounds_function_can_change_when_ub_leq_lb():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    E1_min, E1_max = 0.005, 0.5
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=E1_min, upper_bound=E1_max)
+    new_E1_min, new_E1_max = 0.003, 0.004
+
+    # act
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=new_E1_min, upper_bound=new_E1_max)
+    new_toy_E1_min = toy_pam.enzyme_variables.get_by_id('E1').lower_bound
+    new_toy_E1_max = toy_pam.enzyme_variables.get_by_id('E1').upper_bound
+
+    # assert
+    assert new_E1_min == new_toy_E1_min
+    assert new_E1_max == new_toy_E1_max
+
 def test_if_pamodel_sensitivity_can_be_changed_true_to_false():
     # arrange
     toy_pam = build_toy_pam(sensitivity=True)
