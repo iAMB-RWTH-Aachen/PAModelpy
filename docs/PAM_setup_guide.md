@@ -243,6 +243,19 @@ protein2gene, gene2protein = get_protein_gene_mapping(enzyme_db, model)
 # Ensure the enzyme complexes are merged on one row
 eco_enzymes_mapped = merge_enzyme_complexes(enzyme_db, gene2protein)
 ```
+### Saving the PAM
+Saving the PAM is not often required, as all the parameters are stored in Excel format and can thus be easily modified. 
+COBRApy's tools for saving models DO NOT WORK for saving PAMs: in fact the generated models won't be executable. In case 
+you do want to store a PAM for later use, you can store it using pickle, provided the underlying metabolic model is picklable.. 
+
+```python
+import pickle
+
+pickle.dump(pam, "path/to/model.pickle")
+```
+Does pickling not work? Check if one of the reactions or metabolites has LP standard language (such as 'St') as id.
+
+
 ---
 
 ## Troubleshooting
@@ -252,3 +265,7 @@ eco_enzymes_mapped = merge_enzyme_complexes(enzyme_db, gene2protein)
 
 - **Issue: Objective value is zero after optimization**  
   Solution: Check the input parameter file for consistency and ensure that all reactions are correctly annotated.
+
+- **Issue: The PAM can be pickled, but not unpickled**
+    Solution: Most likely one of the reaction in the metabolic models has a name like 'St'. Renaming this to something 
+which is not part of the standard LP language will solve the issue.
