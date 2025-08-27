@@ -127,25 +127,28 @@ def test_if_merge_enzyme_complexes_merges_enzyme_ids():
     assert_molmass_for_enzyme_complexes_are_summed(merged_enzyme_db)
     assert_molmass_for_isozymes_are_not(merged_enzyme_db)
 
-@pytest.mark.parametrize('sheetname, gene2protein, enzyme_complexes',[
+@pytest.mark.parametrize('sheetname, gene2protein, enzyme_complexes, len_enzyme_df, molmass_to_check',[
     (
             'mixed_and_or_gpr_different_complex',
             {'cg3361':'Enzyme_cg3361' ,  'cg3360':'Enzyme_cg3360', 'cg3359':'Enzyme_cg3359'},
             ['Enzyme_cg3359_Enzyme_cg3360', 'Enzyme_cg3359_Enzyme_cg3361', 'Enzyme_cg3361'],
-            5
+            5,
+            {'Enzyme_cg3359':2*39959.4825}
      ),
     (
             'f_b_multiple_complexes_atps',
             {'b3739': 'P0ABC0', 'b3731': 'P0A6E6', 'b3733': 'P0ABA6', 'b3735': 'P0ABA4', 'b3734': 'P0ABB0',
              'b3732': 'P0ABB4', 'b3738': 'P0AB98', 'b3736': 'P0ABA0', 'b3737': 'P68699'},
             ['P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P0ABC0_P68699','P0A6E6_P0AB98_P0ABA0_P0ABA4_P0ABA6_P0ABB0_P0ABB4_P68699'],
-            4
+            4,
+            {'P0ABC0':240979}
     )
 ])
 def test_if_merge_enzyme_complex_parses_complex_gprs(sheetname:str,
                                                      gene2protein:Dict[str,str],
                                                      enzyme_complexes: List[str],
-                                                     len_enzyme_db: int):
+                                                     len_enzyme_db: int,
+                                                     molmass_to_check: Dict[str, float]):
     # Arrange
     toy_enzyme_db = pd.read_excel(os.path.join('tests', 'data', 'enzyme_complexes_to_merge_info.xlsx'),
                                   sheet_name=sheetname
