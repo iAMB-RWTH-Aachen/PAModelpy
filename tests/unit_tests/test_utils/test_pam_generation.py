@@ -69,39 +69,39 @@ def test_if_pam_can_be_build_from_path_to_gem(path_to_model:str):
     pam.optimize()
     assert pam.objective.value > 0
 
-#
-# def test_if_set_up_pam_can_build_ecolicore_pam():
-#     #Arrange
-#     pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209_core.xlsx')
-#     ecolicore_gem = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
-#
-#     #Apply
-#     ecolicore_pam = set_up_pam(pam_data_file,
-#                                ecolicore_gem,
-#                                total_protein = 0.1699,
-#                                sensitivity=False,
-#                                adjust_reaction_ids=True)
-#
-#     ecolicore_pam.optimize()
-#
-#     #Assert
-#     assert ecolicore_pam.objective.value > 0
-#
-# def test_if_set_up_pam_can_build_iML1515():
-#     #Arrange
-#     pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
-#     iml1515 = os.path.join('Models', 'iML1515.xml')
-#
-#     #Apply
-#     pam = set_up_pam(pam_data_file,
-#                                iml1515,
-#                                sensitivity=False,
-#                                adjust_reaction_ids=True)
-#
-#     pam.optimize()
-#
-#     #Assert
-#     assert pam.objective.value > 0
+
+def test_if_set_up_pam_can_build_ecolicore_pam():
+    #Arrange
+    pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209_core.xlsx')
+    ecolicore_gem = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
+
+    #Apply
+    ecolicore_pam = set_up_pam(pam_data_file,
+                               ecolicore_gem,
+                               total_protein = 0.1699,
+                               sensitivity=False,
+                               adjust_reaction_ids=True)
+
+    ecolicore_pam.optimize()
+
+    #Assert
+    assert ecolicore_pam.objective.value > 0
+
+def test_if_set_up_pam_can_build_iML1515():
+    #Arrange
+    pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+    iml1515 = os.path.join('Models', 'iML1515.xml')
+
+    #Apply
+    pam = set_up_pam(pam_data_file,
+                               iml1515,
+                               sensitivity=False,
+                               adjust_reaction_ids=True)
+
+    pam.optimize()
+
+    #Assert
+    assert pam.objective.value > 0
 
 def test_if_merge_enzyme_complexes_merges_enzyme_ids():
     # Arrange
