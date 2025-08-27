@@ -453,12 +453,14 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
 def merge_enzyme_complexes(df, gene2protein):
     collapsed_rows = []
 
-    for rxn_id, group in df.groupby('rxn_id'):
+    for (rxn_id, direction), group in df.groupby(['rxn_id', 'direction']):
         for _, row in group.iterrows():
             #skip nan entries
             if isinstance(row.GPR, float) or isinstance(row.gene, float):
                 continue
-            # Parse GPR
+            # make sure the enzymes are not counted double by dropping potential duplicated
+            group = group.drop_duplicates(['enzyme_id', 'rxn_id', 'direction'])
+            #parse GPR
             gpr_list, enzyme_relations = parse_gpr_information(
                 row['GPR'], row['gene'], row['enzyme_id'], gene2protein, convert_to_complexes=True
             )
@@ -473,11 +475,11 @@ def merge_enzyme_complexes(df, gene2protein):
 
                     if len(enzyme_list) > 1:
                         # Compute the sum of molMass and length only if it's a complex (more than one enzyme)
-                        molmass_sum = df[df.rxn_id == row.rxn_id].loc[
+                        molmass_sum = group.loc[
                             df['enzyme_id'].isin(enzyme_list), 'molMass'].sum()
-                        length_sum = df[df.rxn_id == row.rxn_id].loc[
+                        length_sum = group.loc[
                             df['enzyme_id'].isin(enzyme_list), 'Length'].sum()
-                        kcat_mean = df[df.rxn_id == row.rxn_id].loc[
+                        kcat_mean = group.loc[
                             df['enzyme_id'].isin(enzyme_list), 'kcat_values'].mean()
                     else:
                         # Keep the original molMass/Length if it's a single enzyme
@@ -492,7 +494,7 @@ def merge_enzyme_complexes(df, gene2protein):
             else:
                 collapsed_rows.append(row)
 
-    collapsed_df = pd.DataFrame(collapsed_rows)
+    collapsed_df = pd.DataFrame(collapsed_rows).drop_duplicates(['rxn_id', 'enzyme_id', 'direction'])
     return collapsed_df
 
 def set_up_pam(pam_info_file:str = '',

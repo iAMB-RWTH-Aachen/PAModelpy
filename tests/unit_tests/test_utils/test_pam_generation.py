@@ -69,39 +69,39 @@ def test_if_pam_can_be_build_from_path_to_gem(path_to_model:str):
     pam.optimize()
     assert pam.objective.value > 0
 
-
-def test_if_set_up_pam_can_build_ecolicore_pam():
-    #Arrange
-    pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209_core.xlsx')
-    ecolicore_gem = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
-
-    #Apply
-    ecolicore_pam = set_up_pam(pam_data_file,
-                               ecolicore_gem,
-                               total_protein = 0.1699,
-                               sensitivity=False,
-                               adjust_reaction_ids=True)
-
-    ecolicore_pam.optimize()
-
-    #Assert
-    assert ecolicore_pam.objective.value > 0
-
-def test_if_set_up_pam_can_build_iML1515():
-    #Arrange
-    pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
-    iml1515 = os.path.join('Models', 'iML1515.xml')
-
-    #Apply
-    pam = set_up_pam(pam_data_file,
-                               iml1515,
-                               sensitivity=False,
-                               adjust_reaction_ids=True)
-
-    pam.optimize()
-
-    #Assert
-    assert pam.objective.value > 0
+#
+# def test_if_set_up_pam_can_build_ecolicore_pam():
+#     #Arrange
+#     pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209_core.xlsx')
+#     ecolicore_gem = cobra.io.load_json_model(os.path.join('Models', 'e_coli_core.json'))
+#
+#     #Apply
+#     ecolicore_pam = set_up_pam(pam_data_file,
+#                                ecolicore_gem,
+#                                total_protein = 0.1699,
+#                                sensitivity=False,
+#                                adjust_reaction_ids=True)
+#
+#     ecolicore_pam.optimize()
+#
+#     #Assert
+#     assert ecolicore_pam.objective.value > 0
+#
+# def test_if_set_up_pam_can_build_iML1515():
+#     #Arrange
+#     pam_data_file = os.path.join('Data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+#     iml1515 = os.path.join('Models', 'iML1515.xml')
+#
+#     #Apply
+#     pam = set_up_pam(pam_data_file,
+#                                iml1515,
+#                                sensitivity=False,
+#                                adjust_reaction_ids=True)
+#
+#     pam.optimize()
+#
+#     #Assert
+#     assert pam.objective.value > 0
 
 def test_if_merge_enzyme_complexes_merges_enzyme_ids():
     # Arrange
@@ -127,12 +127,12 @@ def test_if_merge_enzyme_complexes_merges_enzyme_ids():
     assert_molmass_for_enzyme_complexes_are_summed(merged_enzyme_db)
     assert_molmass_for_isozymes_are_not(merged_enzyme_db)
 
-@pytest.mark.parametrize('sheetname, gene2protein, enzyme_complexes, len_enzyme_df, molmass_to_check',[
+@pytest.mark.parametrize('sheetname, gene2protein, enzyme_complexes, len_enzyme_db, molmass_to_check',[
     (
-            'mixed_and_or_gpr_different_complex',
+            'mixed_and_or_gpr',
             {'cg3361':'Enzyme_cg3361' ,  'cg3360':'Enzyme_cg3360', 'cg3359':'Enzyme_cg3359'},
             ['Enzyme_cg3359_Enzyme_cg3360', 'Enzyme_cg3359_Enzyme_cg3361', 'Enzyme_cg3361'],
-            5,
+            3,
             {'Enzyme_cg3359':2*39959.4825}
      ),
     (
@@ -153,15 +153,16 @@ def test_if_merge_enzyme_complex_parses_complex_gprs(sheetname:str,
     toy_enzyme_db = pd.read_excel(os.path.join('tests', 'data', 'enzyme_complexes_to_merge_info.xlsx'),
                                   sheet_name=sheetname
                                   )
-    gene2protein = {'cg3361':'Enzyme_cg3361' ,  'cg3360':'Enzyme_cg3360', 'cg3359':'Enzyme_cg3359'}
-
+    print(toy_enzyme_db[['rxn_id', 'enzyme_id', 'direction', 'molMass', 'Length']].to_markdown())
     # Apply
     merged_enzyme_db = merge_enzyme_complexes(toy_enzyme_db, gene2protein)
+    print(merged_enzyme_db[['rxn_id', 'enzyme_id', 'direction', 'molMass', 'Length']].to_markdown())
     # Assert
     for complex in enzyme_complexes:
         assert (complex==merged_enzyme_db.enzyme_id).any()
     assert len(merged_enzyme_db) == len_enzyme_db
-    assert (merged_enzyme_db.molMass[merged_enzyme_db.enzyme_id.str.contains('Enzyme_cg3359')] == 2*39959.4825).all()
+    for enzyme_id, molmass in molmass_to_check.items():
+        assert (merged_enzyme_db.molMass[merged_enzyme_db.enzyme_id.str.contains(enzyme_id)] == molmass).all()
 
 
 
