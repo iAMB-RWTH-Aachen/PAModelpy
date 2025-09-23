@@ -292,7 +292,7 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
     for rxn in model.reactions:
         rxn_id = _extract_reaction_id(
             rxn.id)  # some reactions ids are associated with copy numbers, only filter for the actual reaction id
-        rxn_genes = [g.id for g in rxn.genes if g.id != 's0001']
+        rxn_genes = [g.id for g in rxn.genes if 's0001' not in g.id]
         if not (
                 rxn_id not in rxn_info2protein.keys()
                 and 'EX'.lower() not in rxn.id.lower()  # is the reaction an exchange with the environment?
