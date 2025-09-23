@@ -15,7 +15,7 @@ from ..EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeS
 from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
-DEFAULT_KCAT = 11 #s-1
+DEFAULT_KCAT = 13.7 #s-1, from Bar-Evan et al (2011), the median from BRENDA
 
 class EnzymeInformation(TypedDict):
     enzyme_id:str
