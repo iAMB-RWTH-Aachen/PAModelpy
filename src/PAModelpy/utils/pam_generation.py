@@ -292,11 +292,12 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
     for rxn in model.reactions:
         rxn_id = _extract_reaction_id(
             rxn.id)  # some reactions ids are associated with copy numbers, only filter for the actual reaction id
+        rxn_genes = [g.id for g in rxn.genes if g.id != 's0001']
         if not (
                 rxn_id not in rxn_info2protein.keys()
                 and 'EX'.lower() not in rxn.id.lower()  # is the reaction an exchange with the environment?
                 and 'BIOMASS' not in rxn.id  # is the reaction a pseudoreaction?
-                and len(rxn._genes) > 0  # is the reaction associated with enzymes?
+                and len(rxn_genes) > 0 # is the reaction associated with enzymes?
                 and rxn_id != 'ATPM' # is the reaction associated to the ATP maintenance pseudoreaction?
         ): continue
 
@@ -304,11 +305,11 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
 
         rxn_info = ReactionInformation(rxn.id)
         rxn_info.model_reactions = [rxn]
-        kwargs = {}
+        kwargs = {'kcat_f':1e6,'kcat_b':1e6}
         if rxn_info.check_reaction_reversibility() > 0:
-            kwargs = {'kcat_b':0}
+            kwargs = {'kcat_b':1e6}
         elif rxn_info.check_reaction_reversibility() < 0:
-            kwargs = {'kcat_f': 0}
+            kwargs = {'kcat_f': 1e6}
 
 
         enzyme_info = enzyme_information(rxn.id, rxn._genes, **kwargs)
