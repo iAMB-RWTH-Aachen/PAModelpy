@@ -305,11 +305,14 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
 
         rxn_info = ReactionInformation(rxn.id)
         rxn_info.model_reactions = [rxn]
-        kwargs = {'kcat_f':1e6,'kcat_b':1e6} if 'tpp' in rxn_id else {} #make sure transporters do not burden the model
-        if rxn_info.check_reaction_reversibility() > 0:
+        if 'tpp' in rxn_id:
+            kwargs = {'kcat_f':1e6,'kcat_b':1e6} #make sure transporters do not burden the model
+        elif rxn_info.check_reaction_reversibility() > 0:
             kwargs = {'kcat_b':1e6}
         elif rxn_info.check_reaction_reversibility() < 0:
             kwargs = {'kcat_f': 1e6}
+        else:
+            kwargs = {}
 
 
         enzyme_info = enzyme_information(rxn.id, rxn._genes, **kwargs)
