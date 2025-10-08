@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from cobra import Reaction
 
@@ -24,5 +25,15 @@ def test_fva_runs_for_different_object_types(toy_pam, variable_type, attr_name):
     df = flux_variability_analysis(model = toy_pam,
                                    variable_type = variable_type
                                    )
-    print(df)
     assert len(df) == len(getattr(toy_pam, attr_name))
+
+def test_fva_gets_same_result_in_parallel_as_without(toy_pam):
+    df_ref = flux_variability_analysis(model = toy_pam
+                                   )
+    df = flux_variability_analysis(model = toy_pam,
+                                   processes = 2
+                                   )
+    for i, row in df.iterrows():
+        assert i in df_ref.index
+        assert df_ref['minimum'].loc[i] == pytest.approx(row['minimum'], abs=1e-6)
+        assert df_ref['maximum'].loc[i] == pytest.approx(row['maximum'], abs=1e-6)
