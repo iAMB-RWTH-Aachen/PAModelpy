@@ -391,6 +391,7 @@ def build_toy_pam(sensitivity = True):
     Config.ACETATE_EXCRETION_RXNID = 'R9'
 
     model = load_json_model('tests/unit_tests/toy_model.json')
+    model.objective = 'R7'
     active_enzyme = build_active_enzyme_sector(Config)
     unused_enzyme = build_unused_protein_sector(Config)
     translation_enzyme = build_translational_protein_sector(Config)
