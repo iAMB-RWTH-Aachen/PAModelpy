@@ -262,7 +262,7 @@ the kcat relating the forward reaction of `13PPDH2` with the enzyme abundance of
 ```python
 rxn2kcat = {'13PPDH2':{'f':10}}
 
-pam.change_kcat_values(enzyme_id = 'Q46856',
+pam.change_kcat_value(enzyme_id = 'Q46856',
                        kcats = rxn2kcat)
 ```
 
