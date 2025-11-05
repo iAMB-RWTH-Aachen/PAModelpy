@@ -1414,6 +1414,9 @@ class PAModel(Model):
                 self.change_reaction_lb(rxn_id, lower_bound)
             self.change_reaction_ub(rxn_id, upper_bound)
 
+        elif lower_bound is not None:
+            self.change_reaction_lb(rxn_id, lower_bound)
+
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
