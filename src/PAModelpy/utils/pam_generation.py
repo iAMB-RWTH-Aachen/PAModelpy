@@ -627,7 +627,7 @@ def set_up_core_pam(pam_info_file:str = '',
     #check if a different total protein concentration is given
     if isinstance(total_protein, float):
         TOTAL_PROTEIN_CONCENTRATION = total_protein
-
+    
     # load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
