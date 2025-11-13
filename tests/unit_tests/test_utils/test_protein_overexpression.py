@@ -3,7 +3,10 @@ import tempfile
 
 
 from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam
-from src.PAModelpy.utils.recombinant_protein_expression import *
+from src.PAModelpy.utils.recombinant_protein_expression import (_get_substrate_uptake_rate_for_fixed_growth_rate,
+                                                                read_sequence_from_file,
+                                                                match_aminoacid_to_model_identifiers_and_frequency
+                                                                )
 
 @pytest.fixture
 def dummy_sequence_file():
@@ -33,10 +36,10 @@ def test_match_aminoacid_to_model_identifiers_and_frequency():
 
 
 def test_get_subtrate_uptake_rate_for_fixed_growth_rate(mock_pam):
-    substrate_rxn = mock_pam.reactions.list_attr()[0]  # or pick a specific one
+    substrate_rxn = mock_pam.reactions.EX_glc__D_e
     uptake_id = substrate_rxn.id
 
-    rate = _get_subtrate_uptake_rate_for_fixed_growth_rate(
+    rate = _get_substrate_uptake_rate_for_fixed_growth_rate(
         pam=mock_pam,
         substrate_uptake_id=uptake_id,
         growth_rate=0.1

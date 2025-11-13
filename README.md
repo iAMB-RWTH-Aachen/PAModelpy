@@ -18,12 +18,18 @@ We have extended this package with the following features:
 - [sEnz](https://doi.org/10.1093/bioinformatics/btae691): the possibility to perform a computational efficient sensitivity analysis
 
 ## Installation
+**IMPORTANT: PAModelpy is only compatible with Python >= 3.9 and <=3.11**
+
 [PAModelpy is a PiPy package](https://pypi.org/project/PAModelpy/) which allows for easy installation with pip:
 
 `pip install PAModelpy`
 
-Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
+Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver. In order for Gurobi to work properly, please install
+[gurobipy](https://pypi.org/project/gurobipy/) with a version matching your license.
 
+For example for the version used for the development of PAModelpy:
+
+`pip install gurobipy==9.5.2`
 
 ## Documentation
 The documentation including coding examples can be found [here](https://pamodelpy.readthedocs.io/en/latest/).
@@ -50,12 +56,14 @@ This repository contains not only the source code, but also examples and scripts
 - **EnzymeSectors**: The objects which are used to store the data of the different enzyme sectors which are added to the genome-scale model
 - **PAModel**: Proteome Allocation (PA) model class. This class builds on to the `cobra.core.Model` class from the COBRApy toolbox with functions to build enzyme sectors, to add enzyme kinetics parameters and in the future to perform a sensitivity analysis on the enzyme variables.
 - **Enzyme**: Different classes which relate enzymes to the model with enzyme constraints and variables.
-- **CatalyticEvent**: A class which serves as an interface between reactions and enzyme. This allows for easy lookup of Protein-Reaction assocations.
+- **CatalyticEvent**: A class which serves as an interface between reactions and enzyme. This allows for easy lookup of Protein-Reaction associations.
 - **PAMValidator**: Functions to validate the model predictions with physiology data and giving a graphical overview. The script uses data for E.coli (found in `./Data/Ecoli_physiology`) by default.
 
 ## Dependencies
+Because of the version of numpy used, the PAModelpy is only compatible with Python >= 3.9 and <=3.11.
 Dependencies for the scripts in this repository, not included in the PAModelpy package:
 - `PAModelpy`
+- `gurobipy`
 - `matplotlib`
 - `scipy`
 - `time`
@@ -72,7 +80,7 @@ The dependencies of the PAModelpy package can be found in `src/pyproject.toml`
 
 
 ## How to cite?
-Did you use this package in your work? Please cite use by clicking the 'cite this repository' botton on the right side and select your favourite format.
+Did you use this package in your work? Please cite use by clicking the 'cite this repository' button on the right side and select your favourite format.
 
 ## License
 Copyright institute of Applied Microbiology, RWTH Aachen University, Aachen, Germany (2025)

@@ -641,8 +641,12 @@ class EnzymeVariable(Reaction):
             })
             self.enzyme._constraints[self.id+'_conc'] = self._model.constraints[self.id + '_conc']
         else:
-            self._model.constraints[self.id + '_conc'].lb = lower_bound
-            self._model.constraints[self.id + '_conc'].ub = upper_bound
+            if lower_bound<self._model.constraints[self.id + '_conc'].ub:
+                self._model.constraints[self.id + '_conc'].lb = lower_bound
+                self._model.constraints[self.id + '_conc'].ub = upper_bound
+            else:
+                self._model.constraints[self.id + '_conc'].ub = upper_bound
+                self._model.constraints[self.id + '_conc'].lb = lower_bound
 
 
 

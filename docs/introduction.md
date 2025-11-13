@@ -17,11 +17,18 @@ We have extended this package with the following features:
 - the possibility to perform a computational efficient sensitivity analysis
 
 ## Installation
+**IMPORTANT: PAModelpy is only compatible with Python >= 3.9 and <=3.11**
+
 [PAModelpy is a PiPy package](https://pypi.org/project/PAModelpy/) which allows for easy installation with pip:
 
 `pip install PAModelpy`
 
-Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver.
+Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver. In order for Gurobi to work properly, please install
+[gurobipy](https://pypi.org/project/gurobipy/) with a version matching your license.
+
+For example for the version used for the development of PAModelpy:
+
+`pip install gurobipy==9.5.2`
 
 ## What can you find where in this repository?
 This repository contains not only the source code, but also examples and scripts which were used in
@@ -59,8 +66,11 @@ as this object is merely used to transfer identifiers from one object to another
 *UML diagram of the PAModelpy software. Not all attributes and functions are shown. Those who are shown are assumes to be most descriptive for the objects function.*
 
 ## Dependencies
+**IMPORTANT: PAModelpy is only compatible with Python >= 3.9 and <=3.11**
+
 Dependencies for the scripts in this repository, not included in the PAModelpy package:
 - `PAModelpy`
+- `gurobipy`
 - `plotly`
 - `matplotlib`
 - `scipy`

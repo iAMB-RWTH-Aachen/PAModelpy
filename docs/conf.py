@@ -5,11 +5,11 @@ source_suffix = ['.rst', '.md']  # If using Markdown files with MyST
 # -- Project information
 
 project = 'PAModelpy'
-copyright = '2024, iAMB, RWTH Aachen University'
+copyright = '2025, iAMB, RWTH Aachen University'
 author = 'Samira van den Bogaard'
 
-release = '0.4.7'
-version = '0.4.7'
+release = '0.5.2'
+version = '0.5.2'
 
 # -- General configuration
 

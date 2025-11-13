@@ -16,13 +16,20 @@ The accompanying `test_pam_generation.py` provides unit tests to validate the se
 
 ### Required python libraries
 
-Ensure you have `PAModelpy` installed
+Ensure you have `PAModelpy` installed on Python >=3.9 and <=3.11
 
 Install these dependencies via pip:
 
 ```bash
 pip install cobra PAModelpy
 ```
+
+Note that the package has been tested with the [Gurobi](https://www.mathworks.com/products/connections/product_detail/gurobi-optimizer.html) solver. In order for Gurobi to work properly, please install
+[gurobipy](https://pypi.org/project/gurobipy/) with a version matching your license.
+
+For example for the version used for the development of PAModelpy:
+
+`pip install gurobipy==9.5.2`
 
 ### Input files
 
@@ -151,20 +158,20 @@ param_file = "Data/proteinAllocationModel_yeast9_EnzymaticData.xlsx"
 
 #2. Change all the reaction ids in config and the protein regex
 config = Config()
-    config.TOTAL_PROTEIN_CONSTRAINT_ID = "TotalProteinConstraint"
-    config.P_TOT_DEFAULT = 0.388  # g_protein/g_cdw
-    config.CO2_EXHANGE_RXNID = "r_1672"
-    config.GLUCOSE_EXCHANGE_RXNID = "r_1714"
-    config.BIOMASS_REACTION = "r_2111"
-    config.OXYGEN_UPTAKE_RXNID = "r_1992"
-    config.ACETATE_EXCRETION_RXNID = "r_1634"
-    config.PHYS_RXN_IDS = [
-    config.BIOMASS_REACTION,
-    config.GLUCOSE_EXCHANGE_RXNID,
-    config.ACETATE_EXCRETION_RXNID,
-    config.CO2_EXHANGE_RXNID,
-    config.OXYGEN_UPTAKE_RXNID]
-    config.ENZYME_ID_REGEX = r'(Y[A-P][LR][0-9]{3}[CW])'
+config.TOTAL_PROTEIN_CONSTRAINT_ID = "TotalProteinConstraint"
+config.P_TOT_DEFAULT = 0.388  # g_protein/g_cdw
+config.CO2_EXHANGE_RXNID = "r_1672"
+config.GLUCOSE_EXCHANGE_RXNID = "r_1714"
+config.BIOMASS_REACTION = "r_2111"
+config.OXYGEN_UPTAKE_RXNID = "r_1992"
+config.ACETATE_EXCRETION_RXNID = "r_1634"
+config.PHYS_RXN_IDS = [
+config.BIOMASS_REACTION,
+config.GLUCOSE_EXCHANGE_RXNID,
+config.ACETATE_EXCRETION_RXNID,
+config.CO2_EXHANGE_RXNID,
+config.OXYGEN_UPTAKE_RXNID]
+config.ENZYME_ID_REGEX = r'(Y[A-P][LR][0-9]{3}[CW])'
 
 #3. Build the PAM
 pam = set_up_pam(pam_info_file=param_file,
@@ -236,6 +243,19 @@ protein2gene, gene2protein = get_protein_gene_mapping(enzyme_db, model)
 # Ensure the enzyme complexes are merged on one row
 eco_enzymes_mapped = merge_enzyme_complexes(enzyme_db, gene2protein)
 ```
+### Saving the PAM
+Saving the PAM is not often required, as all the parameters are stored in Excel format and can thus be easily modified. 
+COBRApy's tools for saving models DO NOT WORK for saving PAMs: in fact the generated models won't be executable. In case 
+you do want to store a PAM for later use, you can store it using pickle, provided the underlying metabolic model is picklable.. 
+
+```python
+import pickle
+
+pickle.dump(pam, "path/to/model.pickle")
+```
+Does pickling not work? Check if one of the reactions or metabolites has LP standard language (such as 'St') as id.
+
+
 ---
 
 ## Troubleshooting
@@ -245,3 +265,7 @@ eco_enzymes_mapped = merge_enzyme_complexes(enzyme_db, gene2protein)
 
 - **Issue: Objective value is zero after optimization**  
   Solution: Check the input parameter file for consistency and ensure that all reactions are correctly annotated.
+
+- **Issue: The PAM can be pickled, but not unpickled**
+    Solution: Most likely one of the reaction in the metabolic models has a name like 'St'. Renaming this to something 
+which is not part of the standard LP language will solve the issue.

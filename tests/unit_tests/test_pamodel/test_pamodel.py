@@ -138,6 +138,38 @@ def test_if_pamodel_change_enzyme_bounds_function_without_sensitivity_works():
     assert new_E1_min == new_toy_E1_min
     assert new_E1_max == new_toy_E1_max
 
+def test_if_pamodel_change_enzyme_bounds_function_can_change_when_lb_geq_ub():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    E1_min, E1_max = 0.005, 0.5
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=E1_min, upper_bound=E1_max)
+    new_E1_min, new_E1_max = 0.51, 0.52
+
+    # act
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=new_E1_min, upper_bound=new_E1_max)
+    new_toy_E1_min = toy_pam.enzyme_variables.get_by_id('E1').lower_bound
+    new_toy_E1_max = toy_pam.enzyme_variables.get_by_id('E1').upper_bound
+
+    # assert
+    assert new_E1_min == new_toy_E1_min
+    assert new_E1_max == new_toy_E1_max
+
+def test_if_pamodel_change_enzyme_bounds_function_can_change_when_ub_leq_lb():
+    # arrange
+    toy_pam = build_toy_pam(sensitivity=False)
+    E1_min, E1_max = 0.005, 0.5
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=E1_min, upper_bound=E1_max)
+    new_E1_min, new_E1_max = 0.003, 0.004
+
+    # act
+    toy_pam.change_enzyme_bounds(enzyme_id='E1', lower_bound=new_E1_min, upper_bound=new_E1_max)
+    new_toy_E1_min = toy_pam.enzyme_variables.get_by_id('E1').lower_bound
+    new_toy_E1_max = toy_pam.enzyme_variables.get_by_id('E1').upper_bound
+
+    # assert
+    assert new_E1_min == new_toy_E1_min
+    assert new_E1_max == new_toy_E1_max
+
 def test_if_pamodel_sensitivity_can_be_changed_true_to_false():
     # arrange
     toy_pam = build_toy_pam(sensitivity=True)
@@ -359,6 +391,7 @@ def build_toy_pam(sensitivity = True):
     Config.ACETATE_EXCRETION_RXNID = 'R9'
 
     model = load_json_model('tests/unit_tests/toy_model.json')
+    model.objective = 'R7'
     active_enzyme = build_active_enzyme_sector(Config)
     unused_enzyme = build_unused_protein_sector(Config)
     translation_enzyme = build_translational_protein_sector(Config)
