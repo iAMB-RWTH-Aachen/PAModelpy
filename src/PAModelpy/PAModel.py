@@ -1621,7 +1621,8 @@ class PAModel(Model):
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
                 rxn2kcat, rxn_id = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
                 active_enzyme.change_kcat_values(rxn_id, enzyme_id, kcat_f_b)
-                active_enzyme.change_kcat_values(rxn, enzyme_id, kcat_f_b)
+                # also update catalytic reaction kcat relation
+                active_enzyme.change_kcat_values(f"CE_{rxn_id}_{enzyme_id}", enzyme_id, kcat_f_b)
 
             enzyme.change_kcat_values(kcats)
 

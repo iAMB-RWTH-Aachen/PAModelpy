@@ -1,0 +1,4 @@
+14 Nov 2025:
+- **Function**: ActiveEnzymeSector.change_kcat_value
+- **Issue**: entire kcat dict for an enzyme was overwritten instead of updated
+- **Fix**: update rxn2protein[rxn][enzyme_id] with kcat_dict instead of rxn2protein[rxn] with {enzyme_id:kcat_dict}
