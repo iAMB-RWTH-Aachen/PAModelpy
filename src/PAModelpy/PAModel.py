@@ -1623,9 +1623,7 @@ class PAModel(Model):
                 active_enzyme.change_kcat_values(rxn_id, enzyme_id, kcat_f_b)
                 # also update catalytic reaction kcat relation
                 active_enzyme.change_kcat_values(f"CE_{rxn_id}_{enzyme_id}", enzyme_id, kcat_f_b)
-
-            enzyme.change_kcat_values(kcats)
-
+                enzyme.change_kcat_values({rxn_id:kcat_f_b, f"CE_{rxn_id}_{enzyme_id}":kcat_f_b})
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
 
@@ -1638,8 +1636,9 @@ class PAModel(Model):
         return rxn2kcat,rxn
 
 
-    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
-                                                direction: str, kcat: float):
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction],
+                                          enzyme_id: str,
+                                          direction: str, kcat: float) -> None:
         constraint_id = f'EC_{enzyme_id}_{direction}'
         if isinstance(rxn, str):
             rxn = self.reactions.get_by_id(rxn)
