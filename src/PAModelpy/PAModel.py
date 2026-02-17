@@ -1291,11 +1291,15 @@ class PAModel(Model):
         )
         tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
         protein_availability = tot_prot_constraint.ub
-        # correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
+        # correct for the difference between old and new total protein to keep the correction for the protein sections
+        # (ptot = Etot - phi_t,0 - phi_ue,0)
         new_protein_fraction = p_tot * 1e3
         for sector in self.sectors:
             if hasattr(sector, "intercept"):
                 new_protein_fraction -= sector.intercept
+        if new_protein_fraction < 0:
+            raise ValueError('New protein fraction is too low: when corrected for other sector intercepts,'
+                             f' upper bound for total protein constraint < 0 ({new_protein_fraction})')
         self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = new_protein_fraction
         self.p_tot = p_tot
         self.solver.update()
