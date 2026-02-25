@@ -1291,11 +1291,15 @@ class PAModel(Model):
         )
         tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
         protein_availability = tot_prot_constraint.ub
-        # correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
+        # correct for the difference between old and new total protein to keep the correction for the protein sections
+        # (ptot = Etot - phi_t,0 - phi_ue,0)
         new_protein_fraction = p_tot * 1e3
         for sector in self.sectors:
             if hasattr(sector, "intercept"):
                 new_protein_fraction -= sector.intercept
+        if new_protein_fraction < 0:
+            raise ValueError('New protein fraction is too low: when corrected for other sector intercepts,'
+                             f' upper bound for total protein constraint < 0 ({new_protein_fraction})')
         self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = new_protein_fraction
         self.p_tot = p_tot
         self.solver.update()
@@ -1621,10 +1625,9 @@ class PAModel(Model):
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
                 rxn2kcat, rxn_id = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
                 active_enzyme.change_kcat_values(rxn_id, enzyme_id, kcat_f_b)
-                active_enzyme.change_kcat_values(rxn, enzyme_id, kcat_f_b)
-
-            enzyme.change_kcat_values(kcats)
-
+                # also update catalytic reaction kcat relation
+                active_enzyme.change_kcat_values(f"CE_{rxn_id}_{enzyme_id}", enzyme_id, kcat_f_b)
+                enzyme.change_kcat_values({rxn_id:kcat_f_b, f"CE_{rxn_id}_{enzyme_id}":kcat_f_b})
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
 
@@ -1637,8 +1640,9 @@ class PAModel(Model):
         return rxn2kcat,rxn
 
 
-    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
-                                                direction: str, kcat: float):
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction],
+                                          enzyme_id: str,
+                                          direction: str, kcat: float) -> None:
         constraint_id = f'EC_{enzyme_id}_{direction}'
         if isinstance(rxn, str):
             rxn = self.reactions.get_by_id(rxn)

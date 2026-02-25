@@ -1,0 +1,11 @@
+14 Nov 2025:
+- **Function**: ActiveEnzymeSector.change_kcat_values
+- **Issue**: entire kcat dict for an enzyme was overwritten instead of updated
+- **Fix**: update rxn2protein[rxn][enzyme_id] with kcat_dict instead of rxn2protein[rxn] with {enzyme_id:kcat_dict}
+
+
+- **Function**: PAModel.change_kcat_value
+- **Issue**: kcat for catalytic event was not updated if kcat was changed for a reaction
+- **Fix**: instead of mass changing kcats at the end of the function (enzyme.change_kcat_values(kcat)),
+change kcat in constraints separately for each reaction, covering both the reaction as the catalytic event (
+                enzyme.change_kcat_values({rxn_id:kcat_f_b, f"CE_{rxn_id}_{enzyme_id}":kcat_f_b}))
