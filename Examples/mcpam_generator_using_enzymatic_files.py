@@ -21,7 +21,7 @@ if __name__ == "__main__":
     ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
 
     # Load iML1515 PAM and mcPAM
-    pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     model_path = 'Models/iML1515.xml'
     pam = set_up_pam(pam_info_file=pam_info_path,
                     model=model_path,
@@ -35,28 +35,28 @@ if __name__ == "__main__":
     models = [pam, mcpam]
     
     # Change sector parameters
-    for model in models:
-        ue_sector = model.sectors.get_by_id('UnusedEnzymeSector')
-        te_sector = model.sectors.get_by_id('TranslationalProteinSector')
-        # Change unused enzyme sector parameters
-        model.change_sector_parameters(sector = ue_sector,
-                                    slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
-                                    intercept=0.17, # g_p/g_cdw
-                                    lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
-                                    print_change = True #do you want to see the change? False by default
-                                    )
-        # Change translational enzyme sector parameters
-        model.change_sector_parameters(sector = te_sector,
-                                    slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
-                                    intercept=0.038, # g_p/g_cdw
-                                    lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
-                                    print_change = True #do you want to see the change? False by default
-                                    )
-        change_set_of_kcats_using_excel_sheet(model=model, 
-                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-                        sheet="edited_kcats 20250702 (2)")
+    # for model in models:
+    #     ue_sector = model.sectors.get_by_id('UnusedEnzymeSector')
+    #     te_sector = model.sectors.get_by_id('TranslationalProteinSector')
+    #     # Change unused enzyme sector parameters
+    #     model.change_sector_parameters(sector = ue_sector,
+    #                                 slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
+    #                                 intercept=0.17, # g_p/g_cdw
+    #                                 lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
+    #                                 print_change = True #do you want to see the change? False by default
+    #                                 )
+    #     # Change translational enzyme sector parameters
+    #     model.change_sector_parameters(sector = te_sector,
+    #                                 slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
+    #                                 intercept=0.038, # g_p/g_cdw
+    #                                 lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
+    #                                 print_change = True #do you want to see the change? False by default
+    #                                 )
+    #     change_set_of_kcats_using_excel_sheet(model=model, 
+    #                     prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
+    #                     sheet="edited_kcats 20250702 (2)")
         
-        model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
+    #     model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
 
 
     # get_info_for_proteins(mcpam=mcpam,
