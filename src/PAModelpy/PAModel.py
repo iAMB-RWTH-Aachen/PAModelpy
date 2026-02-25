@@ -1312,18 +1312,33 @@ class PAModel(Model):
         )
         tot_prot_constraint = self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID]
         protein_availability = tot_prot_constraint.ub
-        # correct for the difference between old and new total protein to keep the correction for the protein sections (ptot = Etot - phi_t,0 - phi_ue,0)
+        # correct for the difference between old and new total protein to keep the correction for the protein sections
+        # (ptot = Etot - phi_t,0 - phi_ue,0)
         new_protein_fraction = p_tot * 1e3
         for sector in self.sectors:
             if hasattr(sector, "intercept"):
                 new_protein_fraction -= sector.intercept
+        if new_protein_fraction < 0:
+            raise ValueError('New protein fraction is too low: when corrected for other sector intercepts,'
+                             f' upper bound for total protein constraint < 0 ({new_protein_fraction})')
         self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = new_protein_fraction
         self.p_tot = p_tot
         self.solver.update()
 
     def change_sector_parameters(
-        self, sector, slope: float, intercept: float, lin_rxn_id: str, print_change = False
+        self, sector:Union[str, 'Sector'],
+            slope: Optional[float] = None,
+            intercept: Optional[float] = None,
+            lin_rxn_id: Optional[str] = None,
+            print_change = False
     ):
+        if isinstance(sector, str):
+            try:
+                self.sectors.get_by_id(sector)
+            except:
+                raise KeyError(f"{sector} is not a sector in the model. Choose one of the following sectors: "
+                               f"{','.join([s.id for s in self.sectors])}"
+                               )
         if print_change:
             # input in g/gDW
             print(f"Changing the slope and intercept of the {sector.id}")
@@ -1332,38 +1347,41 @@ class PAModel(Model):
 
         prev_intercept = sector.intercept
         # *1e3 to convert g to mg
-        sector.slope = slope * 1e3
-        sector.intercept = intercept * 1e3
-        lin_rxn = self.reactions.get_by_id(lin_rxn_id)
+        if slope is not None: sector.slope = slope * 1e3
+        if intercept is not None: sector.intercept = intercept * 1e3
+        if lin_rxn_id is not None: lin_rxn = self.reactions.get_by_id(lin_rxn_id)
 
         if self.TOTAL_PROTEIN_CONSTRAINT_ID in self.constraints.keys():
-            if lin_rxn_id not in sector.id_list:
+            if lin_rxn_id is not None and lin_rxn_id not in sector.id_list:
                 self._remove_linear_reaction_from_total_protein_constraint(sector.id_list[0])
                 sector.id_list = [lin_rxn_id]
 
-            intercept_diff = sector.intercept - prev_intercept
-            # set the intercept
-            self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
-                self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub - intercept_diff
-            )
+            if intercept is not None:
+                intercept_diff = sector.intercept - prev_intercept
+                # set the intercept
+                self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
+                    self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub - intercept_diff
+                )
             # reset the slope
-            self._adjust_sector_slope_in_total_protein_constraint(sector=sector,
-                                                                  lin_rxn=lin_rxn
-                                                                  )
+            if slope is not None:
+                self._adjust_sector_slope_in_total_protein_constraint(sector=sector,
+                                                                      lin_rxn=lin_rxn
+                                                                      )
 
         else:
             var = self.variables["R_" + sector.id]
             # update the constraint
-            self.constraints[sector.id].set_linear_coefficients(
-                {
-                    var: 1,
-                    lin_rxn.forward_variable: -slope,  # / (sector.mol_mass[0] * 1e-6),
-                    lin_rxn.reverse_variable: slope,  # / (sector.mol_mass[0] * 1e-6)
-                }
-            )
-            # update the sector object
-            sector.variables = [var]
-            sector.constraints = [self.constraints[sector.id]]
+            if slope is not None:
+                self.constraints[sector.id].set_linear_coefficients(
+                    {
+                        var: 1,
+                        lin_rxn.forward_variable: -slope,  # / (sector.mol_mass[0] * 1e-6),
+                        lin_rxn.reverse_variable: slope,  # / (sector.mol_mass[0] * 1e-6)
+                    }
+                )
+                # update the sector object
+                sector.variables = [var]
+                sector.constraints = [self.constraints[sector.id]]
 
     def _adjust_sector_slope_in_total_protein_constraint(self,
                                                          sector: Sector,
@@ -1420,6 +1438,9 @@ class PAModel(Model):
             if lower_bound is not None:
                 self.change_reaction_lb(rxn_id, lower_bound)
             self.change_reaction_ub(rxn_id, upper_bound)
+
+        elif lower_bound is not None:
+            self.change_reaction_lb(rxn_id, lower_bound)
 
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
@@ -1627,10 +1648,9 @@ class PAModel(Model):
                 # if a catalytic reaction is given, then extract the actual reaction id from it using the protein id convention from uniprot
                 rxn2kcat, rxn_id = self._change_catalytic_reaction_to_reaction_id_in_kcatdict(rxn, rxn2kcat)
                 active_enzyme.change_kcat_values(rxn_id, enzyme_id, kcat_f_b)
-                active_enzyme.change_kcat_values(rxn, enzyme_id, kcat_f_b)
-
-            enzyme.change_kcat_values(kcats)
-
+                # also update catalytic reaction kcat relation
+                active_enzyme.change_kcat_values(f"CE_{rxn_id}_{enzyme_id}", enzyme_id, kcat_f_b)
+                enzyme.change_kcat_values({rxn_id:kcat_f_b, f"CE_{rxn_id}_{enzyme_id}":kcat_f_b})
         else:
             warnings.warn(f'The enzyme {enzyme_id} does not exist in the model. The kcat can thus not be changed.')
 
@@ -1643,8 +1663,9 @@ class PAModel(Model):
         return rxn2kcat,rxn
 
 
-    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction], enzyme_id: str,
-                                                direction: str, kcat: float):
+    def _change_kcat_in_enzyme_constraint(self, rxn:Union[str, cobra.Reaction],
+                                          enzyme_id: str,
+                                          direction: str, kcat: float) -> None:
         constraint_id = f'EC_{enzyme_id}_{direction}'
         if isinstance(rxn, str):
             rxn = self.reactions.get_by_id(rxn)

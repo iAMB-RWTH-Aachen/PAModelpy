@@ -505,7 +505,8 @@ class ActiveEnzymeSector(Sector):
                 )
                 ```
             """
-        self.rxn2protein.setdefault(rxn_id, {}).update({enzyme_id:kcat_f_b})
+        self.rxn2protein.setdefault(rxn_id, {enzyme_id:kcat_f_b})
+        self.rxn2protein[rxn_id][enzyme_id].update(kcat_f_b)
 
     def __setstate__(self, state):
         # Restore state from the unpickled state

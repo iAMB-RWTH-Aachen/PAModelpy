@@ -262,7 +262,7 @@ the kcat relating the forward reaction of `13PPDH2` with the enzyme abundance of
 ```python
 rxn2kcat = {'13PPDH2':{'f':10}}
 
-pam.change_kcat_values(enzyme_id = 'Q46856',
+pam.change_kcat_value(enzyme_id = 'Q46856',
                        kcats = rxn2kcat)
 ```
 
@@ -341,6 +341,18 @@ after solving the model.
 csc = pam.capacity_sensitivity_coefficients #pd.DataFrame with columns: ["rxn_id", "enzyme_id", "constraint", "coefficient"]
 esc = pam.enzyme_sensitivity_coefficients #pd.DataFrame with columns: ["rxn_id", "enzyme_id", "coefficient"]
 ```
+
+### 5. Saving the PAM
+Saving the PAM is not often required, as all the parameters are stored in Excel format and can thus be easily modified. 
+COBRApy's tools for saving models DO NOT WORK for saving PAMs: in fact the generated models won't be executable. In case 
+you do want to store a PAM for later use, you can store it using pickle, provided the underlying metabolic model is picklable.. 
+
+```python
+import pickle
+
+pickle.dump(pam, "path/to/model.pickle")
+```
+Does pickling not work? Check if one of the reactions or metabolites has LP standard language (such as 'St') as id.
 
 ## Example 3: Determining the most sensitive enzymes in a toy model
 
