@@ -1,3 +1,8 @@
+2 March 2026:
+- **Funtion**: utils.pam_generation.map_genes_to_proteins
+- **Issue**: when copying the active enzyme sector to rebuild a pamodel, enzyme complexes were not recognized as the protein reaction associations were in a single, and not a nested, list
+- **Fix**: added outer list when parsing protein-reaction associations with '_' in the protein name
+
 14 Nov 2025:
 - **Function**: ActiveEnzymeSector.change_kcat_values
 - **Issue**: entire kcat dict for an enzyme was overwritten instead of updated
