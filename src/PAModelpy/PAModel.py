@@ -484,6 +484,20 @@ class PAModel(Model):
             for gene_and in genes_or:
                 if not gene_and in self.genes:
                     self.genes.append(gene_and)
+    
+    def exclude_enzyme_from_tpc(self, enzyme:Union[Enzyme, str]) -> None:
+        if isinstance(enzyme, str):
+            enzyme_variable = self.enzyme_variables.get_by_id(enzyme)
+        else: 
+            enzyme_variable = self.enzyme_variables.get_by_id(enzyme.id)
+            
+        self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
+            {  # set the enzyme weight to the tpc to zero by changing the variables to zero
+                    enzyme_variable.forward_variable: 0,
+                    enzyme_variable.reverse_variable: 0,
+            }
+        )
+        self.tpc -= 1
 
     def add_sectors(self, sectors: List = None):
         """

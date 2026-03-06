@@ -6,6 +6,20 @@ from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector,
 from tests.unit_tests.test_pamodel.test_pam_setup import set_up_toy_pam_with_isozymes_and_enzymecomplex
 from src.PAModelpy.utils import set_up_pam
 
+def test_if_exclude_enzyme_from_tpc_works():
+    #arrange
+    sut = build_toy_pam(sensitivity=False)
+    enzyme_to_exclude = 'E1'
+    
+    #act
+    sut.exclude_enzyme_from_tpc(enzyme_to_exclude)
+
+    #assert
+    tpc = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID]
+    var_names = {v.name for v in tpc.expression.free_symbols}
+
+    assert not any(name.startswith(enzyme_to_exclude) for name in var_names)
+
 def test_if_pamodel_change_kcat_function_works():
     #arrange
     sut = build_toy_pam(sensitivity=False)

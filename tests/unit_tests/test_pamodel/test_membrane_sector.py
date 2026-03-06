@@ -14,6 +14,43 @@ from src.PAModelpy.configuration import Config
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.MembraneSector import MembraneSector
 
+@pytest.mark.parametrize('membrane_complex', ['E1_E2_E3', 'E4', 'E5_E6', 'E7_E8_E9_E10'])
+def test_if_membrane_enzyme_is_excluded_when_updating_membrane_sector(membrane_complex):
+    # Arrange
+    enzyme_complex = membrane_complex
+
+    # Act
+    sut = build_toy_model(membrane_sector=True)
+    enzyme_variable = sut.enzyme_variables[0]
+    sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients( # Added a dummy membrane enzyme to the tpc constraint
+        {  
+                enzyme_variable.forward_variable: 1,
+                enzyme_variable.reverse_variable: 1,
+        }
+    )
+    sut.sectors.get_by_id('MembraneSector')._update_membrane_constraint(0.02, sut)
+
+    # Assert
+    tpc = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID]
+    var_names = {v.name for v in tpc.expression.free_symbols}
+
+    assert not any(name.startswith(enzyme_complex) for name in var_names)
+
+@pytest.mark.parametrize('membrane_complex', ['E1_E2_E3', 'E4', 'E5_E6', 'E7_E8_E9_E10'])
+def test_if_membrane_enzyme_is_excluded_when_building_membrane_sector(membrane_complex):
+    # Arrange
+    enzyme_complex = membrane_complex
+
+    # Act
+    sut = build_toy_model(membrane_sector=True)
+
+    # Assert
+    tpc = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID]
+    var_names = {v.name for v in tpc.expression.free_symbols}
+
+    assert not any(name.startswith(enzyme_complex) for name in var_names)
+
+
 def test_if_get_alpha_number_for_enz_complex_works():
     # Arrange
     membrane_sector = build_membrane_sector()
