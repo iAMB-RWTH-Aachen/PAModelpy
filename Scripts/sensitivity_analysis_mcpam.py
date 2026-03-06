@@ -14,7 +14,7 @@ from src.PAModelpy.configuration import Config
 
 if os.path.split(os.getcwd())[1] == 'Figures':
     os.chdir(os.path.split(os.getcwd())[0])
-from src.PAModelpy.utils.pam_generation import set_up_pam
+from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
                                                           _set_up_pamodel_for_simulations,
                                                           )
@@ -34,7 +34,6 @@ def calculate_sensitivities(pamodel):
     fluxes = []
 
     # disable pyruvate formate lyase (inhibited by oxygen)
-
 
     for glc in glc_uptake_rates:
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
@@ -237,194 +236,6 @@ def make_heatmap_subfigure(results, csc_matrix, esc_matrix, x_csc, x_esc, yaxis,
     fig.align_labels()
     return fig
 
-def make_heatmap_subfigure_acetate_csc(keys, results, csc_matrix, x_csc, x_esc, yaxis, fig, grdspc,
-                           ylabels=True, xlabels=False, cbar=True, title=None, fontsize=16,
-                           vmin=-1.5, vmax=1.5, annotate=None, phenotype_data=None, cmap=None
-                           # cmap = plt.cm.get_cmap('viridis')
-                           ):
-
-    # adjust labels for better readibility
-    for key in keys:
-        x_csc[key] = adjust_heatmap_labels(x_csc_nonzero_pam[key])
-        x_esc[key] = adjust_heatmap_labels(x_esc_top5_pam[key])
-
-    if cmap is None:
-        # Create separate colormaps for positive and negative values and a color for zero
-        colors_neg = plt.cm.Blues(np.linspace(1, 0.3, 128))
-        colors_pos = plt.cm.OrRd(np.linspace(0.1, 1, 128))  # plt.cm.Reds(np.linspace(0, 0.5, 128))
-        colors_zero = np.array([[1, 1, 1, 1]])  # gray for zero
-
-        # Combine them into a single colormap
-        colors = np.vstack((colors_neg, colors_zero, colors_pos))
-        combined_cmap = mcolors.ListedColormap(colors, name='custom_cmap')
-
-        # Create a norm that handles the zero color properly
-        bounds = np.linspace(vmin, vmax, len(colors))
-        norm = mcolors.BoundaryNorm(bounds, combined_cmap.N)
-
-    if cbar:
-        gs = gridspec.GridSpecFromSubplotSpec(5, 2, width_ratios=[len(yaxis), 0.2],
-                                              subplot_spec=grdspc)
-    else:
-        gs = gridspec.GridSpecFromSubplotSpec(5, 1, width_ratios=[len(yaxis)],
-                                              subplot_spec=grdspc)
-
-    acetate_ax = fig.add_subplot(gs[0, 0])  # acetate production
-    csc_ax = {}
-    i = 1
-    for area, csc in csc_matrix.items():
-        csc_ax[area] = fig.add_subplot(gs[i, 0])
-        i += 1
-
-    if cbar:
-        cbar_ax = fig.add_subplot(gs[1:, 1])  # colorbar
-
-    results_for_plotting = list(results.values())[0]
-    glc_fluxes = [-sim.EX_glc__D_e for sim in results_for_plotting['fluxes']]
-
-    # add arrow indicating growth regime
-    # 0. remove the box to improve readability of the text
-    acetate_ax.spines['top'].set_visible(False)
-    acetate_ax.spines['right'].set_visible(False)
-
-    # Setting colormap to colorblind friendly color palette
-    sns.set_palette(("colorblind"))
-
-    # acetate graph
-    i = 1
-    for area, result in results.items():
-        acetate_ax.plot([-sim.EX_glc__D_e for sim in result['fluxes']], [sim.EX_ac_e for sim in result['fluxes']],
-                        linewidth=4, label=f'mcPAM {i}% area')
-        acetate_ax.tick_params(axis='y', labelsize=fontsize)
-        acetate_ax.set_xlim([0, 10.5])
-        acetate_ax.set_ylim([-0.5, 10])
-        acetate_ax.xaxis.set_visible(False)
-        i += 1
-
-    if ylabels:
-        acetate_ax.set_ylabel(r'Acetate' '\n' '[$mmol_{ac}/g_{CDW}/h$]', fontsize=fontsize, rotation=0)
-
-    # add phenotype data if this is given
-    if phenotype_data is not None:
-        acetate_ax.scatter(phenotype_data['EX_glc__D_e'], phenotype_data['EX_ac_e'],
-                           color='purple', marker='o', s=40, linewidths=1.3,
-                           facecolors=None, zorder=0,
-                           label='Data')
-
-    handles, labels = acetate_ax.get_legend_handles_labels()
-    legend_ax = fig.add_subplot(gs[0, 1])
-    legend_ax.axis("off")  # Turn off axes for the legend display
-    legend_ax.legend(handles, labels, loc='center', fontsize=15)
-
-    # acetate_ax.legend(fontsize=14, bbox_to_anchor=(1.05, 1))
-    if title is not None: acetate_ax.set_title(title, fontsize=fontsize * 1.5)
-
-    # CSC heatmap
-    i = 1
-    for area, csc in csc_matrix.items():
-        im_csc = csc_ax[area].imshow(csc, aspect="auto", cmap=combined_cmap, norm=norm)
-        csc_ax[area].set_yticks(np.arange(len(x_csc[area])), labels=x_csc[area], fontsize=20)
-        if i == 3:
-            csc_ax[area].set_xticks(np.arange(len(yaxis)), labels=yaxis, fontsize=fontsize, rotation=45, ha='right')
-            csc_ax[area].set_xlabel('Glucose uptake rate [$mmol_{glc}/g_{CDW}/h$]', fontsize=22)
-        else:
-            csc_ax[area].xaxis.set_visible(False)
-        if ylabels:
-            csc_ax[area].set_ylabel(f'{i}% area', fontsize=22)
-        i += 1
-
-        # Make line between the CSCs of different area clearer
-        axis = 'bottom'
-        csc_ax[area].spines[axis].set_linewidth(10)
-        csc_ax[area].spines[axis].set_color("black")
-        csc_ax[area].spines[axis].set_zorder(0)
-
-    # colorbar
-    if cbar:
-        cbar_ax.xaxis.set_visible(False)
-        make_scaled_colorbar(ax=cbar_ax, fig=fig, cmap=combined_cmap, norm=norm,
-                             vmin=vmin, vmax=vmax, fontsize=fontsize * 1.25)
-    fig.text(0.02, 0.5, 'CSC', rotation='vertical', fontsize=30, fontweight="bold")
-    fig.set_figwidth(24)
-    fig.set_figheight(7)
-    fig.align_labels()
-    return fig
-
-def make_heatmap_subfigure_esc(keys, results, esc_matrix, x_csc, x_esc, yaxis, fig, grdspc,
-                           ylabels=True, xlabels=False, cbar=True, title=None, fontsize=16,
-                           vmin=-1.5, vmax=1.5, annotate=None, phenotype_data=None, cmap=None
-                           # cmap = plt.cm.get_cmap('viridis')
-                           ):
-
-    # adjust labels for better readibility
-    for key in keys:
-        x_csc[key] = adjust_heatmap_labels(x_csc_nonzero_pam[key])
-        x_esc[key] = adjust_heatmap_labels(x_esc_top5_pam[key])
-
-    if cmap is None:
-        # Create separate colormaps for positive and negative values and a color for zero
-        colors_neg = plt.cm.Blues(np.linspace(1, 0.3, 128))
-        colors_pos = plt.cm.OrRd(np.linspace(0.1, 1, 128))  # plt.cm.Reds(np.linspace(0, 0.5, 128))
-        colors_zero = np.array([[1, 1, 1, 1]])  # gray for zero
-
-        # Combine them into a single colormap
-        colors = np.vstack((colors_neg, colors_zero, colors_pos))
-        combined_cmap = mcolors.ListedColormap(colors, name='custom_cmap')
-
-        # Create a norm that handles the zero color properly
-        bounds = np.linspace(vmin, vmax, len(colors))
-        norm = mcolors.BoundaryNorm(bounds, combined_cmap.N)
-
-    if cbar:
-        gs = gridspec.GridSpecFromSubplotSpec(4, 2, width_ratios=[len(yaxis), 0.2],
-                                              height_ratios=[1, 1, 1, 1],
-                                              subplot_spec=grdspc)
-    else:
-        gs = gridspec.GridSpecFromSubplotSpec(4, 1, width_ratios=[len(yaxis)],
-                                              height_ratios=[1, 1, 1, 1],
-                                              subplot_spec=grdspc)
-
-    esc_ax = {}
-    i = 0
-    for area, esc in esc_matrix.items():
-        esc_ax[area] = fig.add_subplot(gs[i, 0])
-        i += 1
-
-    if cbar:
-        cbar_ax = fig.add_subplot(gs[:, 1])  # colorbar
-
-    # ESC heatmap
-    i = 0
-    for area, esc in esc_matrix.items():
-        im_csc = esc_ax[area].imshow(esc, aspect="auto", cmap=combined_cmap, norm=norm)
-        esc_ax[area].set_yticks(np.arange(len(x_esc[area])), labels=x_esc[area], fontsize=20)
-        if i == 2:
-            esc_ax[area].set_xticks(np.arange(len(yaxis)), labels=yaxis, fontsize=fontsize, rotation=45, ha='right')
-            esc_ax[area].set_xlabel('Glucose uptake rate [$mmol_{glc}/g_{CDW}/h$]', fontsize=26)
-        else:
-            esc_ax[area].xaxis.set_visible(False)
-        if ylabels:
-            esc_ax[area].set_ylabel(f'{i+1}% area', fontsize=22, labelpad=20)
-        i += 1
-
-        # Make line between the CSCs of different area clearer
-        axis = 'bottom'
-        esc_ax[area].spines[axis].set_linewidth(10)
-        esc_ax[area].spines[axis].set_color("black")
-        esc_ax[area].spines[axis].set_zorder(0)
-
-    # colorbar
-    if cbar:
-        cbar_ax.xaxis.set_visible(False)
-        make_scaled_colorbar(ax=cbar_ax, fig=fig, cmap=combined_cmap, norm=norm,
-                             vmin=vmin, vmax=vmax, fontsize=fontsize * 1.25)
-    fig.text(0.02, 0.5, 'ESC', rotation='vertical', fontsize=30, fontweight="bold")
-    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.2, wspace=0.3, hspace=0.3)
-    fig.set_figwidth(20)
-    fig.set_figheight(7)
-    fig.align_labels()
-    return fig
-
 def make_scaled_colorbar(ax, fig, cmap, norm, vmin, vmax,
                          fontsize=16, cbarlabel='Sensitivity Coefficient'):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -447,7 +258,6 @@ def make_scaled_colorbar(ax, fig, cmap, norm, vmin, vmax,
 # adjust labels for better readibility
 def adjust_heatmap_labels(labels):
     new_labels = labels.copy()
-
     for i, label in enumerate(labels):
         if 'EX_glc__D_e' in label or label[:-3] == 'EX_glc__D_e':
             if label[-1] == 'B':
@@ -522,134 +332,109 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
     top5_matrix = [list(row) for i, row in top5_df.iterrows()]
     return top5_matrix, largest_list
 
-### PAM simulations
-#### 3.1 Build the mcPAModel
-pam_info_path = 'Data/mcPAM_iML1515_EnzymaticData_250627.xlsx'
+##############################################################################
+# BUILD MODEL
+##############################################################################
+
+pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
 model_path = 'Models/iML1515.xml'
-mcpam = set_up_pam(pam_info_file=pam_info_path, 
-                    model=model_path,
-                    sensitivity=True, 
-                    membrane_sector=True)
 
-ue_sector = mcpam.sectors.get_by_id('UnusedEnzymeSector')
-te_sector = mcpam.sectors.get_by_id('TranslationalProteinSector')
-# Change unused enzyme sector parameters
-mcpam.change_sector_parameters(sector = ue_sector,
-                            slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
-                            intercept=0.17, # g_p/g_cdw
-                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
-                            print_change = True #do you want to see the change? False by default
-                            )
-# Change translational enzyme sector parameters
-mcpam.change_sector_parameters(sector = te_sector,
-                            slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
-                            intercept=0.038, # g_p/g_cdw
-                            lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
-                            print_change = True #do you want to see the change? False by default
-                            )
+mcpam = set_up_pam(
+    pam_info_file=pam_info_path,
+    model=model_path,
+    sensitivity=True,
+    membrane_sector=True
+)
 
-change_set_of_kcats_using_excel_sheet(models=[mcpam], 
-                        prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-                        sheet="edited_kcats 20250702")
+##############################################################################
+# PHENOTYPE DATA
+##############################################################################
 
-# # Change kcats based on diagnostics file
-# diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
-# pam_info_path = 'Results/PAM_parametrizer/Files/2025_03_11/proteinAllocationModel_mciML1515_EnzymaticData_multi.xlsx'
-# sheet_name = 'Best_Individuals'
-
-# mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=True, membrane_sector=True)
-# # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True)
-# mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
-
-#### 3.2 Run simulations for glucose uptake of 0-10 mmol/gcdw/h for different available active enzymes area
-results_pam = {}
-x_axis_csc_pam = {}
-x_axis_esc_pam = {}
-max_area_list = np.linspace(0.01, 0.04, 4)
-keys = [f'Sensitivity mcPAM with {area*100}% available area for active enzymes' for area in max_area_list]
-
-for area, key in zip(max_area_list, keys):
-    with mcpam:
-        mcpam.sectors.get_by_id('MembraneSector').change_available_membrane_area(area, mcpam)
-        print(f'Starting simulation for mcPAM with {area*100}% available area for active enzymes')
-        results_pam[key] = calculate_sensitivities(mcpam)
-
-for result, area, key in zip(results_pam.values(), max_area_list, keys):
-    x_axis_csc_pam[key], x_axis_esc_pam[key] = parse_x_axis_heatmap(result['capacity coefficients'],
-                                                                                              result['enzyme coefficients'])
-
-# get nonzero sensitivities
-csc_nonzero_pam_t = {}
-x_csc_nonzero_pam = {}
-esc_nonzero_pam_t = {}
-x_esc_nonzero_pam = {}
-
-for result, area, key in zip(results_pam.values(), max_area_list, keys):
-    csc_nonzero_pam, x_csc_nonzero_pam[key] = find_nonzero_sensitivities(results_pam[key]['Ccsc'], x_axis=x_axis_csc_pam[key])
-    esc_nonzero_pam, x_esc_nonzero_pam[key] = find_nonzero_sensitivities(results_pam[key]['Cesc'], x_axis=x_axis_esc_pam[key])
-    csc_nonzero_pam_t[key] = np.transpose(np.array(csc_nonzero_pam))
-    esc_nonzero_pam_t[key] = np.transpose(np.array(esc_nonzero_pam))
-
-
-# get top5 nonzero sensitivities
-csc_top5_pam = {}
-x_csc_top5_pam = {}
-esc_top5_pam = {}
-x_esc_top5_pam = {}
-
-for result, area, key in zip(results_pam.values(), max_area_list, keys):
-    csc_top5_pam[key], x_csc_top5_pam[key] = find_top5_sensitivities(results_pam[key]['Ccsc'], x_axis=x_axis_csc_pam[key],
-                                                           yaxis=glc_uptake_rates)
-    esc_top5_pam[key], x_esc_top5_pam[key] = find_top5_sensitivities(results_pam[key]['Cesc'], x_axis=x_axis_esc_pam[key],
-                                                           yaxis=glc_uptake_rates)
-    # csc_top5_pam_t = np.transpose(np.array(csc_top5_pam))
-    # esc_top5_pam_t = np.transpose(np.array(esc_top5_pam))
-
-### 4 Create plot
-
-#### 4.1 Load phenotypic data
-
-# load phenotype data from excel file
-pt_data = pd.read_excel(os.path.join(DATA_DIR, 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls'), sheet_name='Yields',
-                        index_col=None)
+pt_data = pd.read_excel(
+    os.path.join(DATA_DIR, 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls'),
+    sheet_name='Yields'
+)
 pt_data['EX_glc__D_e'] = -pt_data['EX_glc__D_e']
 
-# create 2 plots: supplements and main text
-fontsize = 28
-width = 50
-height = 10
-# select colormap
-cmap = None  # plt.cm.get_cmap('magma')
+##############################################################################
+# PARAMETERS
+##############################################################################
 
-# gridspec inside gridspec
-fig = plt.figure()
+fontsize = 26
+width = 40
+height = 14
+glc_uptake_rates = list(np.linspace(1, 10, 10))
+# max_area_list = np.linspace(0.03, 0.13, 10)
+max_area_list = [0.03, 0.06, 0.15, 0.50, 1]
 
-gs0 = gridspec.GridSpec(1, 1, figure=fig)
-gs_pam = gs0[0]
+##############################################################################
+# MAIN LOOP: ONE FIGURE PER AREA
+##############################################################################
 
-# # adjust labels for better readibility
-# x_csc_label_pam = adjust_heatmap_labels(x_csc_nonzero_pam)
-# x_esc_label_pam = adjust_heatmap_labels(x_esc_top5_pam)
+for area in max_area_list:
 
-# # Make figure acetate and csc
-# fig.set_layout_engine(layout='constrained')
-# fig_pam = make_heatmap_subfigure_acetate_csc(keys=keys, results=results_pam, csc_matrix=csc_nonzero_pam_t,
-#                                  ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-#                                  yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-#                                  phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+    print(f"\nRunning mcPAM with {area*100:.1f}% membrane area\n")
 
-# # Make figure esc
-fig_pam = make_heatmap_subfigure_esc(keys=keys, results=results_pam, esc_matrix=esc_top5_pam,
-                                 ylabels=True, xlabels=True, x_csc=x_csc_nonzero_pam, x_esc=x_esc_top5_pam,
-                                 yaxis=glc_uptake_rates, fig=fig, grdspc=gs_pam,
-                                 phenotype_data=pt_data, fontsize=fontsize, cmap=cmap)
+    with mcpam:
+        mcpam.sectors.get_by_id('MembraneSector')\
+              .change_available_membrane_area(area, mcpam)
 
-plt.plasma()
-fig.set_figwidth(width)
-fig.set_figheight(height)
-fig.align_labels()
+        results = calculate_sensitivities(mcpam)
 
-plt.show()
+    # Parse axes
+    x_axis_csc, x_axis_esc = parse_x_axis_heatmap(
+        results['capacity coefficients'],
+        results['enzyme coefficients']
+    )
 
-# fig.savefig('Figures/Figure_sensitivities_pam_uniprotid_(2).png', dpi=200, bbox_inches='tight')
+    # CSC → nonzero
+    csc_nonzero, x_csc_nonzero = find_nonzero_sensitivities(
+        results['Ccsc'], x_axis_csc
+    )
+    csc_nonzero_t = np.transpose(np.array(csc_nonzero))
 
+    # ESC → top5
+    esc_top5, x_esc_top5 = find_top5_sensitivities(
+        results['Cesc'],
+        x_axis_esc,
+        glc_uptake_rates
+    )
+    esc_top5_t = np.transpose(np.array(esc_top5))
+
+    # Adjust labels
+    x_csc_labels = adjust_heatmap_labels(x_csc_nonzero)
+    x_esc_labels = adjust_heatmap_labels(x_esc_top5)
+
+    ##########################################################################
+    # CREATE FIGURE (NO OUTER GRIDSPEC)
+    ##########################################################################
+    fig = plt.figure(layout='constrained')
+    gs = fig.add_gridspec(1, 1)
+    gs_pam = gs[0]
+
+    make_heatmap_subfigure(
+        results=results,
+        csc_matrix=csc_nonzero_t,
+        esc_matrix=esc_top5,
+        x_csc=x_csc_labels,
+        x_esc=x_esc_labels,
+        yaxis=glc_uptake_rates,
+        fig=fig,
+        grdspc=gs_pam,
+        ylabels=True,
+        xlabels=True,
+        phenotype_data=pt_data,
+        fontsize=fontsize,
+        title=f"mcPAM – {area*100:.1f}% membrane area"
+    )
+
+    fig.set_figwidth(width)
+    fig.set_figheight(height)
+    os.makedirs("Figures", exist_ok=True)
+    fig.savefig(
+        f"Figures/mcPAM_sensitivities_{int(area*100)}percent.png",
+        dpi=250,
+        bbox_inches='tight'
+    )
+
+    plt.close(fig)
