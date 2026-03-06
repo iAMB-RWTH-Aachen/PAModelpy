@@ -53,7 +53,9 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            model.exclude_enzyme_from_tpc(enz_complex)
+            # Exclude membrane enzymes from the total protein constraint
+            model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
+
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
 
             # Save membrane proteins (id, kcat and alpha number) inside of a dictionary
@@ -134,9 +136,9 @@ class MembraneSector(EnzymeSector):
 
         for enz_complex in model.enzyme_variables:
             var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
-
             if any(name.startswith(enz_complex.id) for name in var_names):
-                model.exclude_enzyme_from_tpc(enz_complex)
+                model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
+
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
             coeff = self._get_coeff_value(alpha_number_for_complex)
 

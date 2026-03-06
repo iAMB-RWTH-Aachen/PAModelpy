@@ -6,19 +6,29 @@ from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector,
 from tests.unit_tests.test_pamodel.test_pam_setup import set_up_toy_pam_with_isozymes_and_enzymecomplex
 from src.PAModelpy.utils import set_up_pam
 
-def test_if_exclude_enzyme_from_tpc_works():
+@pytest.mark.parametrize('constraint_name, variable_name', 
+                         [('TotalProteinConstraint', 'E1'),
+                          ('Byproduct', 'R3'),
+                          ('CE_R6', 'R6')]     
+)
+def test_if_exclude_variable_from_constraint_works(constraint_name, variable_name):
     #arrange
     sut = build_toy_pam(sensitivity=False)
-    enzyme_to_exclude = 'E1'
+    if variable_name in sut.enzyme_variables:
+        i = next(i for i, enzyme in enumerate(sut.enzyme_variables) if enzyme.id == variable_name)
+        variable = sut.enzyme_variables[i]
+    else:
+        variable = sut.reactions.get_by_id(variable_name)
     
     #act
-    sut.exclude_enzyme_from_tpc(enzyme_to_exclude)
+    sut.exclude_variable_from_constraint(variable=variable, constraint_name=constraint_name)
 
     #assert
-    tpc = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID]
-    var_names = {v.name for v in tpc.expression.free_symbols}
+    constraint = sut.constraints[constraint_name]
+    var_names = {v.name for v in constraint.expression.free_symbols}
+    print(sut.constraints['CE_R6'])
 
-    assert not any(name.startswith(enzyme_to_exclude) for name in var_names)
+    assert not any(name.startswith(variable_name) for name in var_names)
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
