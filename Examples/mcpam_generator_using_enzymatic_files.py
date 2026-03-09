@@ -26,95 +26,24 @@ if __name__ == "__main__":
     pam = set_up_pam(pam_info_file=pam_info_path,
                     model=model_path,
                     sensitivity=False,
-                    membrane_sector=False
+                    membrane_sector=False,                  
                     )
     mcpam = set_up_pam(pam_info_file=pam_info_path, 
                        model=model_path,
                        sensitivity=False, 
-                       membrane_sector=True)
+                       membrane_sector=True,
+                       separate_memprot_from_tpc=True,
+                       total_protein=0.1935
+                       )
     models = [pam, mcpam]
+
+    for tot_prot in [0.17, 0.175, 0.18, 0.185, 0.19, 0.195, 0.20]:
+        pam.change_total_protein_constraint(tot_prot)
+        mcpam.change_total_protein_constraint(tot_prot)
+        run_simulations_pam_mcpam_w_different_areas(models, type='full scale', max_area_list=[0.03, 0.04, 0.15, 0.50, 1])
+
+
     
-    # Change sector parameters
-    # for model in models:
-    #     ue_sector = model.sectors.get_by_id('UnusedEnzymeSector')
-    #     te_sector = model.sectors.get_by_id('TranslationalProteinSector')
-    #     # Change unused enzyme sector parameters
-    #     model.change_sector_parameters(sector = ue_sector,
-    #                                 slope = 0.014, #in this case: g_p*h/(g_cdw*mmol_glc) 0.01307
-    #                                 intercept=0.17, # g_p/g_cdw
-    #                                 lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope
-    #                                 print_change = True #do you want to see the change? False by default
-    #                                 )
-    #     # Change translational enzyme sector parameters
-    #     model.change_sector_parameters(sector = te_sector,
-    #                                 slope = -0.0045, #in this case: g_p*h/(g_cdw*mmol_glc)
-    #                                 intercept=0.038, # g_p/g_cdw
-    #                                 lin_rxn_id= 'EX_glc__D_e', # the reaction that is used to calculate the slope, EX_glc__D_e
-    #                                 print_change = True #do you want to see the change? False by default
-    #                                 )
-    #     change_set_of_kcats_using_excel_sheet(model=model, 
-    #                     prot_file_path="Results/From_kcat_dataset_20250627/protein_occupancy_data.xlsx",
-    #                     sheet="edited_kcats 20250702 (2)")
-        
-    #     model.optimize() # for glc uptake rate: 10 mmol glc/gDW/h
-
-
-    # get_info_for_proteins(mcpam=mcpam,
-    #                       pam_info_path=pam_info_path,
-    #                       protein_info_path="Results/From_kcat_dataset_20250627/protein_occupancy_data_updated_kcats.xlsx")
-
-    # Run simulation for both PAM and mcPAM with the changed sector parameters
-    run_simulations_pam_mcpam_w_different_areas(models, type='full scale')
-
-
-    ### Compare mcPAM using full scale GEM for kcat dataset with missing backward kcats vs. dataset with filled backward kcats.
-    # diff_mu = []
-
-    # for i in range(0,10):
-    #     number = i + 1
-    #     pam_info_path = f'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_{number}.xlsx'
-    #     mcpam_missing_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    #     mcpam_filled_kcat_b = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-
-    #     missing_backward_kcats = get_missing_backward_kcats(mcpam_missing_kcat_b)
-    #     filled_backward_kcats = fill_missing_backward_kcats(missing_backward_kcats)
-
-    #     mcpam_filled_kcat_b = change_prot_kcats(prot_df=filled_backward_kcats, model=mcpam_filled_kcat_b)
-        
-    #     models = [mcpam_missing_kcat_b, mcpam_filled_kcat_b]
-
-    #     fig = run_simulation_pam_mcpam(models=models)
-
-    #     plt.savefig(f"Results/PAM_parametrizer/Analysis/Flux_simulation_mcpams_comparison_missing_and_filled_kcats_{number}.png", dpi=300)
-
-
-    # ## Build full scale pam from diagnostics file
-    # # Define necessary paths/sheet names
-    # diagnostics_data_path = 'Results/PAM_parametrizer/Files/2025_03_11/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
-    # pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
-    # sheet_name = 'Best_Individuals'
-
-    # pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=False)
-    # _set_up_pamodel_for_simulations(pam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
-    # pam = create_pamodel_from_diagnostics_file(diagnostics_data_path, pam, sheet_name)
-
-
-    # mcpam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
-    # mcpam.optimize()
-    # _set_up_pamodel_for_simulations(mcpam, 'EX_glc__D_e', transl_sector_config=True) # changing the translational sector
-    # mcpam = create_pamodel_from_diagnostics_file(diagnostics_data_path, mcpam, sheet_name)
-    # models = [pam, mcpam]
-
-    # get_info_for_proteins(mcpam=model,
-    #                       pam_info_path=pam_info_path,
-    #                       protein_info_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx")
-
-    # change_set_of_kcats_using_excel_sheet(models=models, 
-    #                                       prot_file_path="Results/PAM_parametrizer/Enzymatic_files/2025_05_14/protein_occupancy_data.xlsx",
-    #                                       sheet="enzymatic_file_10")
-
-    # # run_simulation_pam_mcpam(models, type='full scale')
-    # run_simulations_pam_mcpam_w_different_areas(models, type="full scale")
 
 
 

@@ -23,6 +23,7 @@ class MembraneSector(EnzymeSector):
             r_alpha: float = 0.00023, # radius of one alpha helix [um]
             cdw_per_cell: float = 0.28 * 1e-12,  # 0.28 pg
             n_a: float = 6.02214076 * 1e23,  # avogadro number
+            separate_memprot_from_tpc: bool = True,
             configuration=Config):
 
         self.id = 'MembraneSector'
@@ -36,6 +37,8 @@ class MembraneSector(EnzymeSector):
         #Defining the slope and intercept
         self.intercept = area_avail_0 #μm2
         self.slope = area_avail_mu #μm2/h
+
+        self.separate_memprot_from_tpc = separate_memprot_from_tpc
 
     def add(self, model):
 
@@ -53,8 +56,6 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            # Exclude membrane enzymes from the total protein constraint
-            model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
 
@@ -66,6 +67,10 @@ class MembraneSector(EnzymeSector):
 
             coefficients[enz_complex.forward_variable] = coeff / self.max_membrane_area
             coefficients[enz_complex.reverse_variable] = coeff / self.max_membrane_area
+
+            # Exclude membrane enzymes from the total protein constraint
+            if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
+                model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
         occupied_membrane = model.problem.Constraint(0, lb=0, ub=self.intercept, name='membrane')
         model.add_cons_vars(occupied_membrane)
@@ -135,9 +140,10 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
-            if any(name.startswith(enz_complex.id) for name in var_names):
-                model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
+            if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
+                var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
+                if any(name.startswith(enz_complex.id) for name in var_names):
+                    model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
             coeff = self._get_coeff_value(alpha_number_for_complex)

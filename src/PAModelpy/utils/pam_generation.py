@@ -510,6 +510,7 @@ def set_up_pam(pam_info_file:str = '',
                unused_enzymes: bool = True,
                membrane_sector: bool = False,
                max_membrane_area:float = 0.043,
+               separate_memprot_from_tpc: bool = True,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = False) -> PAModel:
@@ -585,7 +586,8 @@ def set_up_pam(pam_info_file:str = '',
                                          area_avail_mu=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=max_membrane_area)
+                                         max_area=max_membrane_area,
+                                         separate_memprot_from_tpc=separate_memprot_from_tpc)
 
     else:
         membrane_sector = None

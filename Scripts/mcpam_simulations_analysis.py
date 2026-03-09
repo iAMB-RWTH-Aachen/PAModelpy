@@ -256,7 +256,7 @@ def run_simulation_gem_pam_mcpam(models, type:str="full scale"):
 
     return fig
 
-def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, type:str="full scale"):
+def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, type:str="full scale", max_area_list:list = None):
     fontsize = 25
     labelsize = 15
 
@@ -267,10 +267,10 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     # Define the biomass name based on the used model
     if type == "full scale":
         biomass_name = 'BIOMASS_Ec_iML1515_core_75p37M'
-        max_area_list = np.arange(0.01, 0.51, 0.01)
+        max_area_list = np.arange(0.01, 0.06, 0.01) if max_area_list is None else max_area_list
     else:
         biomass_name = 'BIOMASS_Ecoli_core_w_GAM'
-        max_area_list = np.arange(0.01, 0.51, 0.01)
+        max_area_list = np.arange(0.01, 0.06, 0.01) if max_area_list is None else max_area_list
 
     # extract reaction specific data
     rxn_to_pt = {}

@@ -47,7 +47,7 @@ def calculate_sensitivities(pamodel):
             # pamodel.objective = 'EX_ac_e'
             sol_pam = pamodel.optimize()
             fluxes.append(sol_pam.fluxes)
-            if pamodel.solver.status == 'optimal': y_axis += [glc]
+            if pamodel.solver.status == 'optimal': y_axis += [glc] 
             # save data
             Ccsc_new = list()
 
