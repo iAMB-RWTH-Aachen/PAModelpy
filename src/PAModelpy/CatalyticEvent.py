@@ -269,7 +269,6 @@ class CatalyticEvent(Object):
         self.catalytic_reactions.append(catalytic_reaction)
         self._model.constraints[self.id+'_f'].set_linear_coefficients({
             catalytic_reaction.forward_variable: -1,
-            catalytic_reaction.reverse_variable: 1,
         })
 
         self._model.constraints[self.id+'_b'].set_linear_coefficients({
