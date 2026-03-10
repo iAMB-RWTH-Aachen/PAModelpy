@@ -1,3 +1,9 @@
+10 March 2026:
+- **Function**: CatalyticEvent.model and CatalyticEvent.add_enzyme_reaction_association
+- **Issue**: when a (recombinant) protein is added with conc>0, it was mathematically possible to not have flux through the fwd and rev reaction catalyzed by the enzyme
+- **Fix**: splitted the catalytic event constraint in a fwd and reverse component
+
+
 2 March 2026:
 - **Funtion**: utils.pam_generation.map_genes_to_proteins
 - **Issue**: when copying the active enzyme sector to rebuild a pamodel, enzyme complexes were not recognized as the protein reaction associations were in a single, and not a nested, list
