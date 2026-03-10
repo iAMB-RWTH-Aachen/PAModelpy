@@ -648,8 +648,6 @@ class EnzymeVariable(Reaction):
                 self._model.constraints[self.id + '_conc'].ub = upper_bound
                 self._model.constraints[self.id + '_conc'].lb = lower_bound
 
-
-
     @property
     def model(self):
         return self._model

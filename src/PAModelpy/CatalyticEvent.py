@@ -155,18 +155,24 @@ class CatalyticEvent(Object):
             self._model.add_reactions([rxn])
             self.rxn = rxn
         # add reaction constraint
-        ce_constraint = self._model.problem.Constraint(Zero, name= self.id, lb = 0, ub=0)
-        self._model.add_cons_vars([ce_constraint])
-        self._model.constraints[self.id].set_linear_coefficients({
+        ce_constraint_f = self._model.problem.Constraint(Zero, name= self.id+'_f', lb = 0, ub=0)
+        ce_constraint_b = self._model.problem.Constraint(Zero, name= self.id+'_b', lb = 0, ub=0)
+        self._model.add_cons_vars([ce_constraint_f, ce_constraint_b])
+        self._model.constraints[ce_constraint_f.name].set_linear_coefficients({
             self.rxn.forward_variable: 1,
-            self.rxn.reverse_variable: -1,
         })
-        self.constraints[self.id] = ce_constraint
+        self._model.constraints[ce_constraint_b.name].set_linear_coefficients({
+            self.rxn.reverse_variable: 1,
+        })
+        for ce_constraint in [ce_constraint_f, ce_constraint_b]:
+            self.constraints[ce_constraint.name] = ce_constraint
 
         for enzyme in self.enzymes:
             if enzyme in self._model.enzymes:
                 self.constraints = {**self.constraints, **enzyme._constraints}
-                enzyme._constraints[self.id] = ce_constraint
+                for ce_constraint in [ce_constraint_f, ce_constraint_b]:
+                    enzyme._constraints[ce_constraint.name] = ce_constraint
+
                 enzyme_model = self._model.enzymes.get_by_id(enzyme.id)
 
                 if self.rxn_id in enzyme_model.rxn2kcat.keys():
@@ -261,9 +267,13 @@ class CatalyticEvent(Object):
         catalytic_reaction = Reaction(self.id + "_" + enzyme.id, lower_bound=-1e3, upper_bound=1e3)
         self._model.add_reactions([catalytic_reaction])
         self.catalytic_reactions.append(catalytic_reaction)
-        self._model.constraints[self.id].set_linear_coefficients({
+        self._model.constraints[self.id+'_f'].set_linear_coefficients({
             catalytic_reaction.forward_variable: -1,
             catalytic_reaction.reverse_variable: 1,
+        })
+
+        self._model.constraints[self.id+'_b'].set_linear_coefficients({
+            catalytic_reaction.reverse_variable: -1,
         })
         self.add_catalytic_reaction_to_enzyme_constraint(catalytic_reaction, enzyme)
 
