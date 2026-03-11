@@ -5,6 +5,7 @@ import re
 from typing import Union
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
+from Scripts.mcpam_simulations_analysis import run_simulation_pam_mcpam
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 11 #s-1
@@ -46,14 +47,62 @@ def change_prot_kcats(prot_df:pd.DataFrame, model:Union[Model, PAModel])-> Union
 
     return model
 
-def create_pamodel_from_diagnostics_file(file_path:str, model: PAModel, sheet_name: str)-> PAModel:
+def create_pamodel_from_diagnostics_file(file_path:str,
+                                         model: PAModel,
+                                         sheet_name: str = 'Best_Individuals',
+                                         enzyme_sector_update: bool = True,
+                                         other_enzyme_id_pattern: str = r'E[0-9][0-9]*|Enzyme*',
+                                         substrate_uptake_id: str = 'EX_glc__D_e'
+                                         )-> PAModel:
+    """
+    Modifies a Protein Allocation Model using information about turnover numbers from a diagnostics file
+    (result from PAMparametrizer). If available, also adjusts the sector parameters associated to the substrate.
+
+    Args:
+        file_path (str): path to the diagnostics xlsx file. The file should at least have the following columns:
+            - run_id: the iteration of the PAMparametrizer
+            - rxn_id: the id of the reaction to modify. This can be the catalytic reaction id (CE_<rxn_id>_<enzyme_id>)
+            - enzyme_id: the id of the enzyme to modify
+            - direction: 'f' or 'b', determines the directionality of the reaction
+            - kcat[s-1]: the new kcat value in 1/s
+        model (PAModel): the PAM to adjust
+        sheet_name (str): name of the sheet with the information about the modifications
+        enzyme_sector_update (bool): if the enzyme sectors should be updated according to the parametrization results.
+            Defaults to True
+        other_enzyme_id_pattern (regex str): regex pattern which matches default enzyme id.
+            Normally is E1, E2, etc. or Enzyme_<rxn_id>, but can be specified by the user.
+        substrate_uptake_id (str): name of the uptake reaction for the substrate for which the model is built
+
+    Returns:
+        PAModel: with adjusted parameters
+
+    """
     best_individual_df = pd.read_excel(file_path, sheet_name=sheet_name)
     for _, group in best_individual_df.groupby('run_id'):
         for _, row in group.iterrows():
-            rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['rxn_id'])
-            enzyme_id = _order_enzyme_complex_id(row['enzyme_id'])
+            rxn_id = _extract_reaction_id_from_catalytic_reaction_id(row['rxn_id'],
+                                                                     default_enzyme_id_pattern = other_enzyme_id_pattern
+                                                                     )
+            enzyme_id = _order_enzyme_complex_id(row['enzyme_id'],
+                                                 other_enzyme_id_pattern = other_enzyme_id_pattern)
             kcat_dict = {rxn_id: {row['direction']: row['kcat[s-1]']}}
             model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+    if not enzyme_sector_update: return model
+    try:
+        sector_parameters_df = pd.read_excel(file_path, sheet_name="sector_parameters")
+    except:
+        return model
+
+    for sector, sector_params in sector_parameters_df.groupby('sector_id'):
+        sector_params = sector_params.loc[
+            (sector_parameters_df.substrate_uptake_id == substrate_uptake_id)
+        ].rename({'substrate_uptake_id': 'lin_rxn_id'},
+                 axis=1)[['slope', 'intercept', 'lin_rxn_id']].to_dict('records')[0]
+        model.change_sector_parameters(
+            sector = model.sectors.get_by_id(sector),
+            **sector_params,
+            print_change=True
+        )
     return model
 
 def get_rxn2kcat_protein2gene_dict(param_file_path:str, model_file_path: str
@@ -82,11 +131,11 @@ def get_rxn2kcat_protein2gene_dict(param_file_path:str, model_file_path: str
                                      **{enzyme_complex_id: enzyme_dict}}
     return new_rxn2prot, protein2gene
 
-def _extract_reaction_id_from_catalytic_reaction_id(input_str: str) -> str:
+def _extract_reaction_id_from_catalytic_reaction_id(input_str: str,
+                                                    default_enzyme_id_pattern: str = r'E[0-9][0-9]*|Enzyme_*') -> str:
     # Define the regex pattern for protein IDs, obtained from UniProtKB, 2024-08-07
     # https://www.uniprot.org/help/accession_numbers
     protein_id_pattern = r'(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})'
-    default_enzyme_id_pattern:str = r'E[0-9][0-9]*'
 
     # Remove the 'CE_' prefix if it exists
     if input_str.startswith('CE_'):
@@ -110,5 +159,25 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
                     kcats[f"{rxn}_{enz}_{direction}"] = kcat
     return pd.Series(kcats, name = name)
 
+if __name__ == '__main__':
+    pam_info_file = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    model_path = 'Models/iML1515.xml'
+    pam = set_up_pam(pam_info_file=pam_info_file,
+                    model=model_path,
+                    sensitivity=False,
+                    membrane_sector=False,                  
+                    )
+    mcpam = set_up_pam(pam_info_file=pam_info_file, 
+                       model=model_path,
+                       sensitivity=False, 
+                       membrane_sector=True,
+                       separate_memprot_from_tpc=True,
+                       total_protein=0.1935)
 
-
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_03_11/pam_parametrizer_diagnostics_mciML1515_biomass_weight_8_5.xlsx',
+                                                 model=mcpam,
+                                                 sheet_name='Best_Individuals')
+    
+    
+    models = [pam, mcpam]
+    run_simulation_pam_mcpam(models)
