@@ -54,19 +54,21 @@ def test_if_isozymes_in_toy_pam_are_parsed_correctly():
     sut = set_up_toy_pam_with_isozymes(sensitivity=False)
 
     #check whether catalytic reactions are configured correctly
-    neg_constraint = sut.constraints['CE_R2'].get_linear_coefficients([sut.reactions.R2.reverse_variable,
+    fwd_constraint = sut.constraints['CE_R2_f'].get_linear_coefficients([
                                                                    sut.reactions.CE_R2_E2.forward_variable,
                                                                    sut.reactions.CE_R2_E10.forward_variable])
+    fwd_neg_constraint = sut.constraints['CE_R2_f'].get_linear_coefficients([sut.reactions.R2.forward_variable])
 
-    pos_constraint = sut.constraints['CE_R2'].get_linear_coefficients([sut.reactions.R2.forward_variable,
-                                                                   sut.reactions.CE_R2_E2.reverse_variable,
+    bwd_constraint = sut.constraints['CE_R2_b'].get_linear_coefficients([sut.reactions.CE_R2_E2.reverse_variable,
                                                                    sut.reactions.CE_R2_E10.reverse_variable])
+
+    bwd_neg_constraint = sut.constraints['CE_R2_b'].get_linear_coefficients([sut.reactions.R2.reverse_variable])
 
     assert all([enz in sut.enzymes for enz in ['E1', 'E2', 'E10']])
     assert all([const in sut.constraints.keys() for const in ['EC_E10_f', 'EC_E2_f']])
     assert all([rxn in sut.reactions for rxn in ['CE_R1_E1', 'CE_R2_E2', 'CE_R2_E10']])
-    assert all([v == -1 for v in neg_constraint.values()])
-    assert all([v == 1 for v in pos_constraint.values()])
+    assert all([v == 1 for v in {**fwd_constraint, **bwd_constraint}.values()])
+    assert all([v == -1 for v in {**fwd_neg_constraint,**bwd_neg_constraint}.values()])
 
 def test_if_toy_pam_with_isozymes_has_same_growth_rate_as_without():
     sut = set_up_toy_pam_with_isozymes(sensitivity=False)
