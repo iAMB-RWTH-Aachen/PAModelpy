@@ -190,7 +190,7 @@ def _map_genes_to_proteins(
         ]
 
     elif any(len(info) > 1 for info in gpr_list):  # Complex enzymes
-        enzyme_relations = [[enzyme_id.split("_")]]
+        enzyme_relations = [enzyme_id.split("_")]
     else:
         enzyme_relations = [[enzyme_id]]
 
