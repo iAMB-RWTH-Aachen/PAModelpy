@@ -2311,7 +2311,7 @@ class PAModel(Model):
 
         return new
 
-    def copy_with_pickle(self) -> PAModel:
+    def copy_with_pickle(self) -> 'PAModel':
         model_pickle = pickle.dumps(self)
         new_model = pickle.loads(model_pickle)
         # update bounds which are not copied with pickle
