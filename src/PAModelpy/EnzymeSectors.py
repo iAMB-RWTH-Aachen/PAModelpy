@@ -149,8 +149,6 @@ class ActiveEnzymeSector(Sector):
 
         rxn2protein = self.rxn2protein.copy()
         self.add_rxn2protein(rxn2protein)
-        print('after adding', self.rxn2protein['3PEPTabcpp'])
-
         return model
 
     def add_rxn2protein(self, rxn2protein: Dict[
@@ -213,7 +211,6 @@ class ActiveEnzymeSector(Sector):
                     )
                     if rxn_id in rxn2protein.keys():
                         del rxn2protein[rxn_id]
-        print('after checking reactions',self.rxn2protein['3PEPTabcpp'])
 
         for rxn_id, enzymes in rxn2protein.items():
             if verbose: print(f'\nAdding an association between reaction {rxn_id} and the following enzymes {list(enzymes.keys())}')
@@ -291,9 +288,6 @@ class ActiveEnzymeSector(Sector):
                                                                     'protein_reaction_association': [pr]}}}
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
-
-                                    if rxn_id == '3PEPTabcpp':
-                                        print('in if', self.rxn2protein['3PEPTabcpp'])
 
                                 else:
                                     enz_complex = model.enzymes.get_by_id(enzyme_complex_id)
