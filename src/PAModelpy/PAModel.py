@@ -2136,34 +2136,7 @@ class PAModel(Model):
         """
 
         if copy_with_pickle:
-            model_pickle = pickle.dumps(self)
-            new_model = pickle.loads(model_pickle)
-            #update bounds which are not copied with pickle
-            for constr_id, constr in self.constraints.items():
-                new_constraint = new_model.constraints[constr_id]
-                #to prevent rounding errors, only change if the bounds are actually different
-                if constr.lb != pytest.approx(new_constraint.lb, rel = 1e-3):
-                        new_constraint.lb = constr.lb
-                if constr.ub != pytest.approx(new_constraint.ub, rel=1e-3):
-                    new_constraint.ub = constr.ub
-
-            #reset all dictlist in objects
-            for enz in new_model.enzymes:
-                enz.catalytic_events = DictList(enz.catalytic_events)
-                enz.transcripts = DictList(enz.transcripts)
-                if isinstance(enz, EnzymeComplex):
-                    enz.enzymes = DictList(enz.enzymes)
-
-            for enz_var in new_model.enzyme_variables:
-                enz_var.catalytic_events = DictList(enz_var.catalytic_events)
-                enz_var.reactions = DictList(enz_var.reactions)
-
-            for ce in new_model.catalytic_events:
-                ce.catalytic_reactions = DictList(ce.catalytic_reactions)
-                ce.enzymes = DictList(ce.enzymes)
-                ce.enzyme_variables = DictList(ce.enzyme_variables)
-
-            return new_model
+            return self.copy_with_pickle()
 
         do_not_copy_by_ref = {
             "metabolites",
@@ -2337,6 +2310,36 @@ class PAModel(Model):
             new.constraints[key].ub = cons.ub
 
         return new
+
+    def copy_with_pickle(self) -> PAModel:
+        model_pickle = pickle.dumps(self)
+        new_model = pickle.loads(model_pickle)
+        # update bounds which are not copied with pickle
+        for constr_id, constr in self.constraints.items():
+            new_constraint = new_model.constraints[constr_id]
+            # to prevent rounding errors, only change if the bounds are actually different
+            if constr.lb != pytest.approx(new_constraint.lb, rel=1e-3):
+                new_constraint.lb = constr.lb
+            if constr.ub != pytest.approx(new_constraint.ub, rel=1e-3):
+                new_constraint.ub = constr.ub
+
+        # reset all dictlist in objects
+        for enz in new_model.enzymes:
+            enz.catalytic_events = DictList(enz.catalytic_events)
+            enz.transcripts = DictList(enz.transcripts)
+            if isinstance(enz, EnzymeComplex):
+                enz.enzymes = DictList(enz.enzymes)
+
+        for enz_var in new_model.enzyme_variables:
+            enz_var.catalytic_events = DictList(enz_var.catalytic_events)
+            enz_var.reactions = DictList(enz_var.reactions)
+
+        for ce in new_model.catalytic_events:
+            ce.catalytic_reactions = DictList(ce.catalytic_reactions)
+            ce.enzymes = DictList(ce.enzymes)
+            ce.enzyme_variables = DictList(ce.enzyme_variables)
+
+        return new_model
 
     def find_init_args(self, object):
         init_args = {}
