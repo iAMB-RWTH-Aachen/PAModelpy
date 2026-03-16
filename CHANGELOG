@@ -1,3 +1,10 @@
+16 March 2026:
+- **Function**: EnzymeSectors.ActiveEnzymeSector._add_rxn2protein
+- **Issue**: updating the rxn2protein attribute with an enzyme complex resulted in a protein-reaction-association
+    in the form of a single, instead of a nested, list. This caused issues when a model was rebuild using the active
+    enzyme sector
+- **Fix**: wrapping the protein-reaction relation in an additional list
+
 10 March 2026:
 - **Function**: CatalyticEvent.model and CatalyticEvent.add_enzyme_reaction_association
 - **Issue**: when a (recombinant) protein is added with conc>0, it was mathematically possible to not have flux through the fwd and rev reaction catalyzed by the enzyme

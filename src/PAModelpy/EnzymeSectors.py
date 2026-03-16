@@ -149,6 +149,7 @@ class ActiveEnzymeSector(Sector):
 
         rxn2protein = self.rxn2protein.copy()
         self.add_rxn2protein(rxn2protein)
+        print('after adding', self.rxn2protein['3PEPTabcpp'])
 
         return model
 
@@ -212,6 +213,7 @@ class ActiveEnzymeSector(Sector):
                     )
                     if rxn_id in rxn2protein.keys():
                         del rxn2protein[rxn_id]
+        print('after checking reactions',self.rxn2protein['3PEPTabcpp'])
 
         for rxn_id, enzymes in rxn2protein.items():
             if verbose: print(f'\nAdding an association between reaction {rxn_id} and the following enzymes {list(enzymes.keys())}')
@@ -230,7 +232,6 @@ class ActiveEnzymeSector(Sector):
                     protein_reaction = enzyme_dict['protein_reaction_association']
                 else:
                     protein_reaction = enzyme_id
-
                 # get molar mass of enzyme or replace with default value
                 if "molmass" in enzyme_dict.keys():
                     molmass = enzyme_dict["molmass"]
@@ -287,9 +288,12 @@ class ActiveEnzymeSector(Sector):
                                                                 **{enzyme_complex_id: {
                                                                     **kcat,
                                                                     'genes': [g.id for g in gene_list[0]],
-                                                                    'protein_reaction_association': pr}}}
+                                                                    'protein_reaction_association': [pr]}}}
                                     self.constraints += [enzyme]
                                     self.variables.append(enzyme.enzyme_variable)
+
+                                    if rxn_id == '3PEPTabcpp':
+                                        print('in if', self.rxn2protein['3PEPTabcpp'])
 
                                 else:
                                     enz_complex = model.enzymes.get_by_id(enzyme_complex_id)
@@ -432,7 +436,6 @@ class ActiveEnzymeSector(Sector):
         else:
             #make sure the enzyme complex is in the right order, otherwise match will fail
             sorted_enzyme_id = sorted(enzyme_id.split('_'))
-
         return any(
             [all(
                 [sorted(pr) == sorted_enzyme_id and  #enzyme should take part in enzyme complex
