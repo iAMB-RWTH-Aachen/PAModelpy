@@ -30,7 +30,7 @@ class MembraneSector(EnzymeSector):
         self.alpha_numbers_dict = alpha_numbers_dict
         self.cog_class = cog_class
         self.enzyme_location = enzyme_location
-	self.area_alpha = a_alpha
+        self.area_alpha = a_alpha
         self.max_membrane_area = max_area #percentage of membrane area that can be covered by proteins
         self.unit_factor = 1e-3 * cdw_per_cell * n_a
 
