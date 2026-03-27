@@ -20,7 +20,7 @@ class MembraneSector(EnzymeSector):
             enzyme_location: {},
             cog_class: {} = None,
             max_area: float = 0.043,
-            a_alpha: float = 1.4, # area of one alpha helix [um]
+            a_alpha: float = 1.4 * 1e-6, # area of one alpha helix [um2]
             cdw_per_cell: float = 0.28 * 1e-12,  # 0.28 pg, ref: bionumber
             n_a: float = 6.02214076 * 1e23,  # avogadro number
             separate_memprot_from_tpc: bool = True,
@@ -30,7 +30,6 @@ class MembraneSector(EnzymeSector):
         self.alpha_numbers_dict = alpha_numbers_dict
         self.cog_class = cog_class
         self.enzyme_location = enzyme_location
-        self.area_alpha = a_alpha  # area per alpha helix unit [um2]
         self.max_membrane_area = max_area #percentage of membrane area that can be covered by proteins
         self.unit_factor = 1e-3 * cdw_per_cell * n_a
 
