@@ -1,4 +1,3 @@
-__pycache__/
 *.pyc
 package-lock.json
 src/PAModelpy.egg-info/
@@ -9,3 +8,4 @@ docs/_build/
 docs/build/
 docs/node_modules/
 node_modules/
+

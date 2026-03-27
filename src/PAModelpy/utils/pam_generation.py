@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from ..PAModel import PAModel
 from ..EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
+from ..MembraneSector import MembraneSector
 from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
@@ -452,7 +453,6 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
     rxn2protein = {rxn_id: dict(rxn_info.enzymes) for rxn_id, rxn_info in rxn_info2protein.items()}
     return rxn2protein, dict(protein2gpr)
 
-
 # Function to parse GPR and determine multimer
 def merge_enzyme_complexes(df, gene2protein):
     collapsed_rows = []
@@ -508,6 +508,9 @@ def set_up_pam(pam_info_file:str = '',
                active_enzymes: bool = True,
                translational_enzymes: bool = True,
                unused_enzymes: bool = True,
+               membrane_sector: bool = False,
+               max_membrane_area:float = 0.043,
+               separate_memprot_from_tpc: bool = True,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = False) -> PAModel:
@@ -570,6 +573,25 @@ def set_up_pam(pam_info_file:str = '',
     else:
         unused_enzyme_info = None
 
+    if membrane_sector:
+        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
+        active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
+
+        area_avail_0 = membrane_info.at['area_avail_0','Value']
+        area_avail_mu = membrane_info.at['area_avail_mu','Value']
+        alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
+        enzyme_location = active_membrane_info.location.to_dict()
+
+        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+                                         area_avail_mu=area_avail_mu,
+                                         alpha_numbers_dict=alpha_numbers_dict,
+                                         enzyme_location=enzyme_location,
+                                         max_area=max_membrane_area,
+                                         separate_memprot_from_tpc=separate_memprot_from_tpc)
+
+    else:
+        membrane_sector = None
+
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
@@ -577,6 +599,7 @@ def set_up_pam(pam_info_file:str = '',
                        active_sector=active_enzyme_info,
                       translational_sector=translation_enzyme_info,
                        unused_sector=unused_enzyme_info,
+                      membrane_sector=membrane_sector,
                       sensitivity=sensitivity, configuration = config
                       )
     return pamodel
@@ -611,12 +634,12 @@ def set_up_core_pam(pam_info_file:str = '',
     #check if a different total protein concentration is given
     if isinstance(total_protein, float):
         TOTAL_PROTEIN_CONCENTRATION = total_protein
-
+    
     # load example data for the E.coli iML1515 model
     if active_enzymes:
         # load active enzyme sector information
         if enzyme_db is None:
-            enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+            enzyme_db = pd.read_excel(pam_info_file)
             #for some models, the reaction ids should not include 'pp' or 'ex'
             if adjust_reaction_ids:
                 enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
@@ -662,23 +685,23 @@ def set_up_core_pam(pam_info_file:str = '',
     else:
         unused_enzyme_info = None
 
-    # if membrane_sector:
-    #     membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
-    #     active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
-    #
-    #     area_avail_0 = membrane_info.at['area_avail_0','Value']
-    #     area_avail_mu = membrane_info.at['area_avail_mu','Value']
-    #     alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
-    #     enzyme_location = active_membrane_info.location.to_dict()
-    #
-    #     membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-    #                                      area_avail_mu=area_avail_mu,
-    #                                      alpha_numbers_dict=alpha_numbers_dict,
-    #                                      enzyme_location=enzyme_location,
-    #                                      max_area=max_membrane_area)
+    if membrane_sector:
+        membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
+        active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
 
-    # else:
-    #     membrane_sector = None
+        area_avail_0 = 0.9812
+        area_avail_mu = 8.4243
+        alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
+        enzyme_location = active_membrane_info.location.to_dict()
+
+        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
+                                         area_avail_mu=area_avail_mu,
+                                         alpha_numbers_dict=alpha_numbers_dict,
+                                         enzyme_location=enzyme_location,
+                                         max_area=max_membrane_area)
+
+    else:
+        membrane_sector = None
 
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
@@ -687,7 +710,7 @@ def set_up_core_pam(pam_info_file:str = '',
                        active_sector=active_enzyme_info,
                       translational_sector=translation_enzyme_info,
                        unused_sector=unused_enzyme_info,
-                      # membrane_sector=membrane_sector,
+                      membrane_sector=membrane_sector,
                       sensitivity=sensitivity, configuration = config
                       )
     return coremodel

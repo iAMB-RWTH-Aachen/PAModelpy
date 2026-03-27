@@ -1,5 +1,6 @@
 import pytest
 import pickle
+import os
 from src.PAModelpy.configuration import Config
 from src.PAModelpy.PAModel import PAModel
 
@@ -8,6 +9,7 @@ from Scripts.toy_ec_pam import build_toy_gem, build_active_enzyme_sector, build_
 from Scripts.pam_generation_uniprot_id import (set_up_ecolicore_pam, set_up_ecoli_pam, set_up_toy_pam,
                                         parse_gpr_information_for_protein2genes,
                                         parse_gpr_information_for_rxn2protein)
+from src.PAModelpy.utils import set_up_pam
 
 def test_gpr_information_is_parsed_correctly():
     # Arrange
@@ -45,11 +47,21 @@ def test_gpr_information_for_protein_is_correctly_filtered():
 
 def test_if_enzyme_complex_in_toy_pam_is_parsed_correctly():
     sut = set_up_toy_pam_with_enzyme_complex(sensitivity=False)
+<<<<<<<< HEAD:tests/unit_tests/test_pamodel/test_pam_setup.py
+
+    print(sut.enzymes, sut.enzyme_variables)
+========
     assert all([enz in sut.enzymes for enz in ['E1', 'E10_E2']])
     assert all([const not in sut.constraints.keys() for const in ['EC_E10_f', 'EC_E2_f']])
     constraint = sut.constraints['EC_E10_E2_f'].get_linear_coefficients([sut.reactions.CE_R2_E10_E2.forward_variable])
     assert constraint[sut.reactions.CE_R2_E10_E2.forward_variable] > 0
+>>>>>>>> origin/main:tests/unit_tests/test_pamodel/test_pam_generation_ecoli.py
 
+    assert all([enz in sut.enzymes for enz in ['E1', 'E10_E2']])
+    assert all([const not in sut.constraints.keys() for const in ['EC_E10_f', 'EC_E2_f']])
+    constraint = sut.constraints['EC_E10_E2_f'].get_linear_coefficients([sut.reactions.CE_R2_E10_E2.forward_variable])
+    assert constraint[sut.reactions.CE_R2_E10_E2.forward_variable] > 0
+#
 def test_if_isozymes_in_toy_pam_are_parsed_correctly():
     sut = set_up_toy_pam_with_isozymes(sensitivity=False)
 
@@ -101,6 +113,8 @@ def test_if_toy_pam_with_enzyme_comples_has_same_growth_rate_as_without():
 
     assert sut.objective.value == pytest.approx(toy_pam.objective.value, abs = 1e-6)
 
+<<<<<<<< HEAD:tests/unit_tests/test_pamodel/test_pam_setup.py
+========
 def test_set_up_ecolicore_pam_works():
     sut = set_up_ecolicore_pam(sensitivity=False)
     assert True
@@ -119,8 +133,17 @@ def test_if_ecoli_pam_optimizes():
     sut.optimize()
     assert sut.objective.value > 0
 
+>>>>>>>> origin/main:tests/unit_tests/test_pamodel/test_pam_generation_ecoli.py
 def test_if_pamodel_can_be_pickled_and_unpickled():
-    sut = set_up_ecoli_pam(sensitivity=False)
+    # Arrange
+    pam_data_file = os.path.join('tests', 'data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+    iml1515 = os.path.join('Models', 'iML1515.xml')
+    sut = set_up_pam(pam_data_file,
+                     iml1515,
+                     sensitivity=False,
+                     adjust_reaction_ids=False)
+
+    sut.optimize()
     sut.change_reaction_bounds('EX_glc__D_e', -10, 0)
     sut.optimize()
 
@@ -152,11 +175,21 @@ def set_up_toy_pam_with_enzyme_complex(sensitivity =True):
     active_enzyme = build_active_enzyme_sector(config)
 
     #add an enzyme associated to enzyme complex to the toy model
+<<<<<<<< HEAD:tests/unit_tests/test_pamodel/test_pam_setup.py
+    active_enzyme.rxn2protein['R2']['E2']['protein_reaction_association'] = [['E2', 'E10']]
+    # active_enzyme.rxn2protein['R2']['E10']= active_enzyme.rxn2protein['R2']['E2'].copy()
+    active_enzyme.rxn2protein['R2']['E2_E10'] = active_enzyme.rxn2protein['R2']['E2'].copy()
+    del active_enzyme.rxn2protein['R2']['E2']
+
+    active_enzyme.protein2gene['E2_E10'] = [['gene2', 'gene10']]
+
+========
     active_enzyme.rxn2protein['R2']['E10_E2'] = active_enzyme.rxn2protein['R2']['E2'].copy()
     active_enzyme.protein2gene['E10_E2'] = [['g2', 'g10']]
 
     # need to remove the peptide because this is not an effective enzyme in the model
     del active_enzyme.rxn2protein['R2']['E2']
+>>>>>>>> origin/main:tests/unit_tests/test_pamodel/test_pam_generation_ecoli.py
 
     #build the toy model
     unused_enzyme = build_unused_protein_sector(config)
@@ -182,6 +215,7 @@ def set_up_toy_pam_with_isozymes(sensitivity =True):
     #add an enzyme associated to isozymes to the toy model
     active_enzyme.rxn2protein['R2']['E2']['protein_reaction_association'] = [['E2'], ['E10']]
     active_enzyme.rxn2protein['R2']['E10']= active_enzyme.rxn2protein['R2']['E2'].copy()
+
 
     #build the toy model
     unused_enzyme = build_unused_protein_sector(config)
@@ -210,8 +244,17 @@ def set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity =True):
     active_enzyme.rxn2protein['R2']['E10']= active_enzyme.rxn2protein['R2']['E2'].copy()
 
     #add an enzyme associated to enzyme complex to the toy model
+<<<<<<<< HEAD:tests/unit_tests/test_pamodel/test_pam_setup.py
+    active_enzyme.rxn2protein['R3']['E3']['protein_reaction_association'] = [['E3','E10', 'E11']]
+    active_enzyme.rxn2protein['R3']['E10']= active_enzyme.rxn2protein['R3']['E3'].copy()
+    active_enzyme.rxn2protein['R3']['E11']= active_enzyme.rxn2protein['R3']['E3'].copy()
+    active_enzyme.rxn2protein['R3']['E3_E10_E11']= active_enzyme.rxn2protein['R3']['E3'].copy()
+
+    active_enzyme.protein2gene['E3_E10_E11'] = [['gene3', 'gene10', 'gene11']]
+========
     active_enzyme.rxn2protein['R3']['E10_E11_E3'] = active_enzyme.rxn2protein['R3']['E3'].copy()
     active_enzyme.rxn2protein['R3']['E10_E11_E3']['protein_reaction_association'] = [['E3','E10', 'E11']]
+>>>>>>>> origin/main:tests/unit_tests/test_pamodel/test_pam_generation_ecoli.py
 
     active_enzyme.protein2gene['E10_E11_E3'] = [['g10', 'g11', 'g3']]
 

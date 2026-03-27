@@ -1,10 +1,34 @@
 import pytest
 from cobra.io import load_json_model
+import os
 
 from src.PAModelpy import PAModel,Config,ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector, CatalyticEvent
-from Scripts.pam_generation_uniprot_id import set_up_ecoli_pam, set_up_ecolicore_pam
-from tests.unit_tests.test_pamodel.test_pam_generation_ecoli import set_up_toy_pam_with_isozymes_and_enzymecomplex
+from tests.unit_tests.test_pamodel.test_pam_setup import set_up_toy_pam_with_isozymes_and_enzymecomplex
+from src.PAModelpy.utils import set_up_pam
 
+@pytest.mark.parametrize('constraint_name, variable_name', 
+                         [('TotalProteinConstraint', 'E1'),
+                          ('Byproduct', 'R3'),
+                          ('CE_R6', 'R6')]     
+)
+def test_if_exclude_variable_from_constraint_works(constraint_name, variable_name):
+    #arrange
+    sut = build_toy_pam(sensitivity=False)
+    if variable_name in sut.enzyme_variables:
+        i = next(i for i, enzyme in enumerate(sut.enzyme_variables) if enzyme.id == variable_name)
+        variable = sut.enzyme_variables[i]
+    else:
+        variable = sut.reactions.get_by_id(variable_name)
+    
+    #act
+    sut.exclude_variable_from_constraint(variable=variable, constraint_name=constraint_name)
+
+    #assert
+    constraint = sut.constraints[constraint_name]
+    var_names = {v.name for v in constraint.expression.free_symbols}
+    print(sut.constraints['CE_R6'])
+
+    assert not any(name.startswith(variable_name) for name in var_names)
 
 def test_if_pamodel_change_kcat_function_works():
     #arrange
@@ -206,6 +230,7 @@ def test_if_pamodel_sensitivity_can_be_changed_false_to_true():
 def test_if_pamodel_sensitivity_can_be_changed_true_to_false_ecolicore():
     # arrange
     ecolicore_pam = set_up_ecolicore_pam(sensitivity=True)
+
     glc_lb = -ecolicore_pam.constraints['EX_glc__D_e_lb'].ub
     glc_ub = ecolicore_pam.constraints['EX_glc__D_e_ub'].ub
 
@@ -302,7 +327,7 @@ def test_if_pamodel_gets_catalyzing_enzymes_for_enzyme_object():
     # Arrange
     sut = set_up_toy_pam_with_isozymes_and_enzymecomplex(sensitivity = False)
     enzyme_ut = 'E10'
-    associated_enzymes = ['E10', 'E10_E11_E3']
+    associated_enzymes = ['E10', 'E3_E10_E11']
 
     # Assert
     catalyzing_enzymes = sut._get_catalyzing_enzymes_for_enzyme(enzyme_ut)
@@ -413,3 +438,23 @@ def assert_total_protein_content(model_ori, model_copy):
     assert model_ori.p_tot == model_copy.p_tot
     tot_prot_cons_id = model_ori.TOTAL_PROTEIN_CONSTRAINT_ID
     assert model_ori.constraints[tot_prot_cons_id].ub == model_copy.constraints[tot_prot_cons_id].ub
+
+def set_up_ecoli_pam(sensitivity=True):
+    pam_data_file = os.path.join('tests', 'data', 'proteinAllocationModel_iML1515_EnzymaticData_241209.xlsx')
+    iml1515 = os.path.join('Models', 'iML1515.xml')
+    return set_up_pam(pam_data_file,
+                     iml1515,
+                     sensitivity=sensitivity,
+                     adjust_reaction_ids=False)
+
+def set_up_ecolicore_pam(sensitivity=True):
+    pam_data_file = os.path.join('tests', 'data',
+                                 'proteinAllocationModel_iML1515_EnzymaticData_core.xlsx')
+    ecolicore_gem = load_json_model(os.path.join('Models', 'e_coli_core.json'))
+
+    # Apply
+    return set_up_pam(pam_data_file,
+                               ecolicore_gem,
+                               total_protein=0.1699,
+                               sensitivity=sensitivity,
+                               adjust_reaction_ids=True)

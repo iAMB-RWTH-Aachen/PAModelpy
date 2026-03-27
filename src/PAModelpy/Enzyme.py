@@ -102,8 +102,7 @@ class Enzyme(Object):
     ) -> float:
         """Returns the enzyme's total concentration considering any associated reactions.
 
-        Args:
-            units (str, optional): Units in which the concentration is calculated (default is 'mmol/gDW'), other option is 'g/gDW'.
+        Args:                                                                                                                                                                                                                                              s in which the concentration is calculated (default is 'mmol/gDW'), other option is 'g/gDW'.
             return_units (bool, optional): Determines whether the units should be returned as well.
 
         Returns:

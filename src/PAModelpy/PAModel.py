@@ -29,6 +29,7 @@ from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
+from .MembraneSector import MembraneSector
 
 
 EXTENSION2READINGFUNCTION = {'json': load_json_model,
@@ -85,6 +86,7 @@ class PAModel(Model):
                  active_sector: Optional[ActiveEnzymeSector]=None,
                  translational_sector: Optional[TransEnzymeSector]=None,
                  unused_sector: Optional[UnusedEnzymeSector]=None,
+                 membrane_sector: Optional[MembraneSector]=None,
                  custom_sectors: Optional[CustomSector] =[None],
                  configuration = Config()):
         """Constants"""
@@ -136,7 +138,7 @@ class PAModel(Model):
         if sensitivity:  # perform sensitivity analysis when the model is run
             self._add_lb_ub_constraints()
 
-        sectors_to_add = [active_sector, translational_sector, unused_sector] + custom_sectors
+        sectors_to_add = [active_sector, translational_sector, unused_sector, membrane_sector] + custom_sectors
         for sector in [sector for sector in sectors_to_add if sector is not None]:
             if sector is not None:
                 self.add_sectors([sector])
@@ -482,6 +484,19 @@ class PAModel(Model):
             for gene_and in genes_or:
                 if not gene_and in self.genes:
                     self.genes.append(gene_and)
+    
+    def exclude_variable_from_constraint(self, variable, constraint_name: str) -> None:
+        constraint = self.constraints[constraint_name]
+
+        constraint.set_linear_coefficients(
+            {
+                variable.forward_variable: 0,
+                variable.reverse_variable: 0,
+            }
+        )
+
+        if constraint_name == self.TOTAL_PROTEIN_CONSTRAINT_ID:
+            self.tpc -= 1
 
     def add_sectors(self, sectors: List = None):
         """
@@ -494,6 +509,8 @@ class PAModel(Model):
         for sector in sectors:
             # different method to add the active enzyme_sector
             if isinstance(sector, ActiveEnzymeSector):
+                self = sector.add(self)
+            elif isinstance(sector, MembraneSector):
                 self = sector.add(self)
             else:
                 self.add_sector(sector)
@@ -1084,6 +1101,23 @@ class PAModel(Model):
                 len(self.capacity_sensitivity_coefficients)
             ] = new_row
 
+            for sector in self.sectors:
+                if isinstance(sector, MembraneSector):
+                    constraint = "membrane"
+                    rxn_id = sector.id
+                    enzyme_id = sector.id
+                    ca_coefficient = (
+                            self.constraints[constraint].ub
+                            * mu[mu["rxn_id"] == constraint]["shadow_prices"].iloc[0]
+                            / obj_value
+                    )
+
+                    new_row = [rxn_id, enzyme_id, constraint, ca_coefficient]
+                    # add new_row to dataframe
+                    self.capacity_sensitivity_coefficients.loc[
+                        len(self.capacity_sensitivity_coefficients)
+                    ] = new_row
+
         else:
             for sector in self.sectors:
                 constraint = "sector"
@@ -1371,7 +1405,7 @@ class PAModel(Model):
         slope = sector.slope
         for sec in self.sectors:
             # ActiveEnzymeSector does not have an 'id_list' as it is not linearly dependent on a reaction
-            if isinstance(sec, ActiveEnzymeSector): continue
+            if isinstance(sec, ActiveEnzymeSector) or isinstance(sec, MembraneSector): continue
             if lin_rxn.id in sec.id_list and sector != sec:
                 slope += sec.slope
 
@@ -1577,9 +1611,11 @@ class PAModel(Model):
             warnings.warn(f'Reaction {rxn_id} is not in the model')
             return DictList()
         catalytic_event_id = 'CE_' + rxn_id
-        catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id)
-        enzymes = catalytic_event.enzymes
-        return enzymes
+        if catalytic_event_id in self.catalytic_events:
+            catalytic_event = self.catalytic_events.get_by_id(catalytic_event_id) 
+            enzymes = catalytic_event.enzymes
+
+            return enzymes
 
     def get_reactions_with_enzyme_id(self, enz_id: str, ce_name: bool = True):
         """
