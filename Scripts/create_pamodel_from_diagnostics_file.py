@@ -2,6 +2,7 @@ import pandas as pd
 from cobra import Model
 from typing import Tuple, Literal
 import re
+import math
 from typing import Union
 from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
@@ -51,7 +52,7 @@ def create_pamodel_from_diagnostics_file(file_path:str,
                                          model: PAModel,
                                          sheet_name: str = 'Best_Individuals',
                                          enzyme_sector_update: bool = True,
-                                         other_enzyme_id_pattern: str = r'E[0-9][0-9]*|Enzyme*',
+                                         other_enzyme_id_pattern: str = r'E[0-9][0-9]*|Enzyme_\S+',
                                          substrate_uptake_id: str = 'EX_glc__D_e'
                                          )-> PAModel:
     """
@@ -87,6 +88,7 @@ def create_pamodel_from_diagnostics_file(file_path:str,
                                                  other_enzyme_id_pattern = other_enzyme_id_pattern)
             kcat_dict = {rxn_id: {row['direction']: row['kcat[s-1]']}}
             model.change_kcat_value(enzyme_id=enzyme_id, kcats=kcat_dict)
+            
     if not enzyme_sector_update: return model
     try:
         sector_parameters_df = pd.read_excel(file_path, sheet_name="sector_parameters")
@@ -162,11 +164,11 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
 if __name__ == '__main__':
     pam_info_file = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     model_path = 'Models/iML1515.xml'
-    pam = set_up_pam(pam_info_file=pam_info_file,
-                    model=model_path,
-                    sensitivity=False,
-                    membrane_sector=False,                  
-                    )
+    # pam = set_up_pam(pam_info_file=pam_info_file,
+    #                 model=model_path,
+    #                 sensitivity=False,
+    #                 membrane_sector=False,                  
+    #                 )
     mcpam = set_up_pam(pam_info_file=pam_info_file, 
                        model=model_path,
                        sensitivity=False, 
@@ -178,6 +180,56 @@ if __name__ == '__main__':
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     
+    enzymatic_path = 'Results/PAM_parametrizer/Enzymatic_files/2026_03_11/proteinAllocationModel_EnzymaticData_mciML1515_biomass_weight_8_5.xlsx'
+
+    mcpam_enzymatic = set_up_pam(pam_info_file=enzymatic_path, 
+                       model=model_path,
+                       sensitivity=False, 
+                       membrane_sector=True,
+                       separate_memprot_from_tpc=True,
+                       total_protein=0.1935)
     
-    models = [pam, mcpam]
-    run_simulation_pam_mcpam(models)
+    
+    # models = [pam, mcpam]
+    # run_simulation_pam_mcpam(models)
+
+    tol = 1e-4
+    mismatch_count = 0
+    mismatch_enzymes = {}
+    missing_count = 0
+    missing_enzymes = {}
+
+    for index, enzyme in enumerate(mcpam.enzymes):
+
+        rxn2kcat_diagnostics = enzyme.rxn2kcat
+        rxn2kcat_enzymatic = mcpam_enzymatic.enzymes[index].rxn2kcat
+
+        for reaction in rxn2kcat_diagnostics.keys():
+
+            if reaction not in rxn2kcat_enzymatic:
+                print("reaction missing in enzymatic model:", reaction, rxn2kcat_diagnostics[reaction])
+                missing_count += 1
+                continue
+
+            kcat_diagnostics_dir = rxn2kcat_diagnostics[reaction]
+            kcat_enzymatic_dir = rxn2kcat_enzymatic[reaction]
+
+            for direction, kcat in kcat_diagnostics_dir.items():
+                kcat_diagnostics = kcat_diagnostics_dir[direction]
+                kcat_enzymatic = kcat_enzymatic_dir[direction]
+                if math.isclose(kcat_diagnostics, kcat_enzymatic, abs_tol=tol):
+                    print(reaction, "both kcats are the same")
+                else:
+                    print(f"Kcat mismatch detected\n"
+                    f"Reaction: {reaction}\n"
+                    f"Diagnostics: {kcat_diagnostics}\n"
+                    f"Enzymatic: {kcat_enzymatic}")
+
+                    mismatch_count += 1
+                    mismatch_enzymes[reaction] = {direction: {'diagnostics': kcat_diagnostics, 'enzymatic': kcat_enzymatic}}
+            
+    print('Total mismatch count: ', mismatch_count)
+    print('Total missing count: ', missing_count)
+    print('Mismatch enzymes are: ', mismatch_enzymes)
+    print('Total enzymes diagnostics: ', len(mcpam.enzymes))
+    print('Total enzymes enzymatic: ', len(mcpam_enzymatic.enzymes))

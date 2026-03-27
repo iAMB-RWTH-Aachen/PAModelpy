@@ -17,13 +17,14 @@ class Protein:
         self.total_protein_per_volume = total_protein_per_volume #mg/mL
         self.avogadro = 6.02 * 1e23
         self.alpha_helix_width = 0.46 * 1e-9 #m
+        self.alpha_area = (math.pi * math.pow((self.alpha_helix_width / 2), 2))
 
     def calculate_cell_volume(self):
         self.cell_volume = -0.53*math.pow(self.mu, 2) + 2.41*self.mu + 1.62 #fL or um^3
 
         return self.cell_volume
     def calculate_protein_disc_area(self, alpha_helix_units):
-        self.protein_disc_area = alpha_helix_units * (math.pi * math.pow((self.alpha_helix_width / 2), 2))
+        self.protein_disc_area = alpha_helix_units * self.alpha_area
         # unit: protein_disc_area [m2], number_of_alpha_helix [-], alpha_helix_width [m]
         return self.protein_disc_area
     def calculate_protein_number_per_cell(self, protein_concentration):

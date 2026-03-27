@@ -4,12 +4,13 @@ from src.Protein import Protein
 
 ### Helper functions ###
 def find_var_for_complex(enz_complex, df):
-    enzymes = enz_complex.split('_')
+    enzymes = enz_complex.id.split('_')
     p_conc_in_complex = []
     alpha_in_complex = []
 
     for enz in enzymes:
-        if df['uniprotID'].isin([enz]).any():
+        row = df[df['uniprotID'] == enz]
+        if not row.empty and row["Type"].iloc[0] == "membrane protein":
             p_conc_in_complex.append(df[df['uniprotID'] == enz]['SP4+TX100_avg'].values)
             alpha_in_complex.append(df[df['uniprotID'] == enz]['alpha_helix_units'].values)
 
@@ -18,7 +19,7 @@ def find_var_for_complex(enz_complex, df):
         alpha_for_complex = 0
     else:
         p_conc_for_complex = min(p_conc_in_complex)
-        alpha_for_complex = max((alpha_in_complex))
+        alpha_for_complex = max(alpha_in_complex)
 
     return p_conc_for_complex, alpha_for_complex
 
@@ -26,12 +27,11 @@ def find_var_for_complex(enz_complex, df):
 
 if __name__ == "__main__":
     # Generate the model
-    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2025_05_14/proteinAllocationModel_EnzymaticData_iML1515_2.xlsx'
-    pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False, membrane_sector=True)
+    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False)
 
-    # Extracting the membrane enzyme complex ids from the dictionary of membrane proteins from the model
-    memprot_dict = pam.sectors.get_by_id('MembraneSector').membrane_proteins
-    enz_complex_list = list(memprot_dict.keys())
+    # Extracting enzymes from the model
+    enzyme_complex_list = pam.enzyme_variables
 
     # Get the enzymes from the experimental data
     data_path = "Data/E_coli_proteomics_data.xlsx"
@@ -40,10 +40,11 @@ if __name__ == "__main__":
     # Initial total occupied area is 0 because no protein is allocated to the membrane yet
     total_occupied_area = 0
 
-    for enz_complex in enz_complex_list:
+    for enz_complex in enzyme_complex_list:
         p_conc_for_complex, alpha_for_complex = find_var_for_complex(enz_complex, df)
         protein_object = Protein()
+        protein_object.alpha_area = 1.4 * 1e-18 # m2 
         occupied_area_per_protein = protein_object.calculate_protein_area(p_conc_for_complex, alpha_for_complex)
         total_occupied_area += occupied_area_per_protein
 
-    print(f'Membrane occupancy [%]: {total_occupied_area / 12.10 * 100} %')
+    print(f'Membrane occupancy [%]: {total_occupied_area / 10.68 * 100} %') # 10.68 um2 is the inner membrane area for ecoli k-12 mg1655 at growth rate 0.67, grown in minimal glucose media

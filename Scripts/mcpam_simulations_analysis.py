@@ -18,11 +18,6 @@ from Scripts.mcpam_generation_uniprot_id import (parse_reaction2protein,
                                                  set_up_ecolicore_pam, set_up_ecolicore_mcpam,
                                                  set_up_ecolicore_mcpam_new_surface_parameter,
                                                  set_up_ecoli_pam, set_up_ecoli_mcpam)
-from Scripts.create_pamodel_from_diagnostics_file import change_prot_kcats
-
-def change_set_of_kcats_using_excel_sheet(model:Union[Model,PAModel], prot_file_path:str, sheet:str):
-    prot_df = pd.read_excel(io = prot_file_path, sheet_name = sheet)
-    model = change_prot_kcats(prot_df=prot_df, model=model)
 
 def run_simulation_pam_mcpam(models, type:str="full scale"):
     fontsize = 25
