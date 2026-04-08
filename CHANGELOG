@@ -1,3 +1,8 @@
+8 April 2026
+- **Function**: PAModel.calculate_csc_for_molecule
+- **Issue**: 'min' and 'max' constraints for molecular species were both assumed to be bounded by the ub, while the min constraint should be bounded by a lb
+- **Fix**: refactoring function such that is accesses the ub attribute of a constraint for calculating a CSC for max constraints, and the lb attribute for a min constraint
+
 16 March 2026:
 - **Function**: EnzymeSectors.ActiveEnzymeSector._add_rxn2protein
 - **Issue**: updating the rxn2protein attribute with an enzyme complex resulted in a protein-reaction-association
