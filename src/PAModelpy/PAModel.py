@@ -1505,7 +1505,7 @@ class PAModel(Model):
         else:
             self.enzyme_variables.get_by_id(enzyme_id).lower_bound = lower_bound
 
-    def get_enzymes_by_gene_reid(self, gene_id: str) -> DictList:
+    def get_enzymes_by_gene_id(self, gene_id: str) -> DictList:
         return DictList(enzyme for enzyme in self.enzymes if self._check_if_gene_in_enzyme_genes(gene_id, enzyme))
 
     def get_enzymecomplex_containing_enzyme(self, enzyme: Union[Enzyme, str]) -> list:
