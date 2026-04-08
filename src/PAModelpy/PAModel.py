@@ -1182,18 +1182,12 @@ class PAModel(Model):
         mu_max_row = mu_max[mu_max['index'] == f'{molecule.id}_max']
         mu_min_row = mu_min[mu_min['index'] == f'{molecule.id}_min']
 
-        # Calculate sensitivity coefficients for maximum constraint
-        if f'{molecule.id}_max' in self.constraints.keys():
-            ca_coefficient_max = self.constraints[f'{molecule.id}_max'].ub * mu_max_row['shadow_prices'].iloc[0] / obj_value
-            new_row_max = [associated_reactions, molecule.id, f'{constraint_type}_max', ca_coefficient_max]
-            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_max
-
-        # Calculate sensitivity coefficients for minimum constraint
-        if f'{molecule.id}_min' in self.constraints.keys():
-            ca_coefficient_min = self.constraints[f'{molecule.id}_min'].ub * mu_min_row['shadow_prices'].iloc[0] / obj_value
-            new_row_min = [associated_reactions, molecule.id, f'{constraint_type}_min', ca_coefficient_min]
-            self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row_min
-
+        for direction, row in zip(['min', 'max'], [mu_min_row, mu_max_row]):
+            bound_direction = 'ub' if direction == 'max' else 'lb'
+            if f'{molecule.id}_{direction}' in self.constraints.keys():
+                ca_coefficient = getattr(self.constraints[f'{molecule.id}_{direction}'], bound_direction) * row['shadow_prices'].iloc[0] / obj_value
+                new_row = [associated_reactions, molecule.id, f'{constraint_type}_{direction}', ca_coefficient]
+                self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
 
     def calculate_enzyme_csc(self, enzyme:Enzyme, mu_ec_f:pd.DataFrame, mu_ec_b:pd.DataFrame, obj_value:float):
         """
