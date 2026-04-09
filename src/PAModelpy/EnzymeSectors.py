@@ -6,6 +6,7 @@ from typing import Union, Literal, Dict, Optional, List
 from collections import defaultdict
 
 from .Enzyme import Enzyme, EnzymeComplex
+from .CatalyticEvent import CatalyticEvent
 from .configuration import Config
 
 
@@ -189,12 +190,18 @@ class ActiveEnzymeSector(Sector):
         ```
 
         """
+        model = self.model
+
         if protein2gene is not None:
             self._add_protein2gene_information(protein2gene)
         self._add_rxn2protein_information(rxn2protein)
-        model = self.model
 
         for rxn_id, enzymes in rxn2protein.copy().items():
+            if 'CE_' in rxn_id:
+                rxn_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(
+                    input_str=rxn_id,
+                    protein_id_pattern=self.model.configuration.ENZYME_ID_REGEX
+                 )
             # extract reaction from model
             if rxn_id not in model.reactions:
                 #     reaction = model.reactions.get_by_id(rxn_id)
@@ -391,6 +398,11 @@ class ActiveEnzymeSector(Sector):
         merged_dict = self.rxn2protein.copy()  # Start with dict1 to avoid modifying it
 
         for rxn_id, attr_dict in rxn2protein_to_add.items():
+            #in case a PAModel is initiated from another pamodel, need to make sure we are checking the reaction id and
+            #not the catalytic event ids which could be in the rxn2protein
+            rxn_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(input_str=rxn_id,
+                                                                                    default_enzyme_id_pattern=self.model.configuration.ENZYME_ID_REGEX
+                                                                                    )
             if rxn_id not in merged_dict:
                 merged_dict[rxn_id] = attr_dict.copy()
             else:

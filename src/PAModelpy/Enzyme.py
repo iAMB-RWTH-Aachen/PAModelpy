@@ -256,6 +256,7 @@ class Enzyme(Object):
             if 'CE_' not in rxn_id:
                 catalytic_event_id = self.catalytic_event_id.format(rxn_id)
             else:
+                rxn_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id, self.enzyme_id_regex)
                 catalytic_event_id = f"CE_{CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(rxn_id, self.enzyme_id_regex)}"
             # change rxn2kcat dictionary
             self.rxn2kcat.setdefault(catalytic_event_id, {}).update(kcats)
