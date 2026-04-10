@@ -221,6 +221,11 @@ class ActiveEnzymeSector(Sector):
 
         for rxn_id, enzymes in rxn2protein.items():
             if verbose: print(f'\nAdding an association between reaction {rxn_id} and the following enzymes {list(enzymes.keys())}')
+            if 'CE_' in rxn_id:
+                rxn_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(
+                    input_str=rxn_id,
+                    protein_id_pattern=self.model.configuration.ENZYME_ID_REGEX
+                 )
 
             reaction = model.reactions.get_by_id(rxn_id)
             # skip the reaction if a problem is encountered in check_kcat_values()
@@ -401,7 +406,7 @@ class ActiveEnzymeSector(Sector):
             #in case a PAModel is initiated from another pamodel, need to make sure we are checking the reaction id and
             #not the catalytic event ids which could be in the rxn2protein
             rxn_id = CatalyticEvent._extract_reaction_id_from_catalytic_reaction_id(input_str=rxn_id,
-                                                                                    default_enzyme_id_pattern=self.model.configuration.ENZYME_ID_REGEX
+                                                                                    protein_id_pattern=self.model.configuration.ENZYME_ID_REGEX
                                                                                     )
             if rxn_id not in merged_dict:
                 merged_dict[rxn_id] = attr_dict.copy()
