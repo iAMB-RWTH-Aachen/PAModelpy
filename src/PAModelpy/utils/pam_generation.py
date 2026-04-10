@@ -293,12 +293,12 @@ def _check_if_all_model_reactions_are_in_rxn_info2protein(model: cobra.Model,
         rxn_id = _extract_reaction_id(
             rxn.id)  # some reactions ids are associated with copy numbers, only filter for the actual reaction id
         rxn_genes = [g.id for g in rxn.genes if 's0001' not in g.id]
-        if not (
-                rxn_id not in rxn_info2protein.keys()
-                and 'EX'.lower() not in rxn.id.lower()  # is the reaction an exchange with the environment?
-                and 'BIOMASS' not in rxn.id  # is the reaction a pseudoreaction?
-                and len(rxn_genes) > 0 # is the reaction associated with enzymes?
-                and rxn_id != 'ATPM' # is the reaction associated to the ATP maintenance pseudoreaction?
+        if (
+                rxn_id in rxn_info2protein.keys()
+                or 'EX'.lower() in rxn.id.lower()  # is the reaction an exchange with the environment?
+                or 'BIOMASS' in rxn.id  # is the reaction a pseudoreaction?
+                or len(rxn_genes) == 0 # is the reaction associated with enzymes?
+                or rxn_id == 'ATPM' # is the reaction associated to the ATP maintenance pseudoreaction?
         ): continue
 
         print('No enzyme information found for reaction: ' + rxn.id)
@@ -381,7 +381,7 @@ def _order_enzyme_complex_id(enz_id:str,
 
 def parse_reaction2protein(enzyme_db: pd.DataFrame,
                            model: cobra.Model,
-                           other_enzyme_id_pattern: str = r'(E\d+[a-z]?|Enzyme_[A-Za-z0-9_]+)') -> dict:
+                           other_enzyme_id_pattern: str = r'(E\d+[a-z]?|Enzyme_\w+)') -> dict:
     rxn_info2protein = {}
     protein2gpr = defaultdict(list)
     #remove copy number substrings from the reaction to make it matchable to enzyme information
