@@ -297,6 +297,7 @@ class ActiveEnzymeSector(Sector):
                                     self.rxn2protein[rxn_id] = {**self.rxn2protein[rxn_id],
                                                                 **{enzyme_complex_id: {
                                                                     **kcat,
+                                                                    'molmass': molmass,
                                                                     'genes': [g.id for g in gene_list[0]],
                                                                     'protein_reaction_association': [pr]}}}
                                     self.constraints += [enzyme]
