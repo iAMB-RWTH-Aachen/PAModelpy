@@ -256,6 +256,7 @@ class ActiveEnzymeSector(Sector):
                     self.rxn2protein[rxn_id].update({
                         enzyme_id: {
                             **kcat,
+                            'molmass': molmass,
                             'genes': enzyme.genes,
                             'protein_reaction_association': protein_reaction
                         }
