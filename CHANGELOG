@@ -1,3 +1,9 @@
+10 April 2026
+- **Function**: EnzymeSectors.ActiveEnzymeSector.add_rxn2protein
+- **Issue**: when building a PAM from the active_enzyme.rxn2protein dict, the molarmasses were missing, causing assignment of default molar masses to all protein
+- **Fix**: store molar masses in rxn2protein dict upon PAM creation
+
+
 8 April 2026
 - **Function**: PAModel.calculate_csc_for_molecule
 - **Issue**: 'min' and 'max' constraints for molecular species were both assumed to be bounded by the ub, while the min constraint should be bounded by a lb
