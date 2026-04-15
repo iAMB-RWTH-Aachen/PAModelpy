@@ -1,3 +1,8 @@
+15 April 2026
+- **Function**: utils.pam_generation.set_up_pam
+- **Issue**: functions to build coarse-grained and active enzyme sectors were missing.
+- **Fix**: made general functions for building the sectors for PAM generation
+
 10 April 2026
 - **Function**: EnzymeSectors.ActiveEnzymeSector.add_rxn2protein
 - **Issue**: when building a PAM from the active_enzyme.rxn2protein dict, the molarmasses were missing, causing assignment of default molar masses to all protein
