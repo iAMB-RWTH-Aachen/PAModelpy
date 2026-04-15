@@ -5,6 +5,7 @@ from typing import TypedDict, Literal, Union, Tuple, Iterable, List, Dict, Optio
 import re
 import os
 import ast
+from pathlib import Path
 
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -502,7 +503,7 @@ def merge_enzyme_complexes(df, gene2protein):
     return collapsed_df
 
 def build_coarse_grained_sector_object(
-    pam_info_file:str,
+    pam_info_file:Union[Path,str],
     sheet_name: str,
     sector_cls: Type,
     config: Any,
@@ -563,9 +564,23 @@ def build_coarse_grained_sector_object(
     except Exception as exc:
         raise Exception(f"Could not instantiate {sector_cls.__name__}: {exc}")
 
+def build_active_enzyme_sector_from_pam_info_file(pam_info_file:Union[Path,str],
+                                                  model: 'Model',
+                                                  config: Config,
+                                                  adjust_reaction_ids:Optional[bool] = False,
+                                                  enzyme_db:Optional[pd.DataFrame]=None,) -> ActiveEnzymeSector:
+    if enzyme_db is None:
+        enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
+        # for some models, the reaction ids should not include 'pp' or 'ex'
+        if adjust_reaction_ids:
+            enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
+    # create enzyme objects for each gene-associated reaction
+    rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
 
+    return ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
+                                            configuration=config)
 
-def set_up_pam(pam_info_file:str = '',
+def set_up_pam(pam_info_file:Union[Path,str] = '',
                model:Union[str, cobra.Model] = 'Models/iML1515.xml',
                config:Config = None,
                total_protein: Union[bool, float] = True,
@@ -592,21 +607,11 @@ def set_up_pam(pam_info_file:str = '',
     if isinstance(total_protein, float):
         TOTAL_PROTEIN_CONCENTRATION = total_protein
 
-    # load example data for the E.coli iML1515 model
-    if active_enzymes:
-        # load active enzyme sector information
-        if enzyme_db is None:
-            enzyme_db = pd.read_excel(pam_info_file, sheet_name='ActiveEnzymes')
-            #for some models, the reaction ids should not include 'pp' or 'ex'
-            if adjust_reaction_ids:
-                enzyme_db['rxn_id'] = enzyme_db['rxn_id'].apply(_check_rxn_identifier_format)
-        # create enzyme objects for each gene-associated reaction
-        rxn2protein, protein2gene = parse_reaction2protein(enzyme_db, model)
-
-        active_enzyme_info = ActiveEnzymeSector(rxn2protein=rxn2protein, protein2gene=protein2gene,
-                                                  configuration=config)
-    else:
-        active_enzyme_info = None
+    active_enzyme_info = build_active_enzyme_sector_from_pam_info_file(pam_info_file = pam_info_file,
+                                                                           model = model,
+                                                                           adjust_reaction_ids = adjust_reaction_ids,
+                                                                           enzyme_db = enzyme_db,
+                                                                           config = config) if active_enzymes else None
 
     translation_enzyme_info = build_coarse_grained_sector_object(pam_info_file = pam_info_file,
                                            sheet_name='Translational',
