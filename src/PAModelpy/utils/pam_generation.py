@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import cobra
-from typing import TypedDict, Literal, Union, Tuple, Iterable, List, Dict, Optional
+from typing import TypedDict, Literal, Union, Tuple, Iterable, List, Dict, Optional, Type, Any
 import re
 import os
 import ast
@@ -501,6 +501,70 @@ def merge_enzyme_complexes(df, gene2protein):
     collapsed_df = pd.DataFrame(collapsed_rows).drop_duplicates(['rxn_id', 'enzyme_id', 'direction'])
     return collapsed_df
 
+def build_coarse_grained_sector_object(
+    pam_info_file:str,
+    sheet_name: str,
+    sector_cls: Type,
+    config: Any,
+    prefix: str,
+) -> Optional[Any]:
+    """
+    Build a coarse-grained protein sector from Excel with at least the following values in the 'Parameter' column:
+
+        <prefix>_mu , <prefix>_0 , mol_mass , id_list
+
+    Args:
+        pam_info_file
+            Path to the PAM‑info Excel workbook.
+        sheet_name
+            Excel sheet that holds the parameters.
+        sector_cls
+            Class to instantiate (e.g. ``TransEnzymeSector``).
+        config
+            The configuration object to set model-specific parameters
+        prefix
+            prefix of parameters required to build the sector (``'tps'`` for Translational,
+            ``'ups'`` for UnusedEnzyme, …)
+
+    Returns:
+        An instance of ``sector_cls`` or ``None`` if the sheet could not be read
+        or a required key is missing.
+    """
+    try:
+        df = pd.read_excel(pam_info_file, sheet_name=sheet_name).set_index("Parameter")
+    except Exception as exc:
+        raise KeyError(f"Could not read sheet '{sheet_name}': {exc}")
+
+    slope_key   = f"{prefix}_mu"
+    intercept_key = f"{prefix}_0"
+
+    # Helper that works for both index‑based and raw‑DataFrame access
+    def _get(key: str):
+        return df.at[key, "Value"]
+
+    try:
+        mu_val   = _get(slope_key)
+        zero_val = _get(intercept_key)
+        mol_val  = _get("mol_mass")
+        id_val   = _get("id_list")
+    except Exception as exc:
+        raise KeyError(f"Missing required key while reading '{sheet_name}': {exc}")
+
+    kw = {
+        "id_list": [id_val],
+        f"{prefix}_mu": [mu_val],
+        f"{prefix}_0": [zero_val],
+        "mol_mass": [mol_val],
+        "configuration": config,
+    }
+
+    try:
+        return sector_cls(**kw)
+    except Exception as exc:
+        raise Exception(f"Could not instantiate {sector_cls.__name__}: {exc}")
+
+
+
 def set_up_pam(pam_info_file:str = '',
                model:Union[str, cobra.Model] = 'Models/iML1515.xml',
                config:Config = None,
@@ -588,8 +652,6 @@ def set_up_core_pam(pam_info_file:str = '',
                active_enzymes: bool = True,
                translational_enzymes: bool = True,
                unused_enzymes: bool = True,
-               membrane_sector: bool = False,
-               max_membrane_area:float = 0.03,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
                adjust_reaction_ids:bool = True) -> PAModel:
@@ -661,26 +723,6 @@ def set_up_core_pam(pam_info_file:str = '',
         )
     else:
         unused_enzyme_info = None
-
-    # if membrane_sector:
-    #     membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
-    #     active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
-    #
-    #     area_avail_0 = membrane_info.at['area_avail_0','Value']
-    #     area_avail_mu = membrane_info.at['area_avail_mu','Value']
-    #     alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
-    #     enzyme_location = active_membrane_info.location.to_dict()
-    #
-    #     membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-    #                                      area_avail_mu=area_avail_mu,
-    #                                      alpha_numbers_dict=alpha_numbers_dict,
-    #                                      enzyme_location=enzyme_location,
-    #                                      max_area=max_membrane_area)
-
-    # else:
-    #     membrane_sector = None
-
-
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
     coremodel = PAModel(id_or_model=model, p_tot=total_protein,

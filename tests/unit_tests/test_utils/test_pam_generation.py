@@ -6,8 +6,33 @@ import pytest
 from typing import List, Dict
 
 from Scripts.toy_ec_pam import build_toy_gem
-from src.PAModelpy import PAModel
-from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam, merge_enzyme_complexes
+from src.PAModelpy import PAModel, TransEnzymeSector, UnusedEnzymeSector
+from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam, merge_enzyme_complexes, build_coarse_grained_sector_object
+
+@pytest.fixture
+def translational_df():
+    return pd.DataFrame(
+        {
+            "Parameter": ["id_list", "tps_mu", "tps_0", "mol_mass"],
+            "Value": ["T001", 0.1, 5.0, 55000],
+        }
+    )
+
+@pytest.fixture
+def unused_df():
+    return pd.DataFrame(
+        {
+            "Parameter": ["id_list", "ups_mu", "ups_0", "mol_mass"],
+            "Value": ["U001", 0.05, 2.0, 50000],
+        }
+    )
+@pytest.fixture
+def pam_info_file(tmp_path, translational_df, unused_df) -> str:
+    path = tmp_path / "pam_info.xlsx"
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        translational_df.to_excel(writer, sheet_name="Translational", index=False)
+        unused_df.to_excel(writer, sheet_name="UnusedEnzyme", index=False)
+    return str(path)
 
 def test_if_rxn2protein_info_is_correctly_parsed():
     # Arrange
@@ -163,6 +188,26 @@ def test_if_merge_enzyme_complex_parses_complex_gprs(sheetname:str,
     assert len(merged_enzyme_db) == len_enzyme_db
     for enzyme_id, molmass in molmass_to_check.items():
         assert (merged_enzyme_db.molMass[merged_enzyme_db.enzyme_id.str.contains(enzyme_id)] == molmass).all()
+
+@pytest.mark.parametrize('sheet_name,sector_object, prefix', [
+    ("Translational", TransEnzymeSector,"tps"),
+    ("UnusedEnzyme", UnusedEnzymeSector, "ups")
+])
+def test_build_translational_sector_success(pam_info_file, sheet_name, sector_object, prefix, translational_df, unused_df):
+    sector = build_coarse_grained_sector_object(
+        pam_info_file=pam_info_file,
+        sheet_name=sheet_name,
+        sector_cls=sector_object,
+        config={"foo": "bar"},
+        prefix=prefix,
+    )
+    assert isinstance(sector, sector_object)
+
+    # –‑> its stored kwargs must match exactly what the function builds
+    expected = translational_df if sheet_name=="Translational" else unused_df
+    for i, row in expected.iterrows():
+        attr = getattr(sector, row.Parameter)
+        assert row["Value"] == attr if not isinstance(attr, list) else attr[0]
 
 
 
