@@ -608,32 +608,18 @@ def set_up_pam(pam_info_file:str = '',
     else:
         active_enzyme_info = None
 
-    if translational_enzymes:
-        translational_info = pd.read_excel(pam_info_file, sheet_name='Translational')
-        translation_enzyme_info = TransEnzymeSector(
-            id_list=[translational_info[translational_info.Parameter == 'id_list'].loc[0, 'Value']],
-            tps_0=[translational_info[translational_info.Parameter == 'tps_0'].loc[1, 'Value']],
-            tps_mu=[translational_info[translational_info.Parameter == 'tps_mu'].loc[2, 'Value']],
-            mol_mass=[translational_info[translational_info.Parameter == 'mol_mass'].loc[3, 'Value']],
-            configuration = config)
-    else:
-        translation_enzyme_info = None
+    translation_enzyme_info = build_coarse_grained_sector_object(pam_info_file = pam_info_file,
+                                           sheet_name='Translational',
+                                           sector_cls=TransEnzymeSector,
+                                           prefix = 'tps',
+                                           config=config) if translational_enzymes else None
 
-    if unused_enzymes:
-        unused_protein_info = pd.read_excel(pam_info_file, sheet_name='UnusedEnzyme').set_index('Parameter')
 
-        ups_0 = unused_protein_info.at['ups_0', 'Value']
-        ups_mu = unused_protein_info.at['ups_mu', 'Value']
-
-        unused_enzyme_info = UnusedEnzymeSector(
-            id_list=[unused_protein_info.at['id_list', 'Value']],
-            ups_mu=[ups_mu],
-            ups_0=[ups_0],
-            mol_mass=[unused_protein_info.at['mol_mass', 'Value']],
-            configuration = config)
-    else:
-        unused_enzyme_info = None
-
+    unused_enzyme_info = build_coarse_grained_sector_object(pam_info_file = pam_info_file,
+                                           sheet_name='UnusedEnzyme',
+                                           sector_cls=UnusedEnzymeSector,
+                                           prefix = 'ups',
+                                           config=config) if unused_enzymes else None
 
     if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 

@@ -6,7 +6,7 @@ import pytest
 from typing import List, Dict
 
 from Scripts.toy_ec_pam import build_toy_gem
-from src.PAModelpy import PAModel, TransEnzymeSector, UnusedEnzymeSector
+from src.PAModelpy import PAModel, TransEnzymeSector, UnusedEnzymeSector, Config
 from src.PAModelpy.utils.pam_generation import parse_reaction2protein, set_up_pam, merge_enzyme_complexes, build_coarse_grained_sector_object
 
 @pytest.fixture
@@ -198,7 +198,7 @@ def test_build_translational_sector_success(pam_info_file, sheet_name, sector_ob
         pam_info_file=pam_info_file,
         sheet_name=sheet_name,
         sector_cls=sector_object,
-        config={"foo": "bar"},
+        config=Config(),
         prefix=prefix,
     )
     assert isinstance(sector, sector_object)
