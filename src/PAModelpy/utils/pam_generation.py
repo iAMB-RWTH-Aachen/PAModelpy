@@ -508,6 +508,7 @@ def build_coarse_grained_sector_object(
     sector_cls: Type,
     config: Any,
     prefix: str,
+        kwargs:Optional[Dict]={},
 ) -> Optional[Any]:
     """
     Build a coarse-grained protein sector from Excel with at least the following values in the 'Parameter' column:
@@ -526,6 +527,8 @@ def build_coarse_grained_sector_object(
         prefix
             prefix of parameters required to build the sector (``'tps'`` for Translational,
             ``'ups'`` for UnusedEnzyme, …)
+        kwargs
+            Optional keyword arguments to be passed on to the intialization of the sector_cls
 
     Returns:
         An instance of ``sector_cls`` or ``None`` if the sheet could not be read
@@ -557,6 +560,7 @@ def build_coarse_grained_sector_object(
         f"{prefix}_0": [zero_val],
         "mol_mass": [mol_val],
         "configuration": config,
+        **kwargs
     }
 
     try:
