@@ -549,16 +549,16 @@ def build_coarse_grained_sector_object(
     try:
         mu_val   = _get(slope_key)
         zero_val = _get(intercept_key)
-        mol_val  = _get("mol_mass")
+        mol_val  = _get("mol_mass") if 'mol_mass' in df.index else None
         id_val   = _get("id_list")
     except Exception as exc:
         raise KeyError(f"Missing required key while reading '{sheet_name}': {exc}")
 
+    if mol_val is not None: kwargs['mol_mass'] = mol_val
     kw = {
         "id_list": [id_val],
         f"{prefix}_mu": [mu_val],
         f"{prefix}_0": [zero_val],
-        "mol_mass": [mol_val],
         "configuration": config,
         **kwargs
     }
