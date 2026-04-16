@@ -17,6 +17,7 @@ from ..configuration import Config
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 13.7 #s-1, from Bar-Evan et al (2011), the median from BRENDA
+DEFAULT_TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw] from Alter et al. 2021 for E. coli
 
 class EnzymeInformation(TypedDict):
     enzyme_id:str
@@ -428,7 +429,6 @@ def parse_reaction2protein(enzyme_db: pd.DataFrame,
                                                                                       enzyme_id,
                                                                                       gene2protein)
 
-
             protein2gpr[enzyme_id]+= gene_reaction_relation
 
             enzyme_info = enzyme_information(rxn_id=rxn.id,
@@ -600,16 +600,13 @@ def set_up_pam(pam_info_file:Union[Path,str] = '',
         config = Config()
         config.reset()
 
-    # some other constants
-    TOTAL_PROTEIN_CONCENTRATION = 0.258  # [g_prot/g_cdw]
-
     #setup model if a path is provided
     if isinstance(model, str):
         model = cobra.io.read_sbml_model(model)
 
     #check if a different total protein concentration is given
-    if isinstance(total_protein, float):
-        TOTAL_PROTEIN_CONCENTRATION = total_protein
+    if not isinstance(total_protein, float):
+        total_protein = DEFAULT_TOTAL_PROTEIN_CONCENTRATION if total_protein else total_protein
 
     active_enzyme_info = build_active_enzyme_sector_from_pam_info_file(pam_info_file = pam_info_file,
                                                                            model = model,
@@ -629,8 +626,6 @@ def set_up_pam(pam_info_file:Union[Path,str] = '',
                                            sector_cls=UnusedEnzymeSector,
                                            prefix = 'ups',
                                            config=config) if unused_enzymes else None
-
-    if total_protein: total_protein = TOTAL_PROTEIN_CONCENTRATION
 
     pamodel = PAModel(id_or_model=model, p_tot=total_protein,
                        active_sector=active_enzyme_info,
