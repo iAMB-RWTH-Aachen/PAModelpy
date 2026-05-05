@@ -402,8 +402,8 @@ class PAModel(Model):
         # get the enzyme variable
         enzyme_var_model = self.enzyme_variables.get_by_id(enzyme.id)
         # connect enzyme variable to its upper and lower bound
-        if enzyme.upper_bound * 1/self.FEASIBILITY_TOLERANCE * enzyme.molmass> self.p_tot:
-            ub = enzyme.upper_bound
+        if enzyme.upper_bound * enzyme.molmass> self.p_tot:
+            ub = enzyme.upper_bound *self.FEASIBILITY_TOLERANCE
         else:
             ub = self.p_tot/enzyme.molmass * self.FEASIBILITY_TOLERANCE
         self, enzyme = self.make_enzyme_min_max_constraint(
