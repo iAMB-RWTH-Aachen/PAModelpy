@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.colors as mcolors
 import seaborn as sns
+import re
 
 import pandas as pd
 import os
@@ -18,12 +19,10 @@ from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_diagnostics_file,
                                                           _set_up_pamodel_for_simulations,
                                                           )
-from Scripts.mcpam_simulations_analysis import change_set_of_kcats_using_excel_sheet
 
 
 Config.BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
 DATA_DIR = os.path.join('Data')  # os.path.join(os.path.split(os.getcwd())[0], 'Data')
-glc_uptake_rates = list(np.linspace(1, 10, 10))
 
 ### 1 Useful functions
 def calculate_sensitivities(pamodel):
@@ -336,16 +335,23 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_04_01/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_04_01/pam_parametrizer_diagnostics_mciML1515_5.xlsx'
 
-mcpam = set_up_pam(
-    pam_info_file=pam_info_path,
-    model=model_path,
-    sensitivity=True,
-    membrane_sector=True
-)
+mcpam = set_up_pam(pam_info_file=pam_info_path, 
+                    model=model_path,
+                    sensitivity=True, 
+                    membrane_sector=True,
+                    separate_memprot_from_tpc=True,
+                    total_protein=0.258,
+                    max_membrane_area=54.62
+                    )
 
+mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
+                                                 model=mcpam,
+                                                 sheet_name='Best_Individuals')
+suffix = diagnostics_path.split('_')[-1].split('.')[0]
 ##############################################################################
 # PHENOTYPE DATA
 ##############################################################################
@@ -364,8 +370,7 @@ fontsize = 26
 width = 40
 height = 14
 glc_uptake_rates = list(np.linspace(1, 10, 10))
-# max_area_list = np.linspace(0.03, 0.13, 10)
-max_area_list = [0.03, 0.06, 0.15, 0.50, 1]
+max_area_list = [0.5462]
 
 ##############################################################################
 # MAIN LOOP: ONE FIGURE PER AREA
@@ -432,7 +437,7 @@ for area in max_area_list:
     fig.set_figheight(height)
     os.makedirs("Figures", exist_ok=True)
     fig.savefig(
-        f"Figures/mcPAM_sensitivities_{int(area*100)}percent.png",
+        f"Figures/mcPAM_sensitivities_diagnostics_{suffix}.png",
         dpi=250,
         bbox_inches='tight'
     )

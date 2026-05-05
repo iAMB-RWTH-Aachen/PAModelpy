@@ -96,7 +96,7 @@ class Enzyme(Object):
         """
         return self.get_kcat_values()
 
-    @property
+    # @property
     def concentration(
         self, units: Literal['mmol/gDW', 'g/gDW'] = "mmol/gDW", return_units: bool = False
     ) -> float:
@@ -119,9 +119,9 @@ class Enzyme(Object):
             return concentration, units
         return concentration
 
-    @concentration.setter
-    def concentration(self, conc:float):
-        self.enzyme_variable.concentration = conc
+    # @concentration.setter
+    # def concentration(self, conc:float):
+    #     self.enzyme_variable.concentration = conc
 
     def change_concentration_bounds(self,
                                     lower_bound:float,

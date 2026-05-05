@@ -19,7 +19,7 @@ class MembraneSector(EnzymeSector):
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            max_area: float = 0.043,
+            max_area: float = 0.5462,
             a_alpha: float = 1.4 * 1e-6, # area of one alpha helix [um2]
             cdw_per_cell: float = 0.28 * 1e-12,  # 0.28 pg, ref: bionumber
             n_a: float = 6.02214076 * 1e23,  # avogadro number

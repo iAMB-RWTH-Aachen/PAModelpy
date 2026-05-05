@@ -20,7 +20,7 @@ if __name__ == "__main__":
     ## Build full scale pam and change the enzyme sectors accordingly (based on script from Tobias. A)
 
     # Load iML1515 PAM and mcPAM
-    pam_info_path = 'Results/PAM_parametrizer/Enzymatic_files/2026_03_11/proteinAllocationModel_EnzymaticData_mciML1515_biomass_weight_8_5.xlsx'
+    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     model_path = 'Models/iML1515.xml'
     pam = set_up_pam(pam_info_file=pam_info_path,
                     model=model_path,
@@ -32,7 +32,7 @@ if __name__ == "__main__":
                        sensitivity=False, 
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
-                       total_protein=0.219,
+                       total_protein=0.258,
                        max_membrane_area=54.62
                        )
     models = [pam, mcpam]

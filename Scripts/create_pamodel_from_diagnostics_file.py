@@ -3,10 +3,11 @@ from cobra import Model
 from typing import Tuple, Literal
 import re
 import math
+import numpy as np
 from typing import Union
-from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.PAModel import PAModel, ActiveEnzymeSector, MembraneSector
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
-from Scripts.mcpam_simulations_analysis import run_simulation_pam_mcpam
+from Scripts.mcpam_simulations_analysis import run_simulation_pam_mcpam, run_simulations_pam_mcpam_w_different_areas
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
 DEFAULT_KCAT = 11 #s-1
@@ -162,7 +163,7 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_04_01/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
     # pam = set_up_pam(pam_info_file=pam_info_file,
     #                 model=model_path,
@@ -174,62 +175,36 @@ if __name__ == '__main__':
                        sensitivity=False, 
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
-                       total_protein=0.1935)
+                       total_protein=0.258,
+                       max_membrane_area=54.62
+                       )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_03_11/pam_parametrizer_diagnostics_mciML1515_biomass_weight_8_5.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_04_01/pam_parametrizer_diagnostics_mciML1515_10.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     
-    enzymatic_path = 'Results/PAM_parametrizer/Enzymatic_files/2026_03_11/proteinAllocationModel_EnzymaticData_mciML1515_biomass_weight_8_5.xlsx'
-
-    mcpam_enzymatic = set_up_pam(pam_info_file=enzymatic_path, 
-                       model=model_path,
-                       sensitivity=False, 
-                       membrane_sector=True,
-                       separate_memprot_from_tpc=True,
-                       total_protein=0.1935)
-    
-    
     # models = [pam, mcpam]
+
     # run_simulation_pam_mcpam(models)
+    # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
 
-    tol = 1e-4
-    mismatch_count = 0
-    mismatch_enzymes = {}
-    missing_count = 0
-    missing_enzymes = {}
+    total_protein_usage = 0 #total protein concentration accross different growth rate (substrate uptake)
 
-    for index, enzyme in enumerate(mcpam.enzymes):
+    for glc_uptake in np.linspace(1, 10, 10):
+        mcpam.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc_uptake
+        mcpam.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc_uptake
+        # Solve the model first
+        mcpam.optimize()
 
-        rxn2kcat_diagnostics = enzyme.rxn2kcat
-        rxn2kcat_enzymatic = mcpam_enzymatic.enzymes[index].rxn2kcat
+        tpc_constraint = mcpam.constraints[mcpam.TOTAL_PROTEIN_CONSTRAINT_ID]
 
-        for reaction in rxn2kcat_diagnostics.keys():
+        E_active = tpc_constraint.primal / 1e3  # g/gDW used by active enzymes
+        E_unused = mcpam.sectors.get_by_id('UnusedEnzymeSector').intercept / 1e3
+        E_transl = mcpam.sectors.get_by_id('TranslationalProteinSector').intercept / 1e3
 
-            if reaction not in rxn2kcat_enzymatic:
-                print("reaction missing in enzymatic model:", reaction, rxn2kcat_diagnostics[reaction])
-                missing_count += 1
-                continue
+        E_tot = E_active + E_unused + E_transl
+        print("Total protein usage (all sectors):", E_tot)
 
-            kcat_diagnostics_dir = rxn2kcat_diagnostics[reaction]
-            kcat_enzymatic_dir = rxn2kcat_enzymatic[reaction]
 
-            for direction, kcat in kcat_diagnostics_dir.items():
-                kcat_diagnostics = kcat_diagnostics_dir[direction]
-                kcat_enzymatic = kcat_enzymatic_dir[direction]
-                if math.isclose(kcat_diagnostics, kcat_enzymatic, abs_tol=tol):
-                    print(reaction, "both kcats are the same")
-                else:
-                    print(f"Kcat mismatch detected\n"
-                    f"Reaction: {reaction}\n"
-                    f"Diagnostics: {kcat_diagnostics}\n"
-                    f"Enzymatic: {kcat_enzymatic}")
 
-                    mismatch_count += 1
-                    mismatch_enzymes[reaction] = {direction: {'diagnostics': kcat_diagnostics, 'enzymatic': kcat_enzymatic}}
-            
-    print('Total mismatch count: ', mismatch_count)
-    print('Total missing count: ', missing_count)
-    print('Mismatch enzymes are: ', mismatch_enzymes)
-    print('Total enzymes diagnostics: ', len(mcpam.enzymes))
-    print('Total enzymes enzymatic: ', len(mcpam_enzymatic.enzymes))
+    

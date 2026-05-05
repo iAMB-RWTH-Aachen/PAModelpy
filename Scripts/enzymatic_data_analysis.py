@@ -29,6 +29,8 @@ if __name__ == "__main__":
     # Generate the model
     pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False)
+    pam.optimize()
+    print(pam.objective.value)
 
     # Extracting enzymes from the model
     enzyme_complex_list = pam.enzyme_variables
@@ -46,5 +48,7 @@ if __name__ == "__main__":
         protein_object.alpha_area = 1.4 * 1e-18 # m2 
         occupied_area_per_protein = protein_object.calculate_protein_area(p_conc_for_complex, alpha_for_complex)
         total_occupied_area += occupied_area_per_protein
+    
+    print(mc)
 
     print(f'Membrane occupancy [%]: {total_occupied_area / 10.68 * 100} %') # 10.68 um2 is the inner membrane area for ecoli k-12 mg1655 at growth rate 0.67, grown in minimal glucose media
