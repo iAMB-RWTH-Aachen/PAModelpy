@@ -42,7 +42,7 @@ class PAModel(Model):
     """
     Class representation for a cobra model extended with enzyme kinetics as published in Alter et al. (2021).
 
-    Parameters:
+    Args:
         id_or_model (str or Model): String to use as model id, or actual model to base new model on.
             If a string, it is used as input to load a model from. If a model, a new model object is instantiated with
             the same properties as the original model (default None).
@@ -70,7 +70,7 @@ class PAModel(Model):
         sector_constraints (dict): A dictionary containing sector-specific constraints.
         sectors (DictList): A DictList where the key is the sector identifier and the value is an EnzymeSector.
     """
-
+    FEASIBILITY_TOLERANCE = 1e6
     TOTAL_PROTEIN_CONSTRAINT_ID = Config.TOTAL_PROTEIN_CONSTRAINT_ID
     P_TOT_DEFAULT = Config.P_TOT_DEFAULT  # g_protein/g_cdw
     CO2_EXHANGE_RXNID = Config.CO2_EXHANGE_RXNID
@@ -392,8 +392,8 @@ class PAModel(Model):
         enzyme_variable = self.enzyme_variables.get_by_id(enzyme.id)
         self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients(
             {  # *1e-6 to make calculations more accurate (solver accuracy)
-                    enzyme_variable.forward_variable: enzyme.molmass * 1e-6,
-                    enzyme_variable.reverse_variable: enzyme.molmass * 1e-6,
+                    enzyme_variable.forward_variable: enzyme.molmass * 1/self.FEASIBILITY_TOLERANCE,
+                    enzyme_variable.reverse_variable: enzyme.molmass * 1/self.FEASIBILITY_TOLERANCE,
             }
         )
         self.tpc += 1
@@ -402,10 +402,10 @@ class PAModel(Model):
         # get the enzyme variable
         enzyme_var_model = self.enzyme_variables.get_by_id(enzyme.id)
         # connect enzyme variable to its upper and lower bound
-        if enzyme.upper_bound > self.p_tot * 1e3:
+        if enzyme.upper_bound * 1/self.FEASIBILITY_TOLERANCE * enzyme.molmass> self.p_tot:
             ub = enzyme.upper_bound
         else:
-            ub = self.p_tot * 1e3
+            ub = self.p_tot/enzyme.molmass * self.FEASIBILITY_TOLERANCE
         self, enzyme = self.make_enzyme_min_max_constraint(
                 self, enzyme, lower_bound=enzyme.lower_bound, upper_bound=ub
             )
@@ -887,10 +887,10 @@ class PAModel(Model):
             m.constraints[f"{rxn.id}_lb"].ub = -lower_bound
         else:
             ub_constraint = m.problem.Constraint(
-                Zero, name=f"{rxn.id}_ub", lb=-1e6, ub=upper_bound
+                Zero, name=f"{rxn.id}_ub", lb=-self.FEASIBILITY_TOLERANCE, ub=upper_bound
             )
             lb_constraint = m.problem.Constraint(
-                Zero, name=f"{rxn.id}_lb", lb=-1e6, ub=-lower_bound
+                Zero, name=f"{rxn.id}_lb", lb=-self.FEASIBILITY_TOLERANCE, ub=-lower_bound
             )
             m.add_cons_vars([ub_constraint, lb_constraint])
 
@@ -966,10 +966,10 @@ class PAModel(Model):
             m.constraints[f"{enz.id}_min"].ub = -lower_bound
         else:
             max_constraint = m.problem.Constraint(
-                Zero, name=f"{enz.id}_max", lb=-1e6, ub=upper_bound
+                Zero, name=f"{enz.id}_max", lb=-self.FEASIBILITY_TOLERANCE, ub=upper_bound
             )
             min_constraint = m.problem.Constraint(
-                Zero, name=f"{enz.id}_min", lb=-1e6, ub=-lower_bound
+                Zero, name=f"{enz.id}_min", lb=-self.FEASIBILITY_TOLERANCE, ub=-lower_bound
             )
             m.add_cons_vars([max_constraint, min_constraint])
 
@@ -1269,7 +1269,7 @@ class PAModel(Model):
         sum = 0  # mg/gcdw/h
         for enzyme in self.enzyme_variables:
             # convert from mmol to mg using the same formulation as the coefficients in the protein pool constraint
-            sum += enzyme.concentration * enzyme.molmass * 1e-6
+            sum += enzyme.concentration * enzyme.molmass * 1/self.FEASIBILITY_TOLERANCE
         return sum
 
     def change_total_protein_constraint(self, p_tot):
@@ -1644,7 +1644,7 @@ class PAModel(Model):
         if kcat == 0:
             coeff = 0
         else:
-            coeff = 1 / (kcat * 3600 * 1e-6) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
+            coeff = 1 / (kcat * 3600 * 1/self.FEASIBILITY_TOLERANCE) #3600 to convert to /h to /s *1e-6 to make calculations more accurate
         if direction == 'f':
             self.constraints[constraint_id].set_linear_coefficients({
                 rxn.forward_variable: coeff
