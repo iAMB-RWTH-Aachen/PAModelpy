@@ -50,7 +50,7 @@ class Enzyme(Object):
         rxn2kcat: Dict,
         rxn2pr: Dict = {},
         genes: list = [],
-        upper_bound: Union[int, float] = 1000.0,
+        upper_bound: Union[int, float] = 1e6,
         lower_bound: Union[int, float] = 0,
         name: Optional[str] = None,
         molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
