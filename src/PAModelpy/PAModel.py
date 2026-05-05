@@ -887,10 +887,10 @@ class PAModel(Model):
             m.constraints[f"{rxn.id}_lb"].ub = -lower_bound
         else:
             ub_constraint = m.problem.Constraint(
-                Zero, name=f"{rxn.id}_ub", lb=-self.FEASIBILITY_TOLERANCE, ub=upper_bound
+                Zero, name=f"{rxn.id}_ub", lb=-1e6, ub=upper_bound
             )
             lb_constraint = m.problem.Constraint(
-                Zero, name=f"{rxn.id}_lb", lb=-self.FEASIBILITY_TOLERANCE, ub=-lower_bound
+                Zero, name=f"{rxn.id}_lb", lb=-1e6, ub=-lower_bound
             )
             m.add_cons_vars([ub_constraint, lb_constraint])
 
