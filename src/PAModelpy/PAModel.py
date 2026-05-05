@@ -1159,7 +1159,7 @@ class PAModel(Model):
         #remove the constraints associated with a reaction
         associated_enzymes = [cid for cid in associated_constraints if not any([rxn.id in cid for rxn in self.reactions])]
         # removing duplicates and empty strings
-        associated_enzymes = list(set([enz for enz in associated_enzymes if len(enz)>0]))
+        associated_enzymes = list(set([enz for enz in associated_enzymes if len(enz)>0 and (enz in self.enzymes)]))
         return associated_enzymes
 
     def calculate_csc_for_molecule(self, molecule: Union[Enzyme],

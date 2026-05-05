@@ -193,7 +193,8 @@ def test_if_merge_enzyme_complex_parses_complex_gprs(sheetname:str,
     ("Translational", TransEnzymeSector,"tps"),
     ("UnusedEnzyme", UnusedEnzymeSector, "ups")
 ])
-def test_build_translational_sector_success(pam_info_file, sheet_name, sector_object, prefix, translational_df, unused_df):
+def test_build_translational_sector_success(pam_info_file, sheet_name, sector_object, prefix,
+                                            translational_df, unused_df):
     sector = build_coarse_grained_sector_object(
         pam_info_file=pam_info_file,
         sheet_name=sheet_name,
