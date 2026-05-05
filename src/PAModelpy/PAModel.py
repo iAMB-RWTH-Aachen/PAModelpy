@@ -966,10 +966,10 @@ class PAModel(Model):
             m.constraints[f"{enz.id}_min"].ub = -lower_bound
         else:
             max_constraint = m.problem.Constraint(
-                Zero, name=f"{enz.id}_max", lb=-self.FEASIBILITY_TOLERANCE, ub=upper_bound
+                Zero, name=f"{enz.id}_max", lb=-1e6, ub=upper_bound
             )
             min_constraint = m.problem.Constraint(
-                Zero, name=f"{enz.id}_min", lb=-self.FEASIBILITY_TOLERANCE, ub=-lower_bound
+                Zero, name=f"{enz.id}_min", lb=-1e6, ub=-lower_bound
             )
             m.add_cons_vars([max_constraint, min_constraint])
 
