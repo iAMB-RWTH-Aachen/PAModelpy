@@ -1,6 +1,6 @@
-5 May 2026
+5-6 May 2026
 - **Function**: PAModel._add_enzymes
-- **Issue**: units used to set upper bound of enzyme concentrations were based on the total protein content in gram and not in mmol/with feasibility tolerance correction. This resulted in infeasible models.
+- **Issue**: units used to set upper bound of enzyme concentrations and enzyme variables were based on the total protein content in gram and not in mmol/with feasibility tolerance correction. This resulted in infeasible models.
 - **Fix**: converted units of upperbound to pmol/gCDW (mmol * feasibility tolerance correction)
 
 15 April 2026
