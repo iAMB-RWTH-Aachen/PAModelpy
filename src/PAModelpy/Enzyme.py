@@ -50,7 +50,7 @@ class Enzyme(Object):
         rxn2kcat: Dict,
         rxn2pr: Dict = {},
         genes: list = [],
-        upper_bound: Union[int, float] = 1e3,
+        upper_bound: Union[int, float] = 1e9,
         lower_bound: Union[int, float] = 0,
         name: Optional[str] = None,
         molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
@@ -391,7 +391,7 @@ class EnzymeComplex(Enzyme):
         rxn2kcat: Dict,
         enzymes: DictList = DictList(),
         genes: list = [],
-        upper_bound: Union[int, float] = 1000.0,
+        upper_bound: Union[int, float] = 1e9,
         name: Optional[str] = None,
         molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS, ):
         super().__init__(
@@ -503,7 +503,7 @@ class EnzymeVariable(Reaction):
         molmass: Union[int, float] = DEFAULT_ENZYME_MOL_MASS,
         id: Optional[str] = None,  # ID of enzymatic reaction,
         name: str = "",
-        upper_bound: Optional[float] = None,
+        upper_bound: Optional[float] = 1e9,
         **kwargs,
     ):
         super().__init__(
