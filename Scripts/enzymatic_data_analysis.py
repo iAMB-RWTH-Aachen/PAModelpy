@@ -10,7 +10,7 @@ def find_var_for_complex(enz_complex, df):
 
     for enz in enzymes:
         row = df[df['uniprotID'] == enz]
-        if not row.empty and row["Type"].iloc[0] == "membrane protein":
+        if not row.empty and row["Cellular protein location"].iloc[0] == "Cell inner membrane":
             p_conc_in_complex.append(df[df['uniprotID'] == enz]['SP4+TX100_avg'].values)
             alpha_in_complex.append(df[df['uniprotID'] == enz]['alpha_helix_units'].values)
 
@@ -37,7 +37,13 @@ if __name__ == "__main__":
 
     # Get the enzymes from the experimental data
     data_path = "Data/E_coli_proteomics_data.xlsx"
-    df = pd.read_excel(data_path, sheet_name="merged_data")
+    df = pd.read_excel(data_path, sheet_name="merged_data_with_location")
+    count_memprot_not_inner = df[(df["Cellular protein location"] == "membrane protein")].shape[0]
+    count_inner_memprot = df[(df["Cellular protein location"] == "Cell inner membrane")].shape[0]
+    count_cyto_prot = df[(df["Cellular protein location"] == "Cytoplasm")].shape[0]
+    print(f'Count of membrane proteins that are not inner membrane protein: {count_memprot_not_inner}')
+    print(f'Count of membrane proteins that are inner membrane protein: {count_inner_memprot}')
+    print(f'Count of cytosolic proteins: {count_cyto_prot}')
 
     # Initial total occupied area is 0 because no protein is allocated to the membrane yet
     total_occupied_area = 0
@@ -48,7 +54,5 @@ if __name__ == "__main__":
         protein_object.alpha_area = 1.4 * 1e-18 # m2 
         occupied_area_per_protein = protein_object.calculate_protein_area(p_conc_for_complex, alpha_for_complex)
         total_occupied_area += occupied_area_per_protein
-    
-    print(mc)
 
     print(f'Membrane occupancy [%]: {total_occupied_area / 10.68 * 100} %') # 10.68 um2 is the inner membrane area for ecoli k-12 mg1655 at growth rate 0.67, grown in minimal glucose media
