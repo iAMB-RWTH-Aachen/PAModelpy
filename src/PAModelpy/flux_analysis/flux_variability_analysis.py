@@ -92,28 +92,77 @@ def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str,
     return variable, value
 
 def _get_variables(model, variable_type, variable_list, variable_mapping):
+    """Collect (and optionally filter) model variables of a given *type*.
+
+        This internal helper is used by the optimisation‑related utilities of the
+        model.  Depending on the arguments it either
+
+        1. **Returns all variables** of the requested ``variable_type`` (when
+           ``variable_list`` is ``None``), **or**
+        2. **Returns a subset** defined by ``variable_list`` – a mixture of
+           variable IDs (``str``) and variable objects.
+
+        The function also deals with *paired* forward/reverse variables that are
+        stored as attributes ``forward_variable`` and ``reverse_variable`` on the
+        supplied object (e.g. a reaction or an enzyme).
+
+        Args:
+            model: The modelling object that holds a ``variables`` dictionary and
+                type‑specific containers (e.g. ``model.reactions``, ``model.enzymes``).
+            variable_type (str or None): Key used to look up the correct attribute
+                in ``variable_mapping`` (e.g. ``'reaction'`` → ``'reactions'``).
+                If ``None`` the function will raise a ``KeyError`` when trying to
+                access ``variable_mapping``.
+            variable_list (list or None): List that defines which variables to
+                return.  Elements may be:
+                    * ``str`` – the exact variable ID,
+                    * a COBRA‑style ``Variable`` object,
+                    * an object that possesses ``id`` and optionally
+                      ``forward_variable`` / ``reverse_variable`` attributes
+                      (common for custom reaction/enzyme wrappers).
+                If ``None`` all variables of the chosen ``variable_type`` are
+                returned.
+            variable_mapping (dict): Mapping from ``variable_type`` strings to the
+                attribute name on ``model`` that stores the corresponding objects
+                (e.g. ``{'reaction': 'reactions', 'enzyme': 'enzymes'}``).
+
+        Returns:
+            dict: Mapping ``variable_id → Variable`` containing the requested
+            variables.  The dictionary is built by repeatedly merging sub‑dictionaries
+            (using ``{**a, **b}``) so later entries overwrite earlier ones if IDs clash.
+
+        Raises:
+            KeyError: If ``variable_type`` is not present in ``variable_mapping``.
+            AttributeError: If a non‑string entry in ``variable_list`` does not have
+            the expected attributes (``id``, ``forward_variable``,
+            ``reverse_variable``).
+
+        Notes:
+            * ``model.variables`` is assumed to behave like a dictionary that maps a
+              variable’s ID (or name) to the actual variable object.
+            * For reactions, the forward and reverse variables are retrieved
+            * The function does **not** mutate the model; it only reads from it.
+        """
     variables = {}
-    if variable_type is None:
-        if variable_list is not None:
-            for var_id in variable_list:
-                if isinstance(var_id, str):
-                    variables = {**variables, **{var_id:model.variables[var_id]}}
+    if variable_list is not None:
+        if variable_type is not None:
+            variables = {var.id: var for var in getattr(model, variable_mapping[variable_type])}
+        for var_id in variable_list:
+            if isinstance(var_id, str):
+                variables = {**variables, **{var_id: model.variables[var_id]}}
+            else:
+                if not isinstance(var_id, Variable):
+                    if var_id.id in model.variables:
+                        mapping = {var_id.id:model.variables[var_id.id]}
+                    elif hasattr(var_id,'forward_variable'): #reactions and enzymes are associated with separate forward and reverse variables
+                        mapping = {var.name: model.variables[var.name] for var in [var_id.forward_variable, var_id.reverse_variable]}
                 else:
-                    variables = {**variables, **{var_id.name: model.variables[var_id.name]}}
-        elif variable_type is None:
-            variables = model.variables
-        else: #TODO does not work for some reason
-            mrna_ids = [trans.mrna_variable.name for trans in model.transcripts]
-            variables = dict(zip(mrna_ids, model.transcripts))
+                    mapping = {var_id.name: model.variables[var_id.name]}
+                variables = {**variables, **mapping}
+
     else:
         variables = {var.id: var for var in getattr(model, variable_mapping[variable_type])}
-        if variable_list is not None:
-            vars = variables.copy()
-            variables = {}
-            for var_id, var in vars.items():
-                if var_id in variable_list:
-                    variables[var_id] = var
-            # variables = {var: var.id for var in variable_mapping[variable_type]}
+
     return variables
 
 def flux_variability_analysis(
@@ -141,7 +190,8 @@ def flux_variability_analysis(
         if None, it will use all model variables
     variable_list : list of specified variables defined in variably_type or str, optional
         for which to obtain min/max fluxes. If None will use
-        all of the specified variables in the model (default None).
+        all of the specified variables in the model (default None). Will be added to all the variables
+        defined in variable_type, or serve as total list of variables when variable_type is None
     loopless : bool, optional
         Whether to return only loopless solutions. This is significantly
         slower. Please also refer to the notes (default False).
@@ -201,6 +251,7 @@ def flux_variability_analysis(
 
     """
     variables = _get_variables(model, variable_type, variable_list, variable2attribute)
+    print(variables)
     if processes is None:
         processes = configuration.processes
 
