@@ -42,7 +42,7 @@ class MembraneSector(EnzymeSector):
 
     def add(self, model):
 
-        print("Add membrane protein sector \n")
+        print(f"Add membrane protein sector with {self.max_membrane_area*100}% max inner membrane area\n")
         model.membrane_sector = self
         self._add_membrane_constraint(model)
         pass
