@@ -163,47 +163,44 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_04_01/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_06/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
-    # pam = set_up_pam(pam_info_file=pam_info_file,
-    #                 model=model_path,
-    #                 sensitivity=False,
-    #                 membrane_sector=False,                  
-    #                 )
+    pam = set_up_pam(pam_info_file=pam_info_file,
+                    model=model_path,
+                    sensitivity=False,
+                    membrane_sector=False,                  
+                    )
     mcpam = set_up_pam(pam_info_file=pam_info_file, 
                        model=model_path,
                        sensitivity=False, 
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
-                       total_protein=0.258,
-                       max_membrane_area=54.62
+                       total_protein=0.241,
+                       max_membrane_area=0.40
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_04_01/pam_parametrizer_diagnostics_mciML1515_10.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_6.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     
-    # models = [pam, mcpam]
+    # sector_parameters_df = pd.read_excel('Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_2.xlsx', sheet_name="sector_parameters")
 
-    # run_simulation_pam_mcpam(models)
+    # for sector, sector_params in sector_parameters_df.groupby('sector_id'):
+    #     sector_params = sector_params.loc[
+    #         (sector_parameters_df.substrate_uptake_id == 'EX_glc__D_e')
+    #     ].rename({'substrate_uptake_id': 'lin_rxn_id'},
+    #              axis=1)[['slope', 'intercept', 'lin_rxn_id']].to_dict('records')[0]
+    #     model.change_sector_parameters(
+    #         sector = model.sectors.get_by_id(sector),
+    #         **sector_params,
+    #         print_change=True
+    #     )
+    
+    models = [pam, mcpam]
+
+    run_simulation_pam_mcpam(models)
     # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
 
-    total_protein_usage = 0 #total protein concentration accross different growth rate (substrate uptake)
-
-    for glc_uptake in np.linspace(1, 10, 10):
-        mcpam.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc_uptake
-        mcpam.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc_uptake
-        # Solve the model first
-        mcpam.optimize()
-
-        tpc_constraint = mcpam.constraints[mcpam.TOTAL_PROTEIN_CONSTRAINT_ID]
-
-        E_active = tpc_constraint.primal / 1e3  # g/gDW used by active enzymes
-        E_unused = mcpam.sectors.get_by_id('UnusedEnzymeSector').intercept / 1e3
-        E_transl = mcpam.sectors.get_by_id('TranslationalProteinSector').intercept / 1e3
-
-        E_tot = E_active + E_unused + E_transl
-        print("Total protein usage (all sectors):", E_tot)
 
 
 
