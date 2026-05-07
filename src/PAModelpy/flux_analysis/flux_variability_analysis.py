@@ -61,6 +61,8 @@ def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str,
     if isinstance(variable, Variable):
         model_var = _model.variables[variable.name]
         coeff = {model_var:1}
+    elif variable.id in _model.variables:
+        coeff = {_model.variables[variable.id]:1}
     else:
         model_var_f = _model.variables[variable.forward_variable.name]
         model_var_r = _model.variables[variable.reverse_variable.name]
