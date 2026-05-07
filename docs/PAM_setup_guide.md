@@ -119,7 +119,7 @@ model of *Saccharomyces cerevisiae*). This can be accomplished using a [`Config`
 Please note that this is only an example, both the model, as the parameter file do not exist in this repository.
 
 ```python
-from Scripts.pam_generation import set_up_pam
+from PAModelpy.utils.pam_generation import set_up_pam
 from PAModelpy import Config
 
 #1. Define input paths
@@ -149,7 +149,7 @@ print(f"Objective Value: {pam.objective.value}")
 Please note that this is only an example, both the model, as the parameter file do not exist in this repository.
 
 ```python
-from Scripts.pam_generation import set_up_pam
+from PAModelpy.utils.pam_generation import set_up_pam
 from PAModelpy import Config
 
 #1. Define input paths
