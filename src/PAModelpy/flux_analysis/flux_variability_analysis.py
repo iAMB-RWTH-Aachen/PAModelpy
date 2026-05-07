@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from warnings import warn
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple, Dict
 
 import logging
 from optlang.symbolics import Zero

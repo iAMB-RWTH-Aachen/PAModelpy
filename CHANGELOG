@@ -1,5 +1,5 @@
 7 May 2026
-- **Function**: utils.flux_variability_analysis._get_variables
+- **Function**: flux_analysis._get_variables
 - **Issue**: FVA failed for cobra models because in the beginning of the function a mapping to the enzyme variables was made
 - **Fix**: use string parsing in combination with getattr. Now only an error is raised if the user wants to perform FVA on enzyme variables (which are not present in the cobra model)
 
