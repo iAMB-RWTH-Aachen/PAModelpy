@@ -93,9 +93,9 @@ def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str,
 
 def _get_variables(model, variable_type, variable_list):
     variable_mapping = {
-        Enzyme: model.enzyme_variables,
-        EnzymeVariable: model.enzyme_variables,
-        Reaction: model.reactions,
+        Enzyme: 'enzyme_variables',
+        EnzymeVariable: 'enzyme_variables',
+        Reaction: 'reactions',
         }
     variables = {}
     if variable_type is None:
@@ -111,7 +111,7 @@ def _get_variables(model, variable_type, variable_list):
             mrna_ids = [trans.mrna_variable.name for trans in model.transcripts]
             variables = dict(zip(mrna_ids, model.transcripts))
     else:
-        variables = {var.id: var for var in variable_mapping[variable_type]}
+        variables = {var.id: var for var in getattr(model, variable_mapping[variable_type])}
         if variable_list is not None:
             vars = variables.copy()
             variables = {}

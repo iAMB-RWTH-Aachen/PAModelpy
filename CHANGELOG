@@ -1,3 +1,8 @@
+7 May 2026
+- **Function**: utils.flux_variability_analysis._get_variables
+- **Issue**: FVA failed for cobra models because in the beginning of the function a mapping to the enzyme variables was made
+- **Fix**: use string parsing in combination with getattr. Now only an error is raised if the user wants to perform FVA on enzyme variables (which are not present in the cobra model)
+
 5-6 May 2026
 - **Function**: PAModel._add_enzymes
 - **Issue**: units used to set upper bound of enzyme concentrations and enzyme variables were based on the total protein content in gram and not in mmol/with feasibility tolerance correction. This resulted in infeasible models.
@@ -33,7 +38,7 @@
 
 
 2 March 2026:
-- **Funtion**: utils.pam_generation.map_genes_to_proteins
+- **Function**: utils.pam_generation.map_genes_to_proteins
 - **Issue**: when copying the active enzyme sector to rebuild a pamodel, enzyme complexes were not recognized as the protein reaction associations were in a single, and not a nested, list
 - **Fix**: added outer list when parsing protein-reaction associations with '_' in the protein name
 
