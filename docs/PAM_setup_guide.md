@@ -89,7 +89,7 @@ For example for the version used for the development of PAModelpy:
 #### Example usage for *E. coli*
 The model defaults are set to generate a PAM for the iML1515 model of *Escherichia coli* K-12.
 ```python
-from Scripts.pam_generation import set_up_pam
+from PAModelpy.utils.pam_generation import set_up_pam
 
 #1. Define input paths
 model_path = "Models/iML1515.xml"
