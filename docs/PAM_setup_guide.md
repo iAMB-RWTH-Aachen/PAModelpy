@@ -255,6 +255,61 @@ pickle.dump(pam, "path/to/model.pickle")
 ```
 Does pickling not work? Check if one of the reactions or metabolites has LP standard language (such as 'St') as id.
 
+### Flux Variability Analysis for Enzymes
+Similar to the FVA from COBRApy, PAModelpy has implemented a FVA. You can provide a object type, which will be varied. In this
+manner, you can perform FVA on proteins. Please note that the enzyme variables in the model are corrected for the feasibility
+tolerance with a factor of 1e6 and that the computed units is in mmol/gCDW. To get interpretable units, unit corrections are required.
+
+The result is a dataframe with the minimum and maximum value of the variable which was studied.
+
+```python
+from PAModelpy import Enzyme
+from PAModelpy.flux_analysis import flux_variability_analysis
+
+other_variables_to_analyze = [pam.reactions.get_by_id(rid) for rid in ['TPI', 'ACONTa', 'EX_ac_e']]
+
+fva_results = flux_variability_analysis(pam,
+                                        variable_type=Enzyme,
+                                        variable_list = other_variables_to_analyze #optional, provide a list with other variables to perform fva on which are not enzymes 
+                                        )
+```
+
+### Recombinant protein overexpression
+
+Example for eGFP overexpression.
+```python
+import os
+from PAModelpy import Enzyme
+from PAModelpy.utils.recombinant_protein_expression import (read_sequence_from_file,
+                                                            add_recombinant_intracellular_protein_to_pam)
+
+aa_seq = read_sequence_from_file(os.path.join('Data', 'eGFP_protein_sequence.txt'))
+gfp_enzyme = Enzyme('eGFP', {},
+                        molmass=2.8*1e4)
+protein_production_reaction = add_recombinant_intracellular_protein_to_pam(pam, protein=gfp_enzyme, aa_seq=aa_seq)
+```
+
+You can also determine protein export. In this case, ust adding and exporting a protein is not enough, as the exported 
+protein requires ribosomes. In the normal PAM, the translational sector accounts for all ribosomes to make proteins for 
+enzymes inside the cell. If you want to generate more proteins you need to allocate ribosomes specifically to make the 
+exported protein. To determine the amount of ribosomes needed to make one mmol/gCDW of exported recombinant protein, a
+reverence growth rate is required.
+
+```python
+
+import os
+from PAModelpy import Enzyme
+from PAModelpy.utils.recombinant_protein_expression import (read_sequence_from_file,
+                                                            add_recombinant_protein_production_and_export,)
+
+protein_production_reaction = add_recombinant_protein_production_and_export(aa_txt_file=os.path.join('Data', 'eGFP_protein_sequence.txt'),
+                                                                            pam=pam,
+                                                                            protein_name='eGFP',
+                                                                            molecular_weight=2.8*1e4,
+                                                                            reference_growth_rate=0.5)
+```
+
+
 
 ---
 
