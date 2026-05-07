@@ -91,12 +91,7 @@ def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str,
     )
     return variable, value
 
-def _get_variables(model, variable_type, variable_list):
-    variable_mapping = {
-        Enzyme: 'enzyme_variables',
-        EnzymeVariable: 'enzyme_variables',
-        Reaction: 'reactions',
-        }
+def _get_variables(model, variable_type, variable_list, variable_mapping):
     variables = {}
     if variable_type is None:
         if variable_list is not None:
@@ -129,6 +124,11 @@ def flux_variability_analysis(
     fraction_of_optimum: float = 1.0,
     pfba_factor: Optional[float] = None,
     processes: Optional[int] = None,
+        variable2attribute:Dict[Variable, str] = {
+        Enzyme: 'enzyme_variables',
+        EnzymeVariable: 'enzyme_variables',
+        Reaction: 'reactions',
+        }
 ) -> pd.DataFrame:
     """Determine the minimum and maximum flux value for each reaction.
 
@@ -163,6 +163,9 @@ def flux_variability_analysis(
     processes : int, optional
         The number of parallel processes to run. If not explicitly passed,
         will be set from the global configuration singleton (default None).
+    variable2attribute : dict, optional
+        Mapping between the variable types and the name of the attribute in
+        which they are stored in the model.
 
     Returns
     pandas.DataFrame
@@ -197,7 +200,7 @@ def flux_variability_analysis(
        doi: 10.1093/bioinformatics/btv096.
 
     """
-    variables = _get_variables(model, variable_type, variable_list)
+    variables = _get_variables(model, variable_type, variable_list, variable2attribute)
     if processes is None:
         processes = configuration.processes
 
