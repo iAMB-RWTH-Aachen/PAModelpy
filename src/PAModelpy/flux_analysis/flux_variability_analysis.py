@@ -251,7 +251,6 @@ def flux_variability_analysis(
 
     """
     variables = _get_variables(model, variable_type, variable_list, variable2attribute)
-    print(variables)
     if processes is None:
         processes = configuration.processes
 
