@@ -32,12 +32,14 @@ if __name__ == "__main__":
                        sensitivity=False, 
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
-                       total_protein=0.258,
-                       max_membrane_area=54.62
+                       total_protein=0.241,
+                       max_membrane_area=0.4652
                        )
     models = [pam, mcpam]
-
+    
     run_simulation_pam_mcpam(models=models)
+    occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
+    print(available_area, occupied_area)
 
 
     

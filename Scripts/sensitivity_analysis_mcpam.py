@@ -335,7 +335,7 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_04_01/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
 model_path = 'Models/iML1515.xml'
 diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_4.xlsx'
 
@@ -345,12 +345,12 @@ mcpam = set_up_pam(pam_info_file=pam_info_path,
                     membrane_sector=True,
                     separate_memprot_from_tpc=True,
                     total_protein=0.241,
-                    max_membrane_area=0.5462
+                    max_membrane_area=0.4652
                     )
 
-mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
-                                                 model=mcpam,
-                                                 sheet_name='Best_Individuals')
+# mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
+#                                                  model=mcpam,
+#                                                  sheet_name='Best_Individuals')
 suffix = diagnostics_path.split('_')[-1].split('.')[0]
 ##############################################################################
 # PHENOTYPE DATA
@@ -370,7 +370,7 @@ fontsize = 26
 width = 40
 height = 14
 glc_uptake_rates = list(np.linspace(1, 10, 10))
-max_area_list = [0.5462]
+max_area_list = [0.4652]
 
 ##############################################################################
 # MAIN LOOP: ONE FIGURE PER AREA

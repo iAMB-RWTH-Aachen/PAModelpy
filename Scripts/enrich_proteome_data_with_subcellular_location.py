@@ -1,6 +1,6 @@
 import pandas as pd
 
-proteome_df = pd.read_excel('Data/E_coli_proteomics_data.xlsx', sheet_name='merged_data') # Data obtained from Shannara Kayleigh Taylor Parkins
+proteome_df = pd.read_excel('Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx', sheet_name='MembraneEnzymes') # Data obtained from Shannara Kayleigh Taylor Parkins
 protein_location_df = pd.read_excel('Data/uniprotkb_cell_inner_membrane_proteins_ecoli_2026_05_07.xlsx', sheet_name="raw")
 
 # Extracting the true subcellular location from column 'Subcellular location [CC]'
@@ -17,10 +17,11 @@ protein_location_df = protein_location_df[['Entry', 'Cellular protein location',
 proteome_df = pd.merge(left=proteome_df,
                        right=protein_location_df,
                        how='left',
-                       left_on='uniprotID',
+                       left_on='enzyme_id',
                        right_on='Entry')
-proteome_df['Cellular protein location'] = proteome_df['Cellular protein location'].fillna(proteome_df['Type']) 
-proteome_df = proteome_df.replace('cytosolic protein', 'Cytoplasm')
+proteome_df['Cellular protein location'] = proteome_df['Cellular protein location'].fillna(proteome_df['location']) 
+print(proteome_df)
+# proteome_df = proteome_df.replace('cytosolic protein', 'Cytoplasm')
 
 with pd.ExcelWriter('Data/E_coli_proteomics_data.xlsx', engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-    proteome_df.to_excel(writer, sheet_name='merged_data_with_location', index=False)
+    proteome_df.to_excel(writer, sheet_name='MembraneEnzymes_new', index=False)
