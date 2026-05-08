@@ -100,7 +100,7 @@ class MembraneSector(EnzymeSector):
 
             return df
 
-        available_area = self.slope * model.objective.value + self.intercept
+        available_area = (self.slope * model.objective.value + self.intercept) * self.max_membrane_area # available membrane area for inner membrane proteins
 
         return occupied_area, available_area
 
@@ -164,7 +164,7 @@ class MembraneSector(EnzymeSector):
         alpha_numbers_in_complex = [0]  # zero if enzyme is not in membrane
 
         for enz in enzymes:
-            if enz in self.alpha_numbers_dict.keys() and self.enzyme_location[enz] == 'Cell membrane':
+            if enz in self.alpha_numbers_dict.keys() and self.enzyme_location[enz] == 'Cell inner membrane':
                 alpha_numbers_in_complex.append(self.alpha_numbers_dict[enz])
 
         alpha_number_for_enz_complex = max(alpha_numbers_in_complex)
