@@ -41,7 +41,6 @@ def calculate_sensitivities(pamodel):
             pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
             pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
             pamodel.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
-            # pamodel.reactions.EX_glc__D_e.lower_bound = -glc
             # solve the model
             # pamodel.objective = 'EX_ac_e'
             sol_pam = pamodel.optimize()
@@ -335,9 +334,9 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_09/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
-diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_4.xlsx'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_09/pam_parametrizer_diagnostics_mciML1515_10.xlsx'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
@@ -347,10 +346,11 @@ mcpam = set_up_pam(pam_info_file=pam_info_path,
                     total_protein=0.241,
                     max_membrane_area=0.4652
                     )
+area = mcpam.sectors.get_by_id('MembraneSector').max_membrane_area*100
 
-# mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
-#                                                  model=mcpam,
-#                                                  sheet_name='Best_Individuals')
+mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
+                                                 model=mcpam,
+                                                 sheet_name='Best_Individuals')
 suffix = diagnostics_path.split('_')[-1].split('.')[0]
 ##############################################################################
 # PHENOTYPE DATA
@@ -370,76 +370,69 @@ fontsize = 26
 width = 40
 height = 14
 glc_uptake_rates = list(np.linspace(1, 10, 10))
-max_area_list = [0.4652]
 
 ##############################################################################
 # MAIN LOOP: ONE FIGURE PER AREA
 ##############################################################################
 
-for area in max_area_list:
+print(f"\nRunning mcPAM with {area:.1f}% membrane area\n")
 
-    print(f"\nRunning mcPAM with {area*100:.1f}% membrane area\n")
+results = calculate_sensitivities(mcpam)
 
-    with mcpam:
-        mcpam.sectors.get_by_id('MembraneSector')\
-              .change_available_membrane_area(area, mcpam)
+# Parse axes
+x_axis_csc, x_axis_esc = parse_x_axis_heatmap(
+    results['capacity coefficients'],
+    results['enzyme coefficients']
+)
 
-        results = calculate_sensitivities(mcpam)
+# CSC → nonzero
+csc_nonzero, x_csc_nonzero = find_nonzero_sensitivities(
+    results['Ccsc'], x_axis_csc
+)
+csc_nonzero_t = np.transpose(np.array(csc_nonzero))
 
-    # Parse axes
-    x_axis_csc, x_axis_esc = parse_x_axis_heatmap(
-        results['capacity coefficients'],
-        results['enzyme coefficients']
-    )
+# ESC → top5
+esc_top5, x_esc_top5 = find_top5_sensitivities(
+    results['Cesc'],
+    x_axis_esc,
+    glc_uptake_rates
+)
+esc_top5_t = np.transpose(np.array(esc_top5))
 
-    # CSC → nonzero
-    csc_nonzero, x_csc_nonzero = find_nonzero_sensitivities(
-        results['Ccsc'], x_axis_csc
-    )
-    csc_nonzero_t = np.transpose(np.array(csc_nonzero))
+# Adjust labels
+x_csc_labels = adjust_heatmap_labels(x_csc_nonzero)
+x_esc_labels = adjust_heatmap_labels(x_esc_top5)
 
-    # ESC → top5
-    esc_top5, x_esc_top5 = find_top5_sensitivities(
-        results['Cesc'],
-        x_axis_esc,
-        glc_uptake_rates
-    )
-    esc_top5_t = np.transpose(np.array(esc_top5))
+##########################################################################
+# CREATE FIGURE (NO OUTER GRIDSPEC)
+##########################################################################
+fig = plt.figure(layout='constrained')
+gs = fig.add_gridspec(1, 1)
+gs_pam = gs[0]
 
-    # Adjust labels
-    x_csc_labels = adjust_heatmap_labels(x_csc_nonzero)
-    x_esc_labels = adjust_heatmap_labels(x_esc_top5)
+make_heatmap_subfigure(
+    results=results,
+    csc_matrix=csc_nonzero_t,
+    esc_matrix=esc_top5,
+    x_csc=x_csc_labels,
+    x_esc=x_esc_labels,
+    yaxis=glc_uptake_rates,
+    fig=fig,
+    grdspc=gs_pam,
+    ylabels=True,
+    xlabels=True,
+    phenotype_data=pt_data,
+    fontsize=fontsize,
+    title=f"mcPAM – {area*100:.1f}% membrane area"
+)
 
-    ##########################################################################
-    # CREATE FIGURE (NO OUTER GRIDSPEC)
-    ##########################################################################
-    fig = plt.figure(layout='constrained')
-    gs = fig.add_gridspec(1, 1)
-    gs_pam = gs[0]
+fig.set_figwidth(width)
+fig.set_figheight(height)
+os.makedirs("Figures", exist_ok=True)
+fig.savefig(
+    f"Figures/mcPAM_sensitivities_diagnostics_{suffix}.png",
+    dpi=250,
+    bbox_inches='tight'
+)
 
-    make_heatmap_subfigure(
-        results=results,
-        csc_matrix=csc_nonzero_t,
-        esc_matrix=esc_top5,
-        x_csc=x_csc_labels,
-        x_esc=x_esc_labels,
-        yaxis=glc_uptake_rates,
-        fig=fig,
-        grdspc=gs_pam,
-        ylabels=True,
-        xlabels=True,
-        phenotype_data=pt_data,
-        fontsize=fontsize,
-        title=f"mcPAM – {area*100:.1f}% membrane area"
-    )
-
-    fig.set_figwidth(width)
-    fig.set_figheight(height)
-    os.makedirs("Figures", exist_ok=True)
-    fig.savefig(
-        f"Figures/mcPAM_sensitivities_diagnostics_{suffix}.png",
-        dpi=250,
-        bbox_inches='tight'
-    )
-
-    plt.close(fig)
+plt.close(fig)

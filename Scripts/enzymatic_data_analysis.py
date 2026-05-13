@@ -19,7 +19,7 @@ def find_var_for_complex(enz_complex, df):
         alpha_for_complex = 0
     else:
         p_conc_for_complex = min(p_conc_in_complex)
-        alpha_for_complex = max(alpha_in_complex)
+        alpha_for_complex = sum(alpha_in_complex)
 
     return p_conc_for_complex, alpha_for_complex
 
@@ -27,7 +27,7 @@ def find_var_for_complex(enz_complex, df):
 
 if __name__ == "__main__":
     # Generate the model
-    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
+    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_3.xlsx'
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False)
     pam.optimize()
     print(pam.objective.value)

@@ -44,7 +44,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
     for rxn_id, pt_id in rxn_transform.items():
         rxn_to_pt[rxn_id] = pt_data[['EX_glc__D_e', pt_id]].dropna().rename(columns={pt_id: rxn_id})
 
-    glc_uptake_rates = np.linspace(0.5, 14, 25)
+    glc_uptake_rates = np.linspace(1, 14, 14)
 
     # Initializing fluxes and concentrations for pam and mcpam
     fluxes_dict = {}

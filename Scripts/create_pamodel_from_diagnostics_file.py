@@ -163,26 +163,26 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_06/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_09/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
-    pam = set_up_pam(pam_info_file=pam_info_file,
-                    model=model_path,
-                    sensitivity=False,
-                    membrane_sector=False,                  
-                    )
+    # pam = set_up_pam(pam_info_file=pam_info_file,
+    #                 model=model_path,
+    #                 sensitivity=False,
+    #                 membrane_sector=False,                  
+    #                 )
     mcpam = set_up_pam(pam_info_file=pam_info_file, 
                        model=model_path,
-                       sensitivity=False, 
+                       sensitivity=True, 
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
                        total_protein=0.241,
                        max_membrane_area=0.4652
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_08/pam_parametrizer_diagnostics_mciML1515_4.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_09/pam_parametrizer_diagnostics_mciML1515_7.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
-    
+    # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.0075, intercept=None, lin_rxn_id='EX_glc__D_e')
     # sector_parameters_df = pd.read_excel('Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_2.xlsx', sheet_name="sector_parameters")
 
     # for sector, sector_params in sector_parameters_df.groupby('sector_id'):
@@ -196,9 +196,19 @@ if __name__ == '__main__':
     #         print_change=True
     #     )
     
-    models = [pam, mcpam]
+    # models = [pam, mcpam]
 
-    run_simulation_pam_mcpam(models)
+    # run_simulation_pam_mcpam(models)
+    mcpam.reactions.get_by_id('EX_glc__D_e').lower_bound = -10
+    mcpam.reactions.get_by_id('EX_glc__D_e').upper_bound = -10
+    print(mcpam.reactions.get_by_id('EX_glc__D_e').lower_bound, mcpam.reactions.get_by_id('EX_glc__D_e').upper_bound)
+    mcpam.optimize()
+    print(mcpam.objective.value)
+    occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
+    print(available_area, occupied_area)
+    print(mcpam.solver.shadow_prices['membrane'])
+    print(mcpam.constraints['membrane'].dual)
+
     # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
 
 

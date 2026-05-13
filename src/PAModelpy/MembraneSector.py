@@ -52,7 +52,7 @@ class MembraneSector(EnzymeSector):
         self.membrane_proteins = {}
 
         coefficients = {
-            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
+            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * self.max_membrane_area
         }
 
         for enz_complex in model.enzyme_variables:
@@ -65,14 +65,14 @@ class MembraneSector(EnzymeSector):
 
             coeff = self._get_coeff_value(alpha_number_for_complex)
 
-            coefficients[enz_complex.forward_variable] = coeff / self.max_membrane_area
-            coefficients[enz_complex.reverse_variable] = coeff / self.max_membrane_area
+            coefficients[enz_complex.forward_variable] = coeff
+            coefficients[enz_complex.reverse_variable] = coeff 
 
             # Exclude membrane enzymes from the total protein constraint
             if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
                 model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
-        occupied_membrane = model.problem.Constraint(0, lb=0, ub=self.intercept, name='membrane')
+        occupied_membrane = model.problem.Constraint(0, lb=0, ub=self.intercept*self.max_membrane_area, name='membrane')
         model.add_cons_vars(occupied_membrane)
         model.solver.update()
         occupied_membrane.set_linear_coefficients(coefficients=coefficients)
@@ -136,7 +136,7 @@ class MembraneSector(EnzymeSector):
         self.membrane_proteins = {}
 
         coefficients = {
-            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope
+            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * new_max_area
         }
 
         for enz_complex in model.enzyme_variables:
@@ -148,9 +148,10 @@ class MembraneSector(EnzymeSector):
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
             coeff = self._get_coeff_value(alpha_number_for_complex)
 
-            coefficients[enz_complex.forward_variable] = coeff / new_max_area
-            coefficients[enz_complex.reverse_variable] = coeff / new_max_area
+            coefficients[enz_complex.forward_variable] = coeff 
+            coefficients[enz_complex.reverse_variable] = coeff 
 
+        model.constraints['membrane'].ub = self.intercept*self.max_membrane_area
         model.constraints['membrane'].set_linear_coefficients(coefficients=coefficients)
         model.solver.update()
 
