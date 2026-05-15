@@ -151,7 +151,7 @@ class MembraneSector(EnzymeSector):
             coefficients[enz_complex.forward_variable] = coeff 
             coefficients[enz_complex.reverse_variable] = coeff 
 
-        model.constraints['membrane'].ub = self.intercept*self.max_membrane_area
+        model.constraints['membrane'].ub = self.intercept*new_max_area
         model.constraints['membrane'].set_linear_coefficients(coefficients=coefficients)
         model.solver.update()
 
