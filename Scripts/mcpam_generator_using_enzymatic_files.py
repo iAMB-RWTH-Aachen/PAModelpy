@@ -33,7 +33,7 @@ if __name__ == "__main__":
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
                        total_protein=0.241,
-                       max_membrane_area=0.5145
+                       max_membrane_area=0.5154
                        )
     models = [pam, mcpam]
     

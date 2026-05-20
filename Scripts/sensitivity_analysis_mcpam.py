@@ -334,17 +334,17 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_09/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_14/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
-diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_09/pam_parametrizer_diagnostics_mciML1515_10.xlsx'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_14/pam_parametrizer_diagnostics_iML1515_1.xlsx'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
                     sensitivity=True, 
                     membrane_sector=True,
-                    separate_memprot_from_tpc=True,
-                    total_protein=0.241,
-                    max_membrane_area=0.4652
+                    # separate_memprot_from_tpc=True,
+                    total_protein=0.258,
+                    max_membrane_area=0.5154
                     )
 area = mcpam.sectors.get_by_id('MembraneSector').max_membrane_area*100
 

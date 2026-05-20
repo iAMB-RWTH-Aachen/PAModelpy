@@ -27,25 +27,31 @@ class Protein:
         self.protein_disc_area = alpha_helix_units * self.alpha_area
         # unit: protein_disc_area [m2], number_of_alpha_helix [-], alpha_helix_width [m]
         return self.protein_disc_area
-    def calculate_protein_number_per_cell(self, protein_concentration):
-        '''convert unit from fmol/ug total protein to fmol/um3 cell volume'''
-        self.protein_concentration_per_volume = protein_concentration * self.total_protein_per_volume * 1e-9
-        #unit: protein_concentration_per_volume [fmol/um3], protein_concentration [fmol/ug], tot_protein_per_volume [ug/ul]
+    def calculate_protein_number_per_cell(self, protein_concentration, p_conc_unit):
+        if p_conc_unit == 'fmol/ug':
+            '''convert unit from fmol/ug total protein to fmol/um3 cell volume'''
+            protein_concentration = protein_concentration * self.total_protein_per_volume * 1e-9
+            #unit: protein_concentration (per volume) [fmol/um3], protein_concentration [fmol/ug], tot_protein_per_volume [ug/ul]
 
-        'calculate protein concentration per cell'
-        self.protein_concentration_per_cell = self.protein_concentration_per_volume * self.cell_volume
-        #unit: protein_concentration_per_cell [fmol], protein_concentration_per_volume [fmol/um3], cell_volume [um3]
+            'calculate protein concentration per cell'
+            protein_concentration = protein_concentration * self.cell_volume
+            #unit: protein_concentration (per cell), protein_concentration_per_volume [fmol/um3], cell_volume [um3]
+        elif p_conc_unit == 'fmol/cell':
+            protein_concentration = protein_concentration
+        else:
+            ValueError('Please provide provide concentration unit in either fmol/ug or fmol/cell')
 
         'calculate protein number per cell'
-        self.protein_nr_per_cell = self.protein_concentration_per_cell * 1e-15 * self.avogadro
+        protein_nr_per_cell = protein_concentration * 1e-15 * self.avogadro
         #unit: protein_nr_per_cell [-], protein_concentration_per_cell [fmol], avogadro [1/mol]'
-        return self.protein_nr_per_cell
 
-    def calculate_protein_area(self, protein_concentration, alpha_helix_units):
+        return protein_nr_per_cell
+
+    def calculate_protein_area(self, protein_concentration, alpha_helix_units, p_conc_unit:str="fmol/ug"):
         self.calculate_cell_volume()
         self.calculate_protein_disc_area(alpha_helix_units)
-        self.calculate_protein_number_per_cell(protein_concentration)
-        self.protein_area = self.protein_nr_per_cell * self.protein_disc_area * 1e12
+        protein_nr_per_cell = self.calculate_protein_number_per_cell(protein_concentration, p_conc_unit) if p_conc_unit != "protein copies/cell" else protein_concentration
+        self.protein_area = protein_nr_per_cell * self.protein_disc_area * 1e12
         #unit: protein_area [um2], protein_nr_per_cell [-], protein_disc_area [m2]'
         return self.protein_area
 

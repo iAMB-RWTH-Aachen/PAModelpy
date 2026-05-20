@@ -1,5 +1,5 @@
 import pandas as pd
-from src.PAModelpy.utils.pam_generation import set_up_pam
+from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 from src.Protein import Protein
 
 ### Helper functions ###
@@ -27,7 +27,7 @@ def find_var_for_complex(enz_complex, df):
 
 if __name__ == "__main__":
     # Generate the model
-    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_3.xlsx'
+    pam_info_path = 'Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx'
     pam = set_up_pam(pam_info_file=pam_info_path, sensitivity=False)
     pam.optimize()
     print(pam.objective.value)
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     enzyme_complex_list = pam.enzyme_variables
 
     # Get the enzymes from the experimental data
-    data_path = "Data/E_coli_proteomics_data.xlsx"
+    data_path = "Data/proteome_data_full_shannara2024.xlsx"
     df = pd.read_excel(data_path, sheet_name="merged_data_with_location")
     count_memprot_not_inner = df[(df["Cellular protein location"] == "membrane protein")].shape[0]
     count_inner_memprot = df[(df["Cellular protein location"] == "Cell inner membrane")].shape[0]

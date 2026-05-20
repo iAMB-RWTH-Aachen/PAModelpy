@@ -50,10 +50,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
     fluxes_dict = {}
     concentrations_dict = {}
 
-    for model, config in zip(models, ["PAM", "mcPAM"]):
-
-        # disable pyruvate formate lyase (inhibited by oxygen)
-        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
+    for model, config in zip(models, ["PAM", "mcPAM"]):     
 
         fluxes_list = []
         concentrations_list = [0]
@@ -62,11 +59,9 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                    model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
-                    model.reactions.PFL.upper_bound = 0
+                    model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
                     sol_pam = model.optimize()
                     # save data
@@ -83,11 +78,9 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                    model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
-                    model.reactions.PFL.upper_bound = 0
+                    model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
                     sol_pam = model.optimize()
                     # save data
@@ -181,21 +174,15 @@ def run_simulation_gem_pam_mcpam(models, type:str="full scale"):
     concentrations_dict = {}
 
     for model, config in zip(models, ["GEM", "PAM", "mcPAM"]):
-
-        # disable pyruvate formate lyase (inhibited by oxygen)
-        # model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
-
         fluxes_list = []
 
         # if config == "PAM":  # simulating pam
         for glc in glc_uptake_rates:
             with model:
                 # change glucose uptake rate
-                # model.reactions.EX_glc__D_e.lower_bound = -glc
-                model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                 # disable pyruvate formate lyase (inhibited by oxygen)
-                model.reactions.PFL.upper_bound = 0
+                model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                 # solve the model
                 sol_pam = model.optimize()
                 # save data
@@ -286,9 +273,6 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
 
     for model, config in zip(models, ["PAM", "mcPAM"]):
 
-        # disable pyruvate formate lyase (inhibited by oxygen)
-        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
-
         fluxes_list = []
         concentrations_list = [0]
 
@@ -296,13 +280,10 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                    model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
-                    model.reactions.PFL.upper_bound = 0
+                    model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
-                    # model.objective = 'EX_ac_e'
                     sol_pam = model.optimize()
                     # save data
                     fluxes_list.append(sol_pam.fluxes)  # flux distributions
@@ -319,10 +300,9 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                        model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                         # disable pyruvate formate lyase (inhibited by oxygen)
-                        model.reactions.PFL.upper_bound = 0
+                        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                         # change max available membrane area
                         model.sectors.get_by_id('MembraneSector').change_available_membrane_area(area, model)
                         # solve the model
@@ -430,9 +410,6 @@ def run_simulations_pam_mcpam_w_different_tpcs(models, print_area:bool=False, ty
 
     for model, config in zip(models, ["PAM", "mcPAM"]):
 
-        # disable pyruvate formate lyase (inhibited by oxygen)
-        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
-
         fluxes_list = []
         concentrations_list = [0]
 
@@ -440,13 +417,10 @@ def run_simulations_pam_mcpam_w_different_tpcs(models, print_area:bool=False, ty
             for glc in glc_uptake_rates:
                 with model:
                     # change glucose uptake rate
-                    # model.reactions.EX_glc__D_e.lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                    model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                    model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                     # disable pyruvate formate lyase (inhibited by oxygen)
-                    model.reactions.PFL.upper_bound = 0
+                    model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
-                    # model.objective = 'EX_ac_e'
                     sol_pam = model.optimize()
                     # save data
                     fluxes_list.append(sol_pam.fluxes)  # flux distributions

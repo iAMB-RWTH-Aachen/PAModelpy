@@ -180,10 +180,10 @@ if __name__ == '__main__':
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
                        total_protein=0.241,
-                       max_membrane_area=0.4652
+                       max_membrane_area=0.5154
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_09/pam_parametrizer_diagnostics_mciML1515_2.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_09/pam_parametrizer_diagnostics_mciML1515_6.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.0075, intercept=None, lin_rxn_id='EX_glc__D_e')
@@ -202,14 +202,14 @@ if __name__ == '__main__':
     
     models = [pam, mcpam]
 
-    # run_simulation_pam_mcpam(models)
-    run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
+    run_simulation_pam_mcpam(models)    
+    # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
     # run_simulations_pam_mcpam_w_different_tpcs(models=models, tpc_list=[0.2, 0.21, 0.22, 0.23, 0.24, 0.258])
     
-    # occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
-    # print(available_area, occupied_area)
-    # print(mcpam.solver.shadow_prices['membrane'])
-    # print(mcpam.constraints['membrane'].dual)
+    occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
+    print(available_area, occupied_area)
+    print(mcpam.solver.shadow_prices['membrane'])
+    print(mcpam.constraints['membrane'].dual)
 
 
 

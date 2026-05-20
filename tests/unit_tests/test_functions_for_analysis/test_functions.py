@@ -1,4 +1,4 @@
-from Scripts.enzymatic_data_analysis import create_membrane_enz_complex, find_var_for_complex
+from Scripts.parametrize_usable_membrane_fraction_schmidt import create_membrane_enz_complex, find_var_for_complex
 import pandas as pd
 import pytest
 def test_create_membrane_enz_complex():
