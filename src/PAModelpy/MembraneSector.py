@@ -168,7 +168,7 @@ class MembraneSector(EnzymeSector):
             if enz in self.alpha_numbers_dict.keys() and self.enzyme_location[enz] == 'Cell inner membrane':
                 alpha_numbers_in_complex.append(self.alpha_numbers_dict[enz])
 
-        alpha_number_for_enz_complex = max(alpha_numbers_in_complex)
+        alpha_number_for_enz_complex = sum(alpha_numbers_in_complex)
 
         return alpha_number_for_enz_complex
 
