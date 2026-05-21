@@ -69,8 +69,8 @@ def compare_mu_for_different_sensitivities_ecolicore_pam():
     alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
     enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
 
-    membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                     area_avail_mu=area_avail_mu,
+    membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                     sv_slope=area_avail_mu,
                                      alpha_numbers_dict=alpha_numbers_dict,
                                      enzyme_location=enzyme_location)
 

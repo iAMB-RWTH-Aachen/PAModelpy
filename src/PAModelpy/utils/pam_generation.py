@@ -582,11 +582,11 @@ def set_up_pam(pam_info_file:str = '',
         alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
         enzyme_location = active_membrane_info.location.to_dict()
 
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                         sv_slope=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=max_membrane_area,
+                                         usable_area_fraction=max_membrane_area,
                                          separate_memprot_from_tpc=separate_memprot_from_tpc)
 
     else:
@@ -694,11 +694,11 @@ def set_up_core_pam(pam_info_file:str = '',
         alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
         enzyme_location = active_membrane_info.location.to_dict()
 
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                         sv_slope=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=max_membrane_area)
+                                         usable_area_fraction=max_membrane_area)
 
     else:
         membrane_sector = None

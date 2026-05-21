@@ -190,11 +190,11 @@ def set_up_ecolicore_mcpam(total_protein: Union[bool, float] = True,
         alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
         enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
 
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                         sv_slope=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=max_area)
+                                         usable_area_fraction=max_area)
 
     else:
         membrane_sector = None
@@ -297,11 +297,11 @@ def set_up_ecolicore_mcpam_new_surface_parameter(total_protein: Union[bool, floa
         alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
         enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
 
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                         sv_slope=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=max_area)
+                                         usable_area_fraction=max_area)
 
     else:
         membrane_sector = None
@@ -450,11 +450,11 @@ def set_up_ecoli_mcpam(total_protein: Union[bool, float] = True, active_enzymes:
         alpha_numbers_dict = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'alpha_numbers'].to_dict()
         enzyme_location = active_enzyme_info.set_index(keys='uniprotID').loc[:, 'Location'].to_dict()
 
-        membrane_sector = MembraneSector(area_avail_0=area_avail_0,
-                                         area_avail_mu=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=area_avail_0,
+                                         sv_slope=area_avail_mu,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
-                                         max_area=0.04)
+                                         usable_area_fraction=0.04)
 
     else:
         membrane_sector = None

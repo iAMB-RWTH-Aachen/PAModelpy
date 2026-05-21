@@ -12,17 +12,66 @@ from .Enzyme import Enzyme
 
 
 class MembraneSector(EnzymeSector):
+    """
+    Membrane protein sector for constraining the occupancy of the
+    inner membrane by integral membrane proteins (IMPs).
+
+    The membrane occupancy constraint is formulated as:
+
+        (S/V_available) * f >= Σ(
+            E_conc
+            * 10^3
+            * CDW/V
+            * N_A
+            * N_alpha
+            * A_alpha
+        )
+
+    where:
+
+        - S/V_available : Available surface-to-volume ratio [µm²/fL]
+        - f             : Fraction of membrane area available for proteins [-]
+        - E_conc        : Enzyme concentration [mmol/gDW]
+        - CDW/V         : Cell dry weight per volume [gDW/fL]
+        - N_A           : Avogadro constant [1/mol]
+        - N_alpha       : Number of transmembrane alpha helices [-]
+        - A_alpha       : Area occupied by one alpha helix [µm²]
+
+    The available membrane area is modeled as a linear function
+    of the growth rate (µ):
+
+        S/V_available = sv_0 + sv_slope * µ
+
+    where:
+
+        - sv_0      : Surface-to-volume ratio intercept [µm²/fL]
+        - sv_slope  : Surface-to-volume ratio slope [µm²·h/fL]
+
+    Args:
+        sv_0 (float or int): Intercept of the surface-to-volume ratio relation [µm2/fL]
+        sv_slope: (float or int): Slope of the surface-to-volume ratio relation [µm2.h/fL]
+        alpha_numbers_dict (dict): Dictionary mapping enzyme IDs to the number of transmembrane alpha helices.
+        enzyme_location (dict): Dictionary containing the cellular localization of enzymes.
+        cog_class (dict): Dictionary containing COG classifications for enzymes.
+        usable_area_fraction (float or int): Fraction of the total membrane area available for membrane proteins
+        a_alpha (float or int): Membrane area occupied by a single alpha helix [µm2]
+        cdw_per_volume (float or int): Cell dry weight per volume [gDW/fL]
+        n_a (float or int): Avogadro constant [1/mol]
+        separate_memprot_from_tpc (bool): If True, membrane proteins are excluded from the total protein constraint
+        configuration (Config): PAModelpy configuration object
+
+    """
     def __init__(
             self,
-            area_avail_0, #μm2
-            area_avail_mu, #μm2/h
+            sv_0: Union[int, float],
+            sv_slope: Union[int, float], 
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            max_area: float = 0.5462,
-            a_alpha: float = 1.4 * 1e-6, # area of one alpha helix [um2]
-            cdw_per_cell: float = 0.28 * 1e-12,  # 0.28 pg, ref: bionumber
-            n_a: float = 6.02214076 * 1e23,  # avogadro number
+            usable_area_fraction: Union[int, float] = 0.5462,
+            a_alpha: Union[int, float] = 1.4 * 1e-6, 
+            cdw_per_volume: Union[int, float] = 268.36 * 1e-15,  
+            n_a: Union[int, float] = 6.02214076 * 1e23,  
             separate_memprot_from_tpc: bool = True,
             configuration=Config):
 
@@ -31,18 +80,18 @@ class MembraneSector(EnzymeSector):
         self.cog_class = cog_class
         self.enzyme_location = enzyme_location
         self.area_alpha = a_alpha
-        self.max_membrane_area = max_area #percentage of membrane area that can be covered by proteins
-        self.unit_factor = 1e-3 * cdw_per_cell * n_a
+        self.usable_area_fraction = usable_area_fraction #percentage of membrane area that can be covered by proteins
+        self.unit_factor = 1e-3 * cdw_per_volume * n_a
 
         #Defining the slope and intercept
-        self.intercept = area_avail_0 #μm2
-        self.slope = area_avail_mu #μm2/h
+        self.intercept = sv_0 #μm2
+        self.slope = sv_slope #μm2/h
 
         self.separate_memprot_from_tpc = separate_memprot_from_tpc
 
     def add(self, model):
 
-        print(f"Add membrane protein sector with {self.max_membrane_area*100}% max inner membrane area\n")
+        print(f"Add membrane protein sector with {self.usable_area_fraction*100}% max inner membrane area\n")
         model.membrane_sector = self
         self._add_membrane_constraint(model)
         pass
@@ -52,7 +101,7 @@ class MembraneSector(EnzymeSector):
         self.membrane_proteins = {}
 
         coefficients = {
-            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * self.max_membrane_area
+            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * self.usable_area_fraction
         }
 
         for enz_complex in model.enzyme_variables:
@@ -72,7 +121,7 @@ class MembraneSector(EnzymeSector):
             if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
                 model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
-        occupied_membrane = model.problem.Constraint(0, lb=0, ub=self.intercept*self.max_membrane_area, name='membrane')
+        occupied_membrane = model.problem.Constraint(0, lb=0, ub=self.intercept*self.usable_area_fraction, name='membrane')
         model.add_cons_vars(occupied_membrane)
         model.solver.update()
         occupied_membrane.set_linear_coefficients(coefficients=coefficients)
@@ -100,7 +149,7 @@ class MembraneSector(EnzymeSector):
 
             return df
 
-        available_area = (self.slope * model.objective.value + self.intercept) * self.max_membrane_area # available membrane area for inner membrane proteins
+        available_area = (self.slope * model.objective.value + self.intercept) * self.usable_area_fraction # available membrane area for inner membrane proteins
 
         return occupied_area, available_area
 
@@ -132,7 +181,7 @@ class MembraneSector(EnzymeSector):
         self._update_membrane_constraint(new_max_area, model)
 
     def _update_membrane_constraint(self, new_max_area:float, model):
-        self.max_membrane_area = new_max_area
+        self.usable_area_fraction = new_max_area
         self.membrane_proteins = {}
 
         coefficients = {

@@ -71,8 +71,8 @@ def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False):
                        "E14": "Cell membrane"}
     #mu = 0.1, 0=0.005
     if membrane_sector:
-        membrane_sector = MembraneSector(area_avail_mu=-0.1042, area_avail_0=0.1479, alpha_numbers_dict=alpha_numbers_dict,
-                                     enzyme_location=enzyme_location, max_area=1)
+        membrane_sector = MembraneSector(sv_slope=-0.1042, sv_0=0.1479, alpha_numbers_dict=alpha_numbers_dict,
+                                     enzyme_location=enzyme_location, usable_area_fraction=1)
     else:
         membrane_sector = None
 
