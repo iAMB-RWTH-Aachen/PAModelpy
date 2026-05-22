@@ -80,8 +80,9 @@ class MembraneSector(EnzymeSector):
         self.cog_class = cog_class
         self.enzyme_location = enzyme_location
         self.area_alpha = a_alpha
-        self.usable_area_fraction = usable_area_fraction #percentage of membrane area that can be covered by proteins
+        self.usable_area_fraction = usable_area_fraction 
         self.unit_factor = 1e-3 * cdw_per_volume * n_a
+        self.membrane_proteins = {}
 
         #Defining the slope and intercept
         self.intercept = sv_0 #μm2
@@ -97,8 +98,6 @@ class MembraneSector(EnzymeSector):
         pass
 
     def _add_membrane_constraint(self, model):
-
-        self.membrane_proteins = {}
 
         coefficients = {
             model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * self.usable_area_fraction
