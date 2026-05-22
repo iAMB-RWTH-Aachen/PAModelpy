@@ -179,12 +179,12 @@ class MembraneSector(EnzymeSector):
     def change_available_membrane_area(self, new_max_area: float, model):
         self._update_membrane_constraint(new_max_area, model)
 
-    def _update_membrane_constraint(self, new_max_area:float, model):
-        self.usable_area_fraction = new_max_area
+    def _update_membrane_constraint(self, new_usable_area_fraction:float, model):
+        self.usable_area_fraction = new_usable_area_fraction
         self.membrane_proteins = {}
 
         coefficients = {
-            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * new_max_area
+            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * new_usable_area_fraction
         }
 
         for enz_complex in model.enzyme_variables:
@@ -199,7 +199,7 @@ class MembraneSector(EnzymeSector):
             coefficients[enz_complex.forward_variable] = coeff 
             coefficients[enz_complex.reverse_variable] = coeff 
 
-        model.constraints['membrane'].ub = self.intercept*new_max_area
+        model.constraints['membrane'].ub = self.intercept*new_usable_area_fraction
         model.constraints['membrane'].set_linear_coefficients(coefficients=coefficients)
         model.solver.update()
 
