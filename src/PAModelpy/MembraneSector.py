@@ -37,7 +37,7 @@ class MembraneSector(EnzymeSector):
         - N_alpha       : Number of transmembrane alpha helices [-]
         - A_alpha       : Area occupied by one alpha helix [µm²]
 
-    The available membrane area is modeled as a linear function
+    The available membrane area is normalized by the volume and modeled as a linear function
     of the growth rate (µ):
 
         S/V_available = sv_0 + sv_slope * µ
@@ -68,7 +68,7 @@ class MembraneSector(EnzymeSector):
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            usable_area_fraction: Union[int, float] = 0.5462,
+            usable_area_fraction: Union[int, float] = 0.5154,
             a_alpha: Union[int, float] = 1.4 * 1e-6, 
             cdw_per_volume: Union[int, float] = 268.36 * 1e-15,  
             n_a: Union[int, float] = 6.02214076 * 1e23,  
