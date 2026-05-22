@@ -7,7 +7,6 @@ from Scripts.create_pamodel_from_diagnostics_file import (create_pamodel_from_di
                                                           change_translational_sector_with_config_dict,
                                                           _set_up_pamodel_for_simulations
                                                           )
-from Scripts.mcpam_generation_uniprot_id import set_up_ecoli_mcpam, set_up_ecoli_pam
 from Scripts.mcpam_toy_generation import build_toy_model
 from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 import matplotlib.pyplot as plt; plt.rcdefaults()

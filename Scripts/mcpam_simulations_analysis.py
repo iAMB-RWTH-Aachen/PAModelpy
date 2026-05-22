@@ -14,10 +14,6 @@ from src.PAModelpy.PAModel import PAModel
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.MembraneSector import MembraneSector
 from src.PAModelpy.configuration import Config
-from Scripts.mcpam_generation_uniprot_id import (parse_reaction2protein,
-                                                 set_up_ecolicore_pam, set_up_ecolicore_mcpam,
-                                                 set_up_ecolicore_mcpam_new_surface_parameter,
-                                                 set_up_ecoli_pam, set_up_ecoli_mcpam)
 
 def run_simulation_pam_mcpam(models, type:str="full scale"):
     fontsize = 25

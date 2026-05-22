@@ -5,6 +5,7 @@ from copy import copy, deepcopy
 import pandas as pd
 from cobra import Object
 import os
+from typing import Union
 
 from .configuration import Config
 from .EnzymeSectors import EnzymeSector
