@@ -5,14 +5,14 @@ df = pd.DataFrame({
     "Value": ["membrane", 3.2042, -0.3285],
     "Unit": ["", "µm2/fL", "µm²·h/fL"],
     "Description": [
-        "membrane",
-        "surface to volume ratio",
-        "Increase in ..."
+        "membrane ID",
+        "surface to volume ratio at zero growth",
+        "Increase in surface to volume ratio per unit increase of the growth rate"
     ]
 })
 
 
-date_list = ['2026_04_01', '2026_05_06', '2026_05_08', '2026_05_09', '2026_05_14']
+date_list = ['2026_04_01', '2026_05_06', '2026_05_08', '2026_05_09', '2026_05_14', '2026_05_21']
 
 for date in date_list:
     file_path = f'Results/PAM_parametrizer/Diagnostics_files/{date}/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
