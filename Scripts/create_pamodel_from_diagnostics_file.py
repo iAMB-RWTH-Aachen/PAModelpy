@@ -180,7 +180,7 @@ if __name__ == '__main__':
                        membrane_sector=True,
                        separate_memprot_from_tpc=True,
                        total_protein=0.241,
-                       max_membrane_area=0.5154
+                       usable_area_fraction=0.5154
                        )
 
     mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_21/pam_parametrizer_diagnostics_mciML1515_1.xlsx',

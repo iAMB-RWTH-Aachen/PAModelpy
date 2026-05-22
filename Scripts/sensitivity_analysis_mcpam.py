@@ -344,9 +344,9 @@ mcpam = set_up_pam(pam_info_file=pam_info_path,
                     membrane_sector=True,
                     separate_memprot_from_tpc=True,
                     total_protein=0.241,
-                    max_membrane_area=0.5154
+                    usable_area_fraction=0.5154
                     )
-area = mcpam.sectors.get_by_id('MembraneSector').max_membrane_area*100
+area = mcpam.sectors.get_by_id('MembraneSector').usable_area_fraction*100
 
 mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
                                                  model=mcpam,
