@@ -509,7 +509,7 @@ def set_up_pam(pam_info_file:str = '',
                translational_enzymes: bool = True,
                unused_enzymes: bool = True,
                membrane_sector: bool = False,
-               max_membrane_area:float = 0.5462,
+               max_membrane_area:float = 0.5154,
                separate_memprot_from_tpc: bool = False,
                sensitivity:bool = True,
                enzyme_db:pd.DataFrame = None,
@@ -577,13 +577,13 @@ def set_up_pam(pam_info_file:str = '',
         membrane_info = pd.read_excel(pam_info_file, sheet_name='Membrane').set_index('Parameter')
         active_membrane_info = pd.read_excel(pam_info_file, sheet_name='MembraneEnzymes').set_index('enzyme_id')
 
-        area_avail_0 = membrane_info.at['area_avail_0','Value']
-        area_avail_mu = membrane_info.at['area_avail_mu','Value']
+        sv_0 = membrane_info.at['sv_0','Value']
+        sv_slope = membrane_info.at['sv_slope','Value']
         alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
         enzyme_location = active_membrane_info.location.to_dict()
 
-        membrane_sector = MembraneSector(sv_0=area_avail_0,
-                                         sv_slope=area_avail_mu,
+        membrane_sector = MembraneSector(sv_0=sv_0,
+                                         sv_slope=sv_slope,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location,
                                          usable_area_fraction=max_membrane_area,
