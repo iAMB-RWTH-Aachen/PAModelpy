@@ -18,8 +18,6 @@ Config.ACETATE_EXCRETION_RXNID = 'R9'
 
 #global variables:
 global metabolites, n, m, Etot
-#global variables:
-global metabolites, n, m, Etot
 metabolites = ['Substrate', 'ATP', 'CO2', 'Precursor', 'Biomass', 'Byproduct', 'Intermediate']
 n = 9
 m = 7
@@ -30,17 +28,17 @@ def build_toy_gem():
     '''
     Rebuild the toymodel as in the MATLAB script.
     sub int byp atp co2 pre bio
-R1 = [ 1,  0,  0,  0,  0,  0,  0];
-R2 = [-1,  1,  0,  0,  1,  0,  0];
-R3 = [ 0, -1,  1,  1,  0,  0,  0];
-R3r= -R3;
-R4 = [ 0, -1,  0,  2,  1,  0,  0];
-R5 = [ 0, -1,  0,  0,  0,  1,  0];
-R6 = [ 0,  0,  0, -1,  0, -1,  1];
-R7 = [ 0,  0,  0,  0,  0,  0, -1];
-R8 = [ 0,  0,  0,  0, -1,  0,  0];
-R9 = [ 0,  0, -1,  0,  0,  0,  0];
-S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
+    R1 = [ 1,  0,  0,  0,  0,  0,  0];
+    R2 = [-1,  1,  0,  0,  1,  0,  0];
+    R3 = [ 0, -1,  1,  1,  0,  0,  0];
+    R3r= -R3;
+    R4 = [ 0, -1,  0,  2,  1,  0,  0];
+    R5 = [ 0, -1,  0,  0,  0,  1,  0];
+    R6 = [ 0,  0,  0, -1,  0, -1,  1];
+    R7 = [ 0,  0,  0,  0,  0,  0, -1];
+    R8 = [ 0,  0,  0,  0, -1,  0,  0];
+    R9 = [ 0,  0, -1,  0,  0,  0,  0];
+    S  = [R1;R2;R3;R3r;R4;R5;R6;R7;R8;R9]';
 
     :return: Cobrapy model instance as model
     '''
