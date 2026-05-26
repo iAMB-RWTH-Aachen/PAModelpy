@@ -169,7 +169,7 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
 if __name__ == '__main__':
     pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_24/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
-    pam = set_up_pam(pam_info_file=pam_info_file,
+    pam = set_up_pam(pam_info_file="Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx",
                     model=model_path,
                     sensitivity=False,
                     membrane_sector=False,                  

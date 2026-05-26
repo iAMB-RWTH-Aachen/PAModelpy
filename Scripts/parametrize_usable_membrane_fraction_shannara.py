@@ -2,7 +2,7 @@ import pandas as pd
 from src.PAModelpy.utils.pam_generation import set_up_pam, set_up_core_pam
 from src.Protein import Protein
 
-INNER_SURFACE_ECOLI = 10.68 # in um**2 inner membrane surface area for ecoli at rowth 0.67 
+S_V_ECOLI = 2.97 # in fmol/um3 surface to volume ratio of an ecoli cell at rowth 0.67 
 ### Helper functions ###
 def find_var_for_complex(enz_complex, df):
     enzymes = enz_complex.id.split('_')
@@ -56,4 +56,4 @@ if __name__ == "__main__":
         occupied_area_per_protein = protein_object.calculate_protein_area(p_conc_for_complex, alpha_for_complex)
         total_occupied_area += occupied_area_per_protein
 
-    print(f'Membrane occupancy [%]: {total_occupied_area / INNER_SURFACE_ECOLI * 100} %') # 10.68 um2 is the inner membrane area for ecoli k-12 mg1655 at growth rate 0.67, grown in minimal glucose media
+    print(f'Membrane occupancy [%]: {total_occupied_area / S_V_ECOLI * 100} %') # 10.68 um2 is the inner membrane area for ecoli k-12 mg1655 at growth rate 0.67, grown in minimal glucose media
