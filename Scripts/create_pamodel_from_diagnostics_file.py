@@ -167,7 +167,7 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_21/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_24/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
     pam = set_up_pam(pam_info_file=pam_info_file,
                     model=model_path,
@@ -183,7 +183,7 @@ if __name__ == '__main__':
                        usable_area_fraction=0.5154
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_21/pam_parametrizer_diagnostics_mciML1515_1.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_24/pam_parametrizer_diagnostics_mciML1515_1.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.0075, intercept=None, lin_rxn_id='EX_glc__D_e')
