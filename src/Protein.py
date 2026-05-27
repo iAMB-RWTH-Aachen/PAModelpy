@@ -27,7 +27,7 @@ class Protein:
         self.protein_disc_area = alpha_helix_units * self.alpha_area
         # unit: protein_disc_area [m2], number_of_alpha_helix [-], alpha_helix_width [m]
         return self.protein_disc_area
-    def calculate_protein_number_per_cell(self, protein_concentration, p_conc_unit):
+    def calculate_protein_number_per_volume(self, protein_concentration, p_conc_unit):
         if p_conc_unit == 'fmol/ug':
             protein_concentration = protein_concentration * self.total_protein_per_volume * 1e-9
             #unit: protein_concentration (per volume) [fmol/fL], protein_concentration [fmol/ug], tot_protein_per_volume [ug/ul]  
@@ -46,10 +46,10 @@ class Protein:
     def calculate_protein_area(self, protein_concentration, alpha_helix_units, p_conc_unit:str="fmol/ug"):
         self.calculate_cell_volume()
         self.calculate_protein_disc_area(alpha_helix_units)
-        protein_nr_per_cell = self.calculate_protein_number_per_cell(protein_concentration, p_conc_unit) if p_conc_unit != "protein copies/cell" else protein_concentration
-        self.protein_area = protein_nr_per_cell * self.protein_disc_area * 1e12
-        #unit: protein_area [um2], protein_nr_per_cell [-], protein_disc_area [m2]'
-        return self.protein_area
+        protein_nr_per_volume = self.calculate_protein_number_per_volume(protein_concentration, p_conc_unit) if p_conc_unit != "protein copies/cell" else protein_concentration
+        self.S_V_occupied = protein_nr_per_volume * self.protein_disc_area * 1e12
+        #unit: S_V_occupied [um2/fL], protein_nr_per_cell [-/fL], protein_disc_area [m2]'
+        return self.S_V_occupied
 
     def is_in_membrane(self, type):
         return type == 'membrane protein'

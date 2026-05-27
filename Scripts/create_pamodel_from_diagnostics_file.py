@@ -1,5 +1,6 @@
 import pandas as pd
 from cobra import Model
+from cobra.io import read_sbml_model
 from typing import Tuple, Literal
 import re
 import math
@@ -10,7 +11,8 @@ from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protei
 from Scripts.mcpam_simulations_analysis import (
     run_simulation_pam_mcpam, 
     run_simulations_pam_mcpam_w_different_areas,
-    run_simulations_pam_mcpam_w_different_tpcs
+    run_simulations_pam_mcpam_w_different_tpcs,
+    run_simulation_gem_pam_mcpam
 )
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
@@ -167,8 +169,9 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_24/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_25/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
+    gem = read_sbml_model(model_path)
     pam = set_up_pam(pam_info_file="Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx",
                     model=model_path,
                     sensitivity=False,
@@ -183,7 +186,7 @@ if __name__ == '__main__':
                        usable_area_fraction=0.5154
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_24/pam_parametrizer_diagnostics_mciML1515_1.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_25/pam_parametrizer_diagnostics_mciML1515_7.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
     # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.0075, intercept=None, lin_rxn_id='EX_glc__D_e')
@@ -200,9 +203,10 @@ if __name__ == '__main__':
     #         print_change=True
     #     )
     
-    models = [pam, mcpam]
+    models = [gem, pam, mcpam]
 
-    run_simulation_pam_mcpam(models)    
+    run_simulation_gem_pam_mcpam(models=models)
+    # run_simulation_pam_mcpam(models)    
     # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.2, 0.3, 0.4, 0.5, 0.6])
     # run_simulations_pam_mcpam_w_different_tpcs(models=models, tpc_list=[0.2, 0.21, 0.22, 0.23, 0.24, 0.258])
     

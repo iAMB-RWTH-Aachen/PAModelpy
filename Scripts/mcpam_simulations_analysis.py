@@ -176,9 +176,11 @@ def run_simulation_gem_pam_mcpam(models, type:str="full scale"):
         for glc in glc_uptake_rates:
             with model:
                 # change glucose uptake rate
-                model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
+                model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
+                model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
                 # disable pyruvate formate lyase (inhibited by oxygen)
-                model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
+                model.reactions.get_by_id('PFL').upper_bound = 0
+                model.reactions.get_by_id('PFL').lower_bound = 0
                 # solve the model
                 sol_pam = model.optimize()
                 # save data

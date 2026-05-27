@@ -334,9 +334,9 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_24/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_25/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
-diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_24/pam_parametrizer_diagnostics_mciML1515_2.xlsx'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_25/pam_parametrizer_diagnostics_mciML1515_7.xlsx'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
