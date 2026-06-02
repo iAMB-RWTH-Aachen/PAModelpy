@@ -58,11 +58,12 @@ def _fva_step(variable: Union[Variable, EnzymeVariable, Reaction]) -> Tuple[str,
     # so directly update coefs here to not trigger redundant resets
     # in the history manager which can take longer than the actual
     # FVA for small models
+    variable_id = variable.id if not (isinstance(variable, Variable) or isinstance(variable, str)) else variable
     if isinstance(variable, Variable):
         model_var = _model.variables[variable.name]
         coeff = {model_var:1}
-    elif variable.id in _model.variables:
-        coeff = {_model.variables[variable.id]:1}
+    elif variable_id in _model.variables:
+        coeff = {_model.variables[variable_id]:1}
     else:
         model_var_f = _model.variables[variable.forward_variable.name]
         model_var_r = _model.variables[variable.reverse_variable.name]
