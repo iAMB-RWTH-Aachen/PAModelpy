@@ -334,19 +334,19 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 # BUILD MODEL
 ##############################################################################
 
-pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_25/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_28/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
-diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_25/pam_parametrizer_diagnostics_mciML1515_7.xlsx'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_28/pam_parametrizer_diagnostics_mciML1515_10.xlsx'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
                     sensitivity=True, 
                     membrane_sector=True,
-                    separate_memprot_from_tpc=True,
-                    total_protein=0.241,
-                    usable_area_fraction=0.5154
+                    # separate_memprot_from_tpc=True,
+                    total_protein=0.258,
+                    usable_area_fraction=0.6174
                     )
-area = mcpam.sectors.get_by_id('MembraneSector').usable_area_fraction*100
+area = mcpam.sectors.get_by_id('MembraneSector').usable_area_fraction
 
 mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
                                                  model=mcpam,
@@ -375,7 +375,7 @@ glc_uptake_rates = list(np.linspace(1, 10, 10))
 # MAIN LOOP: ONE FIGURE PER AREA
 ##############################################################################
 
-print(f"\nRunning mcPAM with {area:.1f}% membrane area\n")
+print(f"\nRunning mcPAM with {area*100:.1f}% membrane area\n")
 
 results = calculate_sensitivities(mcpam)
 

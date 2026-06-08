@@ -222,6 +222,9 @@ class MembraneSector(EnzymeSector):
         return alpha_number_for_enz_complex
 
     def _get_coeff_value(self, alpha_number_for_complex:int):
+        '''
+        Returns coefficient value in um2*gDW/mmol*fL
+        '''
 
         coeff = (1e-6 # correction for the solver issue
                  * alpha_number_for_complex
@@ -229,3 +232,29 @@ class MembraneSector(EnzymeSector):
                  * self.unit_factor)
 
         return coeff
+
+class UnusedMembraneSector(EnzymeSector):
+    DEFAULT_ALPHA_NUMBER = 12  # default alpha helix unit number for transport proteins [-] (PJ Henderson 1993)
+    DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
+
+    # class with all the information on 'excess' membrane sector (linear dependent on substrate uptake rate)
+    def __init__(self, model):
+        self.mol_mass = [self.DEFAULT_ALPHA_NUMBER]
+        self.model = model
+        self.ups_intercept = model.sectors.get_by_id('UnusedEnzymeSector').ups_0 # amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW
+        self.ups_slope = model.sectors.get_by_id('UnusedEnzymeSector').ups_mu # slope of linear relation with growth/substrate uptake in g/gDW/h
+
+    def get_conversion_unit(self):
+        """
+        Returns conversion unit in um2*gDW/(g*fL) to transform unused protein sector's slope/intercept to unused membrane sector slope/intercept
+        """
+        conversion_unit = 
+
+
+    def add_to_model(self, model):
+        print("Add unused protein sector\n")
+        if self.mol_mass is None:
+            self.mol_mass = [self.DEFAULT_MOL_MASS]
+        return self.add_sector(
+            model=model, slope=self.ups_mu * 1e3, intersect=self.ups_0_coeff
+        )

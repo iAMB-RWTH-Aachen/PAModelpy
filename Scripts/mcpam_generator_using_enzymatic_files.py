@@ -30,9 +30,9 @@ if __name__ == "__main__":
                        model=model_path,
                        sensitivity=False, 
                        membrane_sector=True,
-                       separate_memprot_from_tpc=True,
-                       total_protein=0.241,
-                       usable_area_fraction=0.5154
+                    #    separate_memprot_from_tpc=True,
+                       total_protein=0.258,
+                       usable_area_fraction=0.6174
                        )
     models = [pam, mcpam]
     

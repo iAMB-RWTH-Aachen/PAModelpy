@@ -166,7 +166,7 @@ class PAModel(Model):
 
     @property
     def translational_enzymes(self):
-        return self.sectors.get_by_id("TranslationalEnzymeSector")
+        return self.sectors.get_by_id("TranslationalProteinSector")
 
     @translational_enzymes.setter
     def translational_enzymes(
