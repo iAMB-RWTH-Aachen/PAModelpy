@@ -74,6 +74,7 @@ class MembraneSector(EnzymeSector):
             cdw_per_volume: Union[int, float] = 268.36 * 1e-15,  
             n_a: Union[int, float] = 6.02214076 * 1e23,  
             separate_memprot_from_tpc: bool = True,
+            unused_membrane_sector: bool = False,
             configuration=Config):
 
         self.id = 'MembraneSector'
@@ -84,18 +85,24 @@ class MembraneSector(EnzymeSector):
         self.usable_area_fraction = usable_area_fraction 
         self.unit_factor = 1e-3 * cdw_per_volume * n_a
         self.membrane_proteins = {}
+        self.unused_membrane_sector = unused_membrane_sector
 
-        #Defining the slope and intercept
+        # Defining the slope and intercept
         self.intercept = sv_0 #μm2
         self.slope = sv_slope #μm2/h
 
         self.separate_memprot_from_tpc = separate_memprot_from_tpc
+        
 
     def add(self, model):
 
         print(f"Add membrane protein sector with {self.usable_area_fraction*100}% max inner membrane area\n")
         model.membrane_sector = self
         self._add_membrane_constraint(model)
+
+        # Add unused membrane sector if set to True
+        if self.unused_membrane_sector == True:
+            self.unused_membrane_sector = UnusedMembraneSector(model=model)
         pass
 
     def _add_membrane_constraint(self, model):
@@ -189,16 +196,22 @@ class MembraneSector(EnzymeSector):
         }
 
         for enz_complex in model.enzyme_variables:
-            if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
-                var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
-                if any(name.startswith(enz_complex.id) for name in var_names):
-                    model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
             alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+
+            # Save membrane proteins (id, kcat and alpha number) inside of a dictionary
+            if not isinstance(enz_complex, str) and alpha_number_for_complex != 0:
+                self.membrane_proteins[enz_complex.id] = [enz_complex.kcats, alpha_number_for_complex]
+
             coeff = self._get_coeff_value(alpha_number_for_complex)
 
             coefficients[enz_complex.forward_variable] = coeff 
             coefficients[enz_complex.reverse_variable] = coeff 
+
+            if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
+                var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
+                if any(name.startswith(enz_complex.id) for name in var_names):
+                    model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
 
         model.constraints['membrane'].ub = self.intercept*new_usable_area_fraction
         model.constraints['membrane'].set_linear_coefficients(coefficients=coefficients)
@@ -236,19 +249,60 @@ class MembraneSector(EnzymeSector):
 class UnusedMembraneSector(EnzymeSector):
     DEFAULT_ALPHA_NUMBER = 12  # default alpha helix unit number for transport proteins [-] (PJ Henderson 1993)
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
+    DEFAULT_TOTAL_PROTEIN_CONCENTRATION = 0.258 # global protein concentration of an E.coli cell 
 
     # class with all the information on 'excess' membrane sector (linear dependent on substrate uptake rate)
     def __init__(self, model):
         self.mol_mass = [self.DEFAULT_ALPHA_NUMBER]
         self.model = model
-        self.ups_intercept = model.sectors.get_by_id('UnusedEnzymeSector').ups_0 # amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW
+        if isinstance(model.sectors.get_by_id('UnusedEnzymeSector').ups_0, list):
+            self.ups_intercept =  model.sectors.get_by_id('UnusedEnzymeSector').ups_0[0]
+        else:
+            self.ups_intercept = model.sectors.get_by_id('UnusedEnzymeSector').ups_0# amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW
         self.ups_slope = model.sectors.get_by_id('UnusedEnzymeSector').ups_mu # slope of linear relation with growth/substrate uptake in g/gDW/h
+
+        # Convert the slope and intercept to the correct unit 
+        conversion_unit = self.get_conversion_unit()
+        unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
+        self.intercept = self.ups_intercept * conversion_unit * unused_membrane_fraction
+        self.slope = self.ups_slope * conversion_unit *unused_membrane_fraction
+
+        self._link_unused_enzyme_sector_to_membrane_sector(model)
+
+
+    def _link_unused_enzyme_sector_to_membrane_sector(self, model):
+        ups_sector = model.sectors.get_by_id('UnusedEnzymeSector') # unused protein sector
+        lin_rxn = model.reactions.get_by_id(ups_sector.id_list[0])
+
+        # relate the sector to the total membrane sector if it's there
+        membrane_constraint = model.constraints['membrane']
+        if 'membrane' in model.constraints.keys():
+            # add parts of constraint corresponding to the unused enzyme sector to the total_membrane constraint
+            # 1. subtract the intercept value from the sum of surface to volume ratio in the membrane (S/V_available == S/V_total - S/V_unused)
+            membrane_ub = membrane_constraint.ub
+            membrane_constraint.ub = (
+                membrane_ub - self.intercept
+            )
+
+            # 2. add the slope and variable of unused membrane sector to the right hand side of the membrane constraint
+            for direction_variable, coeff in zip([lin_rxn.forward_variable, lin_rxn.reverse_variable], [self.slope, -self.slope]):
+
+                membrane_constraint.set_linear_coefficients(
+                    {
+                        direction_variable: coeff
+                    })
 
     def get_conversion_unit(self):
         """
         Returns conversion unit in um2*gDW/(g*fL) to transform unused protein sector's slope/intercept to unused membrane sector slope/intercept
         """
-        conversion_unit = 
+        # Get initial coefficient value from the existing method in MembraneSector with unit um2*gDW/mmol*fL
+        coeff_value = self.model.sectors.get_by_id('MembraneSector')._get_coeff_value(self.DEFAULT_ALPHA_NUMBER)
+
+        # Transfrom the coefficient value to conversion unit of um2*gDW/g*fL
+        conversion_unit = coeff_value * 1e3 / self.DEFAULT_MOL_MASS
+
+        return conversion_unit
 
 
     def add_to_model(self, model):
