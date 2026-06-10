@@ -36,6 +36,7 @@ def test_unused_membrane_sector_updates_variable_side_correctly():
 
     # Act
     unused_membrane_sector = UnusedMembraneSector(sut)
+    sut.sectors.get_by_id("MembraneSector").unused_membrane_sector = unused_membrane_sector
 
     # Re-read coefficients (after)
     updated_coeffs = membrane_constraint.get_linear_coefficients(
@@ -61,7 +62,8 @@ def test_unused_membrane_sector_updates_membrane_constraint_upper_bound_correctl
     original_ub = sut.constraints['membrane'].ub
 
     # Act
-    unused_membrane_sector = UnusedMembraneSector(sut) # Add unused membrane sector which automatically links the unused membrane sector to the original membrane sector
+    unused_membrane_sector = UnusedMembraneSector(sut) # Add unused membrane sector 
+    sut.sectors.get_by_id('MembraneSector').unused_membrane_sector = unused_membrane_sector
     new_ub = sut.constraints['membrane'].ub
     
     assert new_ub < original_ub # The new intercept will always be smaller than the original intercept because a portion of the available S/V ratio is allocated for unused membrane enyzmes (substracted). 
@@ -148,7 +150,7 @@ def test_if_add_membrane_constraint_works():
     assert membrane_constraint.ub == toy_pam.membrane_sector.intercept
 
 ##helper methods
-def build_membrane_sector(unused_membrane_sector: bool=False):
+def build_membrane_sector(enable_unused_membrane_sector: bool=False):
     alpha_numbers_dict = {"E1": 20,
                           "E2": 20,
                           "E3": 20,
@@ -182,7 +184,7 @@ def build_membrane_sector(unused_membrane_sector: bool=False):
     membrane_sector = MembraneSector(sv_slope=-0.1, sv_0=1,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location, usable_area_fraction=1,
-                                         unused_membrane_sector=unused_membrane_sector)
+                                         enable_unused_membrane_sector=enable_unused_membrane_sector)
 
     return membrane_sector
 
@@ -224,7 +226,7 @@ def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False, unused_m
 
     # Building Membrane Sector
     if membrane_sector:
-        membrane_sector = build_membrane_sector(unused_membrane_sector=unused_membrane_sector)
+        membrane_sector = build_membrane_sector(enable_unused_membrane_sector=unused_membrane_sector)
     else:
         membrane_sector = None
 
