@@ -149,32 +149,63 @@ class MembraneSector(EnzymeSector):
         model.solver.update()
         occupied_membrane.set_linear_coefficients(coefficients=coefficients)
 
-    def calculate_occupied_membrane(self, model, get_df:bool = False, get_memprot_contribution:bool = False):
+    def calculate_occupied_membrane(self,
+                                    model,
+                                    get_df:bool = False,
+                                    ):
         occupied_area = 0
         memprot_conc = 0
 
+        # Occupied area from membrane proteins
         for enz_complex in model.enzyme_variables:
-            enz_complex_concentration = enz_complex.forward_variable.primal + enz_complex.reverse_variable.primal
-            alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+            enz_complex_concentration = (
+                enz_complex.forward_variable.primal
+                + enz_complex.reverse_variable.primal
+            )
+
+            alpha_number_for_complex = (
+                self._get_alpha_number_for_enz_complex(enz_complex)
+            )
+
             coeff = self._get_coeff_value(alpha_number_for_complex)
+
             occupied_area += coeff * enz_complex_concentration
 
-            if alpha_number_for_complex != 0:
-                memprot_conc += enz_complex_concentration * 1e-9 * enz_complex.molmass # g_enz/g_DW
+        # Add occupancy from the unused membrane sector if enabled
+        unused_area = 0
 
-        if get_memprot_contribution: # Membrane protein contribution to the total protein pool
-            memprot_contribution = memprot_conc / model.p_tot * 100 # Result in %
+        if (
+            self.enable_unused_membrane_sector
+            and self._unused_membrane_sector is not None
+        ):
+            ups_sector = model.sectors.get_by_id('UnusedEnzymeSector')
+            lin_rxn = model.reactions.get_by_id(ups_sector.id_list[0])
 
-            return memprot_contribution
+            unused_flux = (
+                lin_rxn.forward_variable.primal
+                - lin_rxn.reverse_variable.primal
+            )
+
+            unused_area = (
+                self._unused_membrane_sector.intercept
+                + self._unused_membrane_sector.slope * unused_flux
+            )
+
+        total_occupied_area = occupied_area + unused_area
 
         if get_df:
-            df = self.get_prot_occupancy_df(model, occupied_area)
-
+            df = self.get_prot_occupancy_df(model, total_occupied_area)
             return df
 
-        available_area = (self.slope * model.objective.value + self.intercept) * self.usable_area_fraction # available membrane area for inner membrane proteins
+        # Total membrane area available from geometry
+        total_available_area = (
+            self.slope * model.objective.value
+            + self.intercept
+        ) * self.usable_area_fraction
 
-        return occupied_area, available_area
+        return total_occupied_area, total_available_area
+
+   
 
     def get_prot_occupancy_df(self, model, occupied_area):
         df = []
