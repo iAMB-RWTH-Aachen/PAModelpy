@@ -169,7 +169,7 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_05_27/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_09/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
 
     pam = set_up_pam(pam_info_file="Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx",
@@ -181,16 +181,15 @@ if __name__ == '__main__':
                        model=model_path,
                        sensitivity=False, 
                        membrane_sector=True,
-                       separate_memprot_from_tpc=False,
-                       total_protein=0.258,
-                       usable_area_fraction=0.6174
+                       separate_memprot_from_tpc=True,
+                       total_protein=0.241,
+                       usable_area_fraction=0.6174,
+                       enable_unused_membrane_sector=True
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_05_27/pam_parametrizer_diagnostics_mciML1515_9.xlsx',
+    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_06_09/pam_parametrizer_diagnostics_mciML1515_4.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
-    mcpam.change_kcat_value('ACt2rpp', {'f': 16.50244442991361, 'b': 488.5334650313688})
-    mcpam.change_kcat_value('ACt2rpp', {'f': 16.50244442991361, 'b': 488.5334650313688})
     # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=-0.099063584, intercept=0.111925, lin_rxn_id='BIOMASS_Ec_iML1515_core_75p37M', print_change=True)
     # mcpam.change_sector_parameters(mcpam.translational_enzymes, slope=0.048069755, intercept=0.048069755, lin_rxn_id='BIOMASS_Ec_iML1515_core_75p37M', print_change=True)
     # sector_parameters_df = pd.read_excel('Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_2.xlsx', sheet_name="sector_parameters")
