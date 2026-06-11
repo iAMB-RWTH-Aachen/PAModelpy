@@ -234,34 +234,32 @@ class MembraneSector(EnzymeSector):
     def change_available_membrane_area(self, new_max_area: float, model):
         self._update_membrane_constraint(new_max_area, model)
 
-    def _update_membrane_constraint(self, new_usable_area_fraction:float, model):
+    def _update_membrane_constraint(self,
+                                    new_usable_area_fraction: float,
+                                    model
+                                    ):
+        """
+        Fast update of membrane constraint:
+        Only updates terms that depend on usable membrane area fraction.
+
+        Assumes enzyme coefficients are already initialized and do NOT change here.
+        """
+
         self.usable_area_fraction = new_usable_area_fraction
-        self.membrane_proteins = {}
+        membrane_constraint = model.constraints["membrane"]
 
-        coefficients = {
-            model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable: -self.slope * new_usable_area_fraction
-        }
+        # biomass coefficient update
+        biomass_var = model.reactions.get_by_id(model.BIOMASS_REACTION).forward_variable
+        membrane_constraint.set_linear_coefficients({biomass_var: -self.slope * new_usable_area_fraction})
 
-        for enz_complex in model.enzyme_variables:
+        # upper bound (intercept term)
+        ub = self.intercept * new_usable_area_fraction
+        membrane_constraint.ub = ub
 
-            alpha_number_for_complex = self._get_alpha_number_for_enz_complex(enz_complex)
+        # unused membrane sector (if enabled)
+        if (self.enable_unused_membrane_sector and self._unused_membrane_sector is not None):
+            self._link_unused_enzyme_sector_to_membrane_sector(model)
 
-            # Save membrane proteins (id, kcat and alpha number) inside of a dictionary
-            if not isinstance(enz_complex, str) and alpha_number_for_complex != 0:
-                self.membrane_proteins[enz_complex.id] = [enz_complex.kcats, alpha_number_for_complex]
-
-            coeff = self._get_coeff_value(alpha_number_for_complex)
-
-            coefficients[enz_complex.forward_variable] = coeff 
-            coefficients[enz_complex.reverse_variable] = coeff 
-
-            if self.separate_memprot_from_tpc and enz_complex.id in self.membrane_proteins:
-                var_names = {v.name for v in model.constraints[model.TOTAL_PROTEIN_CONSTRAINT_ID].expression.free_symbols}
-                if any(name.startswith(enz_complex.id) for name in var_names):
-                    model.exclude_variable_from_constraint(variable=enz_complex, constraint_name=model.TOTAL_PROTEIN_CONSTRAINT_ID)
-
-        model.constraints['membrane'].ub = self.intercept*new_usable_area_fraction
-        model.constraints['membrane'].set_linear_coefficients(coefficients=coefficients)
         model.solver.update()
 
         return self
