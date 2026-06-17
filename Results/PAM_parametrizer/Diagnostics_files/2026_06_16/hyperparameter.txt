@@ -1,0 +1,19 @@
+All runs in this folder were run using following specifications:
+
+- processes = 4
+- gene_flow_event == 4
+- num_kcats_to_mutate = 40
+- threshold_iteration = 15
+- usable_area_fraction = 0.6174
+- separate_memprot_from_tpc = True
+- unused_membrane_sector = True
+- total_protein = 0.241
+- kcat_increase_factor = 3
+- biomass_weight = 5
+- acetate_weight = 5
+- starting_kcat = proteinAllocationModel_EnzymaticData_iML1515_10.xlsx 
+#Membrane enzymes now further classified. Occupied area calculation only considers "Cell inner membrane" proteins
+#Instead of using max(alpha_numbers_in_complex), sum(alpha_numbers_in_complex) was used
+#Corrected the membrane constraint. Used S/V instead of pure membrane area
+#Corrected parameter value fraction f (now accounting for S/V (um2/fL) ratio instead of pure membrane area(um2))
+#Added UnusedMembraneSector. Now the membrane (surface to volume ratio) is even smaller because some of it is allocated for unused membrane proteins. The amount of unused membrane sector is correlated with glucose uptake

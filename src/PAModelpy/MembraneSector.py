@@ -332,9 +332,14 @@ class UnusedMembraneSector(EnzymeSector):
 
         # Convert the slope and intercept to the correct unit 
         conversion_unit = self._get_conversion_unit()
+        # unused_membrane_fraction = (0.258-0.241)/0.258
         unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
         self.intercept = self.ups_intercept * conversion_unit * unused_membrane_fraction
         self.slope = self.ups_slope * conversion_unit *unused_membrane_fraction
+
+    # @property
+    # def model(self):
+    #     return self.model
 
     def _get_conversion_unit(self):
         """

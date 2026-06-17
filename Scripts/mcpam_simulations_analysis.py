@@ -60,6 +60,16 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
                     model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
                     sol_pam = model.optimize()
+                    # check acetate secretion
+                    if sol_pam.fluxes['EX_ac_e'] > 0:
+                        atpm_rxn = model.reactions.get_by_id('ATPM')
+
+                        # increase ATPM demand by 10%
+                        current_lb = atpm_rxn.lower_bound
+                        atpm_rxn.lower_bound += current_lb * 0.10
+
+                        # re-optimize
+                        sol_pam = model.optimize()
                     # save data
                     fluxes_list.append(sol_pam.fluxes)  # flux distributions
                     concentration = 0
@@ -79,6 +89,19 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
                     model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                     # solve the model
                     sol_pam = model.optimize()
+                    # check acetate secretion
+                    if sol_pam.fluxes['EX_ac_e'] > 0:
+                        atpm_rxn = model.reactions.get_by_id('ATPM')
+
+                        # increase ATPM demand by 10%
+                        current_lb = atpm_rxn.lower_bound
+                        atpm_rxn.lower_bound += current_lb * 0.10
+
+                        # re-optimize
+                        sol_pam = model.optimize()
+                        atpm_flux = sol_pam.fluxes['ATPM']
+                        atpm_lb = model.reactions.ATPM.lower_bound
+                        print(glc, atpm_flux, atpm_lb)
                     # save data
                     fluxes_list.append(sol_pam.fluxes)  # flux distributions
                     concentration = 0
