@@ -791,16 +791,9 @@ class PAModel(Model):
                 self = self._make_lb_ub_constraint(
                     self, rxn, rxn.lower_bound, rxn.upper_bound
                 )
-                # reset the reaction bounds
-                # New
-                if rxn.lower_bound > 0:
-                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound - (rxn.lower_bound * 0.01), rxn.upper_bound + (
-                                rxn.upper_bound * 0.01)
-
-                if rxn.lower_bound <= 0:
-                    rxn.lower_bound, rxn.upper_bound = rxn.lower_bound + (rxn.lower_bound * 0.01), rxn.upper_bound + (
-                                rxn.upper_bound * 0.01)
-                    #
+        
+                rxn.lower_bound = -1e6
+                rxn.upper_bound = 1e6
 
     def add_rxn2protein_to_active_enzymes(self,
                                           rxn2protein: Dict[
@@ -865,13 +858,8 @@ class PAModel(Model):
                 self, rxn, rxn.lower_bound, rxn.upper_bound
             )
 
-            # New
-            if rxn.lower_bound > 0:
-                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound-(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
-
-            if rxn.lower_bound <= 0:
-                rxn.lower_bound, rxn.upper_bound = rxn.lower_bound+(rxn.lower_bound*0.01), rxn.upper_bound+(rxn.upper_bound*0.01)
-                #
+            rxn.lower_bound = -1e6
+            rxn.upper_bound = 1e6
 
     @staticmethod
     def _make_lb_ub_constraint(
@@ -1458,14 +1446,14 @@ class PAModel(Model):
     def change_reaction_ub(self, rxn_id: str, upper_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_ub"].ub = upper_bound
-            self.reactions.get_by_id(rxn_id).upper_bound = upper_bound*1.01
+            self.reactions.get_by_id(rxn_id).upper_bound = 1e6
         else:
             self.reactions.get_by_id(rxn_id).upper_bound = upper_bound
 
     def change_reaction_lb(self, rxn_id: str, lower_bound: float = None):
         if self._sensitivity:
             self.constraints[rxn_id + "_lb"].ub = -lower_bound
-            self.reactions.get_by_id(rxn_id).lower_bound = lower_bound*1.01
+            self.reactions.get_by_id(rxn_id).lower_bound = -1e6
         else:
             self.reactions.get_by_id(rxn_id).lower_bound = lower_bound
 
