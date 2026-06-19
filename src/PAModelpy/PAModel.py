@@ -1363,11 +1363,6 @@ class PAModel(Model):
                 self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub = (
                     self.constraints[self.TOTAL_PROTEIN_CONSTRAINT_ID].ub - intercept_diff
                 )
-            # reset the slope
-            if slope is not None:
-                self._adjust_sector_slope_in_total_protein_constraint(sector=sector,
-                                                                      lin_rxn=lin_rxn
-                                                                      )
 
         else:
             var = self.variables["R_" + sector.id]
@@ -1383,6 +1378,13 @@ class PAModel(Model):
                 # update the sector object
                 sector.variables = [var]
                 sector.constraints = [self.constraints[sector.id]]
+
+        # NEW adjust UnusedMembraneSector's parameters when UnusedEnzymeSector's parameters are changed because they are connected
+        unused_membrane_sector = self.sectors.get_by_id('MembraneSector').unused_membrane_sector
+
+        if isinstance(sector, UnusedEnzymeSector) and unused_membrane_sector is not None:
+            unused_membrane_sector.set_sector_slope_and_intercept_from_ups_sector(self)
+            unused_membrane_sector._link_unused_enzyme_sector_to_membrane_sector(self)
 
     def _adjust_sector_slope_in_total_protein_constraint(self,
                                                          sector: Sector,

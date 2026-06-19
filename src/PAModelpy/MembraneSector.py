@@ -113,7 +113,6 @@ class MembraneSector(EnzymeSector):
         # Add the metabolic model to unused_membrane_sector object if not None
         if self.unused_membrane_sector is not None:
             self.unused_membrane_sector.model = model
-            self.unused_membrane_sector._link_unused_enzyme_sector_to_membrane_sector(model=model)
         pass
 
     def _add_membrane_constraint(self, model):
@@ -296,8 +295,7 @@ class UnusedMembraneSector(EnzymeSector):
         self.slope = 0
 
         if model is not None:
-            ups_slope, ups_intercept = self._get_ue_sector_parameters(model)
-            self.set_sector_slope_and_intercept_from_ups_sector(model, ups_slope, ups_intercept)
+            self.set_sector_slope_and_intercept_from_ups_sector(model)
 
 
     @property
@@ -308,20 +306,17 @@ class UnusedMembraneSector(EnzymeSector):
     def model(self, model):
         self._model = model
 
-        ups_slope, ups_intercept = self._get_ue_sector_parameters(model) 
+        self.set_sector_slope_and_intercept_from_ups_sector(model)
+        self._link_unused_enzyme_sector_to_membrane_sector(model=model)
 
-        # Convert the slope and intercept to the correct unit 
-        ups_slope, ups_intercept = self._get_ue_sector_parameters(model)
-        self.set_sector_slope_and_intercept_from_ups_sector(model, ups_slope, ups_intercept)
-
-    def set_sector_slope_and_intercept_from_ups_sector(self, model, ups_slope, ups_intercept):
+    def set_sector_slope_and_intercept_from_ups_sector(self, model):
         """
         Take the unused protein sectors's (ups) intercept and slope, convert it to suitable unit for unused membrane sector, and finally update unused membrane sector's 
         intercept and slope
         """
+        ups_slope, ups_intercept = self._get_ue_sector_parameters(model)
         conversion_unit = self._get_conversion_unit()
-        unused_membrane_fraction = 0.15
-        # unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
+        unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
         self.intercept = ups_intercept * conversion_unit * unused_membrane_fraction
         self.slope = ups_slope * conversion_unit *unused_membrane_fraction
 
