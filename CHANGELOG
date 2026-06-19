@@ -1,3 +1,13 @@
+19 June 2026
+- **Function**: pam_generation.set_up_pam
+- **Issue**: when a pathlib Path object was passed as path to the genome-scale model file, the model was not build
+- **Fix**: instead of checking if model is a string, not checks if model is not a cobra model
+
+19 June 2026
+- **Function**: flux_analysis._get_variables
+- **Issue**: when a variable was passed as a string, it was interpreted as an object (accessing .id), which resulted in an error
+- **Fix**: added negation to if-statement when it tries to access .id and checks whether it is a string
+
 7 May 2026
 - **Function**: flux_analysis._get_variables
 - **Issue**: FVA failed for cobra models because in the beginning of the function a mapping to the enzyme variables was made
