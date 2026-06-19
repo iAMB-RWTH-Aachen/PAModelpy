@@ -296,6 +296,7 @@ class MembraneSector(EnzymeSector):
         model = model if model is not None else unused_membrane_sector.model
         ups_sector = model.sectors.get_by_id('UnusedEnzymeSector') # unused protein sector
         lin_rxn = model.reactions.get_by_id(ups_sector.id_list[0])
+        print(self._unused_membrane_sector.slope, self._unused_membrane_sector.intercept)
         
         # relate the sector to the total membrane sector if it's there
         membrane_constraint = model.constraints['membrane']
@@ -332,8 +333,9 @@ class UnusedMembraneSector(EnzymeSector):
 
         # Convert the slope and intercept to the correct unit 
         conversion_unit = self._get_conversion_unit()
-        # unused_membrane_fraction = (0.258-0.241)/0.258
-        unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
+        print(self.ups_intercept, self.ups_slope)
+        unused_membrane_fraction = 0.12
+        # unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
         self.intercept = self.ups_intercept * conversion_unit * unused_membrane_fraction
         self.slope = self.ups_slope * conversion_unit *unused_membrane_fraction
 
@@ -349,6 +351,6 @@ class UnusedMembraneSector(EnzymeSector):
         coeff_value = self.model.sectors.get_by_id('MembraneSector')._get_coeff_value(self.DEFAULT_ALPHA_NUMBER)
 
         # Transfrom the coefficient value to conversion unit of um2*gDW/g*fL
-        conversion_unit = coeff_value * 1e3 / self.DEFAULT_MOL_MASS
+        conversion_unit = coeff_value / self.DEFAULT_MOL_MASS * 1e9 # multiply with 1e9 to correct enzyme unit and solver tolerance
 
         return conversion_unit
