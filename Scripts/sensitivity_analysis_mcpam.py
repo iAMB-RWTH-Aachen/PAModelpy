@@ -25,8 +25,8 @@ Config.BIOMASS_REACTION = 'BIOMASS_Ecoli_core_w_GAM'
 DATA_DIR = os.path.join('Data')  # os.path.join(os.path.split(os.getcwd())[0], 'Data')
 
 ### 1 Useful functions
-def calculate_sensitivities(pamodel):
-    glc_uptake_rates = np.linspace(1, 10, 10)
+def calculate_sensitivities(pamodel, glc_uptake_rates:list = None):
+    glc_uptake_rates = np.linspace(1, 10, 10) if glc_uptake_rates == None else glc_uptake_rates
     Ccsc = []
     Cesc = []
     y_axis = []
@@ -38,8 +38,7 @@ def calculate_sensitivities(pamodel):
         print('glucose uptake rate ', glc, ' mmol/gcdw/h')
         with pamodel:
             # change glucose uptake rate
-            pamodel.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-            pamodel.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+            pamodel.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
             pamodel.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
             # solve the model
             # pamodel.objective = 'EX_ac_e'
@@ -370,7 +369,7 @@ pt_data['EX_glc__D_e'] = -pt_data['EX_glc__D_e']
 fontsize = 26
 width = 40
 height = 14
-glc_uptake_rates = list(np.linspace(1, 10, 10))
+glc_uptake_rates = list(np.linspace(1, 14, 14))
 
 ##############################################################################
 # MAIN LOOP: ONE FIGURE PER AREA
@@ -378,7 +377,7 @@ glc_uptake_rates = list(np.linspace(1, 10, 10))
 
 print(f"\nRunning mcPAM with {area*100:.1f}% membrane area\n")
 
-results = calculate_sensitivities(mcpam)
+results = calculate_sensitivities(mcpam, glc_uptake_rates=glc_uptake_rates)
 
 # Parse axes
 x_axis_csc, x_axis_esc = parse_x_axis_heatmap(
@@ -431,7 +430,7 @@ fig.set_figwidth(width)
 fig.set_figheight(height)
 os.makedirs("Figures", exist_ok=True)
 fig.savefig(
-    f"Figures/sENZ_2026_06_10/mcPAM_sensitivities_diagnostics_{suffix}_tpc_with_memprot.png",
+    f"Figures/sENZ_2026_06_16/mcPAM_sensitivities_diagnostics_{suffix}.png",
     dpi=250,
     bbox_inches='tight'
 )
