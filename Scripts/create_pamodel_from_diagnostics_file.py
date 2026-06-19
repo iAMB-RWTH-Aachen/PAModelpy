@@ -6,7 +6,8 @@ import re
 import math
 import numpy as np
 from typing import Union
-from src.PAModelpy.PAModel import PAModel, ActiveEnzymeSector, MembraneSector
+from src.PAModelpy.PAModel import PAModel
+from src.PAModelpy.MembraneSector import UnusedMembraneSector
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
 from Scripts.mcpam_simulations_analysis import (
     run_simulation_pam_mcpam, 
@@ -184,7 +185,7 @@ if __name__ == '__main__':
                        separate_memprot_from_tpc=True,
                        total_protein=0.241,
                        usable_area_fraction=0.6174,
-                       enable_unused_membrane_sector=True
+                       unused_membrane_sector=UnusedMembraneSector()
                        )
 
     mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_06_10/pam_parametrizer_diagnostics_mciML1515_2.xlsx',
