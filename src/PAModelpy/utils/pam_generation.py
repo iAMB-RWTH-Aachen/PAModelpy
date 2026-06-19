@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import cobra
+from cobra import Model as CobraModel
 from typing import TypedDict, Literal, Union, Tuple, Iterable, List, Dict, Optional, Type, Any
 import re
 import os
@@ -601,7 +602,7 @@ def set_up_pam(pam_info_file:Union[Path,str] = '',
         config.reset()
 
     #setup model if a path is provided
-    if isinstance(model, str):
+    if not isinstance(model, CobraModel):
         model = cobra.io.read_sbml_model(model)
 
     #check if a different total protein concentration is given
