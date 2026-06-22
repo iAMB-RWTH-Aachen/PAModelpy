@@ -7,7 +7,7 @@ import math
 import numpy as np
 from typing import Union
 from src.PAModelpy.PAModel import PAModel
-from src.PAModelpy.MembraneSector import UnusedMembraneSector
+from src.PAModelpy.MembraneSector import MembraneSector, UnusedMembraneSector
 from src.PAModelpy.utils.pam_generation import set_up_pam, parse_reaction2protein, _order_enzyme_complex_id
 from Scripts.mcpam_simulations_analysis import (
     run_simulation_pam_mcpam, 
@@ -178,6 +178,7 @@ if __name__ == '__main__':
                     sensitivity=False,
                     membrane_sector=False,                  
                     )
+
     mcpam = set_up_pam(pam_info_file=pam_info_file, 
                        model=model_path,
                        sensitivity=False, 
@@ -191,7 +192,7 @@ if __name__ == '__main__':
     mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_06_10/pam_parametrizer_diagnostics_mciML1515_2.xlsx',
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
-    mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.model = mcpam
+    # mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.model = mcpam
     # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.015, lin_rxn_id='EX_glc__D_e', print_change=False)
     # mcpam.change_sector_parameters(mcpam.translational_enzymes, slope=0.048069755, intercept=0.048069755, lin_rxn_id='BIOMASS_Ec_iML1515_core_75p37M', print_change=True)
     # sector_parameters_df = pd.read_excel('Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_2.xlsx', sheet_name="sector_parameters")
