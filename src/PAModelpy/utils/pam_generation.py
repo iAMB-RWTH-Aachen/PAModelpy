@@ -582,7 +582,6 @@ def set_up_pam(pam_info_file:str = '',
         sv_slope = membrane_info.at['sv_slope','Value']
         alpha_numbers_dict = active_membrane_info.alpha_numbers.to_dict()
         enzyme_location = active_membrane_info.location.to_dict()
-        print('unused membrane sector in set up pam', unused_membrane_sector)
 
         membrane_sector = MembraneSector(sv_0=sv_0,
                                          sv_slope=sv_slope,
