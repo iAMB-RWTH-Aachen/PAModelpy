@@ -12,7 +12,7 @@ from .EnzymeSectors import EnzymeSector
 from .Enzyme import Enzyme
 
 
-class MembraneSector(EnzymeSector):
+class MembraneSector():
     """
     Membrane protein sector for constraining the occupancy of the
     inner membrane by integral membrane proteins (IMPs).
@@ -69,7 +69,7 @@ class MembraneSector(EnzymeSector):
             alpha_numbers_dict: {},
             enzyme_location: {},
             cog_class: {} = None,
-            usable_area_fraction: Union[int, float] = 0.5154,
+            usable_area_fraction: Union[int, float] = 0.6174,
             a_alpha: Union[int, float] = 1.4 * 1e-6, 
             cdw_per_volume: Union[int, float] = 268.36 * 1e-15,  
             n_a: Union[int, float] = 6.02214076 * 1e23,  
@@ -282,7 +282,7 @@ class MembraneSector(EnzymeSector):
 
         return coeff
 
-class UnusedMembraneSector(EnzymeSector):
+class UnusedMembraneSector():
     DEFAULT_ALPHA_NUMBER = 12  # default alpha helix unit number for transport proteins [-] (PJ Henderson 1993)
     DEFAULT_MOL_MASS = 3.947778784340140e04  # mean enzymes mass E.coli [g/mol]
     DEFAULT_TOTAL_PROTEIN_CONCENTRATION = 0.258 # global protein concentration of an E.coli cell 
@@ -331,11 +331,8 @@ class UnusedMembraneSector(EnzymeSector):
             ups_intercept = Unused protein sector's intercept (Amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW)
             ups_slope = Unused protein sector's slope (Slope of linear relation with growth/substrate uptake in g/gDW/h)
         """
-        if isinstance(model.sectors.get_by_id('UnusedEnzymeSector').ups_0, list):
-            ups_intercept =  model.sectors.get_by_id('UnusedEnzymeSector').ups_0[0]
-        else:
-            self.ups_intercept = model.sectors.get_by_id('UnusedEnzymeSector').ups_0# amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW
-        ups_slope = model.sectors.get_by_id('UnusedEnzymeSector').ups_mu # slope of linear relation with growth/substrate uptake in g/gDW/h
+        ups_intercept = model.sectors.get_by_id('UnusedEnzymeSector').intercept*1e-3# amount of protein allocated to the excess enzyme sector at zero substrate uptake in g/gDW
+        ups_slope = model.sectors.get_by_id('UnusedEnzymeSector').slope*1e-3 # slope of linear relation with growth/substrate uptake in g/gDW/h
 
         return ups_slope, ups_intercept
 
