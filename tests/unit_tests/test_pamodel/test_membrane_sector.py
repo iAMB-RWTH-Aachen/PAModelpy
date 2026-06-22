@@ -14,9 +14,41 @@ from src.PAModelpy.configuration import Config
 from src.PAModelpy.EnzymeSectors import ActiveEnzymeSector, UnusedEnzymeSector, TransEnzymeSector
 from src.PAModelpy.MembraneSector import MembraneSector, UnusedMembraneSector
 
+@pytest.mark.parametrize(
+    "p_tot, ups_0, ups_mu",
+    [
+        (0.26, 0.10, 0.20),
+        (0.24, 0.05, 0.30),
+        (0.22, 0.05, 0.10),
+        (0.258, 0.10, 0.20),  # edge: no unused protein
+    ]
+)
+def test_unused_membrane_conversion_exact_math(p_tot, ups_0, ups_mu):
+    # Arrange
+    sut = build_toy_model(membrane_sector=True, unused_membrane_sector=UnusedMembraneSector())
+
+    sut.p_tot = p_tot  # only parameter we vary in system
+
+    # enforce deterministic UPS sector values
+    unused_enzyme_sector = sut.sectors.get_by_id('UnusedEnzymeSector')
+    sut.change_sector_parameters(unused_enzyme_sector, ups_mu, ups_0)
+
+    # Act
+    unused_membrane_sector = sut.sectors.get_by_id('MembraneSector').unused_membrane_sector
+    TOTAL_PROTEIN = unused_membrane_sector.DEFAULT_TOTAL_PROTEIN_CONCENTRATION
+    expected_fraction = (TOTAL_PROTEIN - p_tot) / TOTAL_PROTEIN
+    conversion_unit = unused_membrane_sector._get_conversion_unit()
+
+    expected_intercept = ups_0 * conversion_unit * expected_fraction
+    expected_slope = ups_mu * conversion_unit * expected_fraction
+
+    # Assert
+    assert unused_membrane_sector.intercept == pytest.approx(expected_intercept)
+    assert unused_membrane_sector.slope == pytest.approx(expected_slope)
+
 def test_unused_membrane_sector_updates_variable_side_correctly():
     # Arrange
-    sut = build_toy_model(membrane_sector=True, unused_membrane_sector=False)
+    sut = build_toy_model(membrane_sector=True, unused_membrane_sector=None)
 
     membrane_constraint = sut.constraints["membrane"]
 
@@ -35,8 +67,8 @@ def test_unused_membrane_sector_updates_variable_side_correctly():
     baseline_rev = baseline_coeffs[reverse_var]
 
     # Act
-    unused_membrane_sector = UnusedMembraneSector(sut)
-    sut.sectors.get_by_id("MembraneSector").unused_membrane_sector = unused_membrane_sector
+    sut.sectors.get_by_id("MembraneSector").unused_membrane_sector = UnusedMembraneSector(model=sut)
+    unused_membrane_sector = sut.sectors.get_by_id("MembraneSector").unused_membrane_sector
 
     # Re-read coefficients (after)
     updated_coeffs = membrane_constraint.get_linear_coefficients(
@@ -58,11 +90,11 @@ def test_unused_membrane_sector_updates_variable_side_correctly():
 
 def test_unused_membrane_sector_updates_membrane_constraint_upper_bound_correctly():
     # Arrange
-    sut = build_toy_model(membrane_sector=True, unused_membrane_sector=False) # Build a model with membrane sector without unused membrane sector
+    sut = build_toy_model(membrane_sector=True, unused_membrane_sector=None) # Build a model with membrane sector without unused membrane sector
     original_ub = sut.constraints['membrane'].ub
 
     # Act
-    unused_membrane_sector = UnusedMembraneSector(sut) # Add unused membrane sector 
+    unused_membrane_sector = UnusedMembraneSector(model=sut)
     sut.sectors.get_by_id('MembraneSector').unused_membrane_sector = unused_membrane_sector
     new_ub = sut.constraints['membrane'].ub
     
@@ -71,32 +103,36 @@ def test_unused_membrane_sector_updates_membrane_constraint_upper_bound_correctl
         original_ub - unused_membrane_sector.intercept
     )
 
-@pytest.mark.parametrize('membrane_complex', ['E1_E2_E3', 'E4', 'E5_E6', 'E7_E8_E9_E10'])
-def test_if_membrane_enzyme_is_excluded_when_updating_membrane_sector(membrane_complex):
+@pytest.mark.parametrize("usable_fraction, expected_biomass_coeff, expected_constraint_intercept",
+                         [
+                             (0.1, 0.01, 0.1), 
+                             (1, 0.1, 1), 
+                             (0.5, 0.05, 0.5)])
+def test_if_membrane_enzyme_is_excluded_when_updating_membrane_sector(usable_fraction, expected_biomass_coeff, expected_constraint_intercept):
     # Arrange
-    enzyme_complex = membrane_complex
+    sut = build_toy_model(membrane_sector=True)
+    membrane_sector = sut.sectors.get_by_id('MembraneSector')
+    print(membrane_sector.slope, membrane_sector.intercept)
 
     # Act
-    sut = build_toy_model(membrane_sector=True)
-    enzyme_variable = sut.enzyme_variables[0]
-    sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID].set_linear_coefficients( # Added a dummy membrane enzyme to the tpc constraint
-        {  
-                enzyme_variable.forward_variable: 1,
-                enzyme_variable.reverse_variable: 1,
-        }
-    )
-    sut.sectors.get_by_id('MembraneSector')._update_membrane_constraint(0.02, sut)
+    membrane_sector._update_membrane_constraint(usable_fraction, sut)
 
     # Assert
-    tpc = sut.constraints[sut.TOTAL_PROTEIN_CONSTRAINT_ID]
-    var_names = {v.name for v in tpc.expression.free_symbols}
-    membrane_sector = sut.sectors.get_by_id("MembraneSector")
+    membrane_constraint = sut.constraints['membrane']
+    biomass_var = sut.reactions.get_by_id(sut.BIOMASS_REACTION).forward_variable
 
-    if enzyme_complex in membrane_sector.membrane_proteins:
-        assert not any(
-            name.startswith(enzyme_complex)
-            for name in var_names
-        )
+    # --- check linear coefficient ---
+    coeffs = membrane_constraint.get_linear_coefficients([biomass_var])
+
+    assert biomass_var in coeffs
+    assert coeffs[biomass_var] == pytest.approx(expected_biomass_coeff)
+
+    # ensure no extra terms were added
+    assert len(coeffs) == 1
+
+    # --- check upper bound (intercept term) ---
+    assert membrane_constraint.ub == pytest.approx(expected_constraint_intercept)
+    
 
 def test_if_get_alpha_number_for_enz_complex_works():
     # Arrange
@@ -150,7 +186,7 @@ def test_if_add_membrane_constraint_works():
     assert membrane_constraint.ub == toy_pam.membrane_sector.intercept
 
 ##helper methods
-def build_membrane_sector(enable_unused_membrane_sector: bool=False):
+def build_membrane_sector(unused_membrane_sector: object=None):
     alpha_numbers_dict = {"E1": 20,
                           "E2": 20,
                           "E3": 20,
@@ -184,11 +220,11 @@ def build_membrane_sector(enable_unused_membrane_sector: bool=False):
     membrane_sector = MembraneSector(sv_slope=-0.1, sv_0=1,
                                          alpha_numbers_dict=alpha_numbers_dict,
                                          enzyme_location=enzyme_location, usable_area_fraction=1,
-                                         enable_unused_membrane_sector=enable_unused_membrane_sector)
+                                         unused_membrane_sector=unused_membrane_sector)
 
     return membrane_sector
 
-def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False, unused_membrane_sector: bool =False):
+def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False, unused_membrane_sector: object = None):
     config = Config()
     config.reset()
     config.BIOMASS_REACTION = 'R11'
@@ -226,7 +262,7 @@ def build_toy_model(sensitivity:bool=True, membrane_sector: bool=False, unused_m
 
     # Building Membrane Sector
     if membrane_sector:
-        membrane_sector = build_membrane_sector(enable_unused_membrane_sector=unused_membrane_sector)
+        membrane_sector = build_membrane_sector(unused_membrane_sector=unused_membrane_sector)
     else:
         membrane_sector = None
 
