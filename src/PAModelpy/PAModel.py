@@ -29,7 +29,7 @@ from .CatalyticEvent import CatalyticEvent
 from .Constraints import Constraint
 from .Enzyme import Enzyme, EnzymeComplex
 from .configuration import Config
-from .MembraneSector import MembraneSector
+from .MembraneSector import MembraneSector, UnusedMembraneSector
 
 
 EXTENSION2READINGFUNCTION = {'json': load_json_model,
@@ -1383,6 +1383,7 @@ class PAModel(Model):
         unused_membrane_sector = self.sectors.get_by_id('MembraneSector').unused_membrane_sector
 
         if isinstance(sector, UnusedEnzymeSector) and unused_membrane_sector is not None:
+            print(f"Changing unused membrane sector parameters")
             unused_membrane_sector.set_sector_slope_and_intercept_from_ups_sector(self)
             unused_membrane_sector._link_unused_enzyme_sector_to_membrane_sector(self)
 
