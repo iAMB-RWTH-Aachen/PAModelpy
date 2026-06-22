@@ -296,6 +296,7 @@ class UnusedMembraneSector():
 
         if model is not None:
             self.set_sector_slope_and_intercept_from_ups_sector(model)
+            self._link_unused_enzyme_sector_to_membrane_sector(model)
 
 
     @property
