@@ -1393,26 +1393,9 @@ class PAModel(Model):
             unused_membrane_sector = membrane_sector.unused_membrane_sector
 
             if unused_membrane_sector is not None:
-                print(f"Changing unused membrane sector parameters")
-                prev_intercept = unused_membrane_sector.intercept
-                # Updating the unused membrane sector slope and intercept from the unused protein sector
-                unused_membrane_sector.set_sector_slope_and_intercept_from_ups_sector(self)
-                
-                # Updating the unused membrane intercept
-                if intercept is not None:
-                    intercept_diff = unused_membrane_sector.intercept - prev_intercept
-                    self.constraints['membrane'].ub = (
-                        self.constraints['membrane'].ub - intercept_diff
-                    )
-    
-                # update the membrane constraint using the new slope
-                if slope is not None:
-                    self.constraints['membrane'].set_linear_coefficients(
-                        {
-                            lin_rxn.forward_variable: unused_membrane_sector.slope,  
-                            lin_rxn.reverse_variable: -unused_membrane_sector.slope,  
-                        }
-                    )
+                print(f"Updating unused membrane sector parameters with new unused enzyme parameters")
+                unused_membrane_sector.change_unused_membrane_parameters(ups_slope=slope, ups_intercept=intercept) 
+
     def _adjust_sector_slope_in_total_protein_constraint(self,
                                                          sector: Sector,
                                                          lin_rxn: cobra.Reaction

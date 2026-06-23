@@ -288,13 +288,17 @@ class UnusedMembraneSector():
     DEFAULT_TOTAL_PROTEIN_CONCENTRATION = 0.258 # global protein concentration of an E.coli cell 
 
     # class with all the information on 'excess' membrane sector (linear dependent on substrate uptake rate)
-    def __init__(self, model=None):
+    def __init__(self, model=None, unused_membrane_fraction:float = None):
         self.mol_mass = [self.DEFAULT_ALPHA_NUMBER]
         self._model = model
         self.intercept = 0
         self.slope = 0
+        self.unused_membrane_fraction = unused_membrane_fraction
+        
 
         if model is not None:
+            if self.unused_membrane_fraction is None:
+                self.unused_membrane_fraction = self.get_unused_membrane_fraction_from_model(model)
             self.set_sector_slope_and_intercept_from_ups_sector(model)
             self._link_unused_enzyme_sector_to_membrane_sector(model)
 
@@ -306,9 +310,14 @@ class UnusedMembraneSector():
     @model.setter
     def model(self, model):
         self._model = model
-
+        if self.unused_membrane_fraction is None:
+            self.unused_membrane_fraction = self.get_unused_membrane_fraction_from_model(model)
         self.set_sector_slope_and_intercept_from_ups_sector(model)
         self._link_unused_enzyme_sector_to_membrane_sector(model=model)
+
+    def get_unused_membrane_fraction_from_model(self, model):
+        unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION
+        return unused_membrane_fraction
 
     def set_sector_slope_and_intercept_from_ups_sector(self, model):
         """
@@ -316,10 +325,8 @@ class UnusedMembraneSector():
         intercept and slope
         """
         ups_slope, ups_intercept = self._get_ue_sector_parameters(model)
-        conversion_unit = self._get_conversion_unit()
-        unused_membrane_fraction = (self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION - model.p_tot) / self.DEFAULT_TOTAL_PROTEIN_CONCENTRATION # fraction of unused enzyme that can be allocated to the membrane 
-        self.intercept = ups_intercept * conversion_unit * unused_membrane_fraction
-        self.slope = ups_slope * conversion_unit *unused_membrane_fraction
+        self.update_unused_membrane_intercept(ups_intercept=ups_intercept)
+        self.update_unused_membrane_slope(ups_slope=ups_slope)
 
     def _get_ue_sector_parameters(self, model):
         """
@@ -371,3 +378,81 @@ class UnusedMembraneSector():
                     {
                         direction_variable: coeff
                     })
+    
+    def change_unused_membrane_parameters(self,
+                                          ups_slope:float=None,
+                                          ups_intercept:float=None,
+                                          membrane_slope:float=None,
+                                          membrane_intercept:float=None,
+                                          unused_membrane_fraction:float=None
+                                          ):
+        prev_intercept = self.intercept
+        prev_slope = self.slope
+
+        self.update_unused_membrane_intercept(ups_intercept=ups_intercept, 
+                                              membrane_intercept=membrane_intercept, 
+                                              unused_membrane_fraction=unused_membrane_fraction)
+        
+        self.update_unused_membrane_slope(ups_slope=ups_slope, 
+                                          membrane_slope=membrane_slope, 
+                                          unused_membrane_fraction=unused_membrane_fraction)
+        
+        # Updating the unused membrane intercept
+        if self.intercept != prev_intercept:
+            self.update_unused_membrane_intercept_in_constraint(self.intercept, prev_intercept)
+
+        # update the membrane constraint using the new slope
+        if self.slope != prev_slope:
+            self.update_unused_membrane_slope_in_constraint(self.slope)
+            
+
+    def update_unused_membrane_intercept_in_constraint(self, intercept:float, prev_intercept:float):
+        intercept_diff = intercept - prev_intercept
+        self.model.constraints['membrane'].ub = (
+            self.model.constraints['membrane'].ub - intercept_diff
+        )
+
+    def update_unused_membrane_slope_in_constraint(self, slope:float):
+        ups_sector = self.model.sectors.get_by_id('UnusedEnzymeSector') # unused protein sector
+        lin_rxn = self.model.reactions.get_by_id(ups_sector.id_list[0])
+
+        self.model.constraints['membrane'].set_linear_coefficients(
+                {
+                    lin_rxn.forward_variable: slope,  
+                    lin_rxn.reverse_variable: -slope,  
+                }
+            )
+                
+    def update_unused_membrane_slope(self, 
+                                     ups_slope:float=None, 
+                                     membrane_slope:float=None, 
+                                     unused_membrane_fraction:float=None):
+
+        if membrane_slope is not None:
+            self.slope = membrane_slope
+            return 
+
+        if ups_slope is None:
+            ups_slope, _ = self._get_ue_sector_parameters(self.model)
+        if unused_membrane_fraction is None:
+            unused_membrane_fraction = self.unused_membrane_fraction
+            
+        conversion_unit = self._get_conversion_unit()
+        self.slope = ups_slope * conversion_unit * unused_membrane_fraction
+
+    def update_unused_membrane_intercept(self, 
+                                     ups_intercept:float=None, 
+                                     membrane_intercept:float=None, 
+                                     unused_membrane_fraction:float=None):
+            
+        if membrane_intercept is not None:
+            self.intercept = membrane_intercept
+            return
+
+        if ups_intercept is None:
+            _, ups_intercept = self._get_ue_sector_parameters(self.model)
+        if unused_membrane_fraction is None:
+            unused_membrane_fraction = self.unused_membrane_fraction
+
+        conversion_unit = self._get_conversion_unit()
+        self.intercept = ups_intercept * conversion_unit * unused_membrane_fraction
