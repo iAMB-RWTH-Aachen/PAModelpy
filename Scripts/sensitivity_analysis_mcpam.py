@@ -12,6 +12,7 @@ import numpy as np
 sys.path.append('C:\\Users\\claud\\Documents\\iamb-student-folders\\iamb-folder-template\\mcPAM_package')
 
 from src.PAModelpy.configuration import Config
+from src.PAModelpy.MembraneSector import UnusedMembraneSector
 
 if os.path.split(os.getcwd())[1] == 'Figures':
     os.chdir(os.path.split(os.getcwd())[0])
@@ -335,22 +336,28 @@ def find_top5_sensitivities(Cv, x_axis, yaxis, threshold=0.01):
 
 pam_info_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_10/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
 model_path = 'Models/iML1515.xml'
-diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_10/pam_parametrizer_diagnostics_mciML1515_9.xlsx'
+diagnostics_path = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_10/pam_parametrizer_diagnostics_mciML1515_1.xlsx'
 
 mcpam = set_up_pam(pam_info_file=pam_info_path, 
                     model=model_path,
                     sensitivity=True, 
                     membrane_sector=True,
-                    # separate_memprot_from_tpc=True,
-                    total_protein=0.258,
+                    separate_memprot_from_tpc=True,
+                    total_protein=0.241,
                     usable_area_fraction=0.6174,
-                    enable_unused_membrane_sector=True
+                    unused_membrane_sector=UnusedMembraneSector()
                     )
 area = mcpam.sectors.get_by_id('MembraneSector').usable_area_fraction
 
 mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostics_path,
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
+mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.0105, lin_rxn_id='EX_glc__D_e', print_change=True)
+mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.change_unused_membrane_parameters(
+                                                                                                    unused_membrane_fraction=0.112,
+                                                                                                #    membrane_slope=0.01, 
+                                                                                                #    membrane_intercept=0.58
+                                                                                                    )
 suffix = diagnostics_path.split('_')[-1].split('.')[0]
 ##############################################################################
 # PHENOTYPE DATA
@@ -430,7 +437,7 @@ fig.set_figwidth(width)
 fig.set_figheight(height)
 os.makedirs("Figures", exist_ok=True)
 fig.savefig(
-    f"Figures/sENZ_2026_06_16/mcPAM_sensitivities_diagnostics_{suffix}.png",
+    f"Figures/sENZ_2026_06_10/mcPAM_sensitivities_diagnostics_{suffix}_unused_fra_0_112_ue_slope_10_5mg.png",
     dpi=250,
     bbox_inches='tight'
 )

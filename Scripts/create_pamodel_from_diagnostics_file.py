@@ -13,7 +13,11 @@ from Scripts.mcpam_simulations_analysis import (
     run_simulation_pam_mcpam, 
     run_simulations_pam_mcpam_w_different_areas,
     run_simulations_pam_mcpam_w_different_tpcs,
-    run_simulation_gem_pam_mcpam
+    run_simulation_gem_pam_mcpam,
+    run_simulations_pam_mcpam_w_different_unused_membrane_fraction,
+    run_simulations_pam_mcpam_w_different_ue_slope,
+    run_simulations_pam_mcpam_w_different_unused_membrane_slope,
+    get_info_for_proteins
 )
 
 DEFAULT_MOLMASS = 39959.4825 #kDa
@@ -170,7 +174,7 @@ def _get_rxn2kcat_as_series(rxn2kcat: dict[str, dict],
     return pd.Series(kcats, name = name)
 
 if __name__ == '__main__':
-    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_10/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
+    pam_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_26/proteinAllocationModel_iML1515_EnzymaticData_multi.xlsx'
     model_path = 'Models/iML1515.xml'
 
     pam = set_up_pam(pam_info_file="Data/proteinAllocationModel_EnzymaticData_iML1515_10.xlsx",
@@ -189,12 +193,16 @@ if __name__ == '__main__':
                        unused_membrane_sector=UnusedMembraneSector()
                        )
 
-    mcpam = create_pamodel_from_diagnostics_file(file_path='Results/PAM_parametrizer/Diagnostics_files/2026_06_10/pam_parametrizer_diagnostics_mciML1515_4.xlsx',
+    diagnostic_info_file = 'Results/PAM_parametrizer/Diagnostics_files/2026_06_26/pam_parametrizer_diagnostics_mciML1515_9.xlsx'
+    mcpam = create_pamodel_from_diagnostics_file(file_path=diagnostic_info_file,
                                                  model=mcpam,
                                                  sheet_name='Best_Individuals')
-    # mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector = UnusedMembraneSector(mcpam)
     # mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.model = mcpam
-    mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.007, lin_rxn_id='EX_glc__D_e', print_change=True)
+    
+    # mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.change_unused_membrane_parameters(
+    #                                                                                                     unused_membrane_fraction=0.16
+    #                                                                                                    )
+    # mcpam.change_sector_parameters(mcpam.unused_enzymes, slope=0.008, lin_rxn_id='EX_glc__D_e', print_change=True)
     # mcpam.change_sector_parameters(mcpam.translational_enzymes, slope=0.048069755, intercept=0.048069755, lin_rxn_id='BIOMASS_Ec_iML1515_core_75p37M', print_change=True)
     # sector_parameters_df = pd.read_excel('Results/PAM_parametrizer/Diagnostics_files/2026_05_06/pam_parametrizer_diagnostics_mciML1515_2.xlsx', sheet_name="sector_parameters")
 
@@ -208,28 +216,37 @@ if __name__ == '__main__':
     #         **sector_params,
     #         print_change=True
     #     )
-    
-    models = [pam, mcpam]
+    # enzymes = mcpam.get_enzymes_with_reaction_id(rxn_id='ACt2rpp')
+    # for enzyme in enzymes:
+    #     mcpam.change_kcat_value(enzyme_id=enzyme.id, kcats={'ACt2rpp': {'f':365, 'b':365}})
 
+    models = [pam, mcpam]
+    
     # run_simulation_gem_pam_mcpam(models=models)
     run_simulation_pam_mcpam(models)    
     # run_simulations_pam_mcpam_w_different_areas(models=models, max_area_list=[0.4, 0.5, 0.6, 0.67, 0.7, 0.8])
     # run_simulations_pam_mcpam_w_different_tpcs(models=models, tpc_list=[0.2, 0.21, 0.22, 0.23, 0.24, 0.258])
-    
+    # run_simulations_pam_mcpam_w_different_unused_membrane_fraction(models=models, unused_membrane_fraction_list=[0.01, 0.05, 0.06, 0.07, 0.08, 0.13, 0.15, 0.18])
+    run_simulations_pam_mcpam_w_different_ue_slope(models=models, ue_slope_list=[0.001, 0.002, 0.005, 0.007, 0.008, 0.009, 0.010, 0.015])
+    # run_simulations_pam_mcpam_w_different_unused_membrane_slope(models=models, ume_slope_list=[0.01, 0.03, 0.05, 0.06, 0.07, 0.09, 0.11, 0.12])
+
     for model, model_name in zip(models, ['PAM', 'mcPAM']):
         model.change_reaction_bounds('EX_glc__D_e', -10, -10)
         model.optimize()
         print(model_name, 'objective value:', model.objective.value)
 
     # print(mcpam.sectors.get_by_id('MembraneSector').membrane_proteins)
+    membrane_sector = mcpam.sectors.get_by_id('MembraneSector')
+    total_occupied_area, available_area = membrane_sector.calculate_occupied_membrane(mcpam)
+    # get_info_for_proteins(model=mcpam, 
+    #                     total_occupied_area=total_occupied_area, 
+    #                     pam_info_path=diagnostic_info_file, 
+    #                     protein_info_path=diagnostic_info_file) 
     
-    occupied_area, available_area = mcpam.sectors.get_by_id('MembraneSector').calculate_occupied_membrane(mcpam)
-    print(available_area, occupied_area)
+    print(available_area, total_occupied_area)
     print(mcpam.solver.shadow_prices['membrane'])
     print(mcpam.constraints['membrane'].dual)
     print(mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.intercept, mcpam.sectors.get_by_id('MembraneSector').unused_membrane_sector.slope)
-
-    membrane = mcpam.constraints['membrane']
 
 
     
