@@ -999,16 +999,9 @@ class PAModel(Model):
                 "Objective value is 0, thus sensitivity coefficients cannot be calculated"
             )
             return
-        mu = self.parse_shadow_prices(self.solver.shadow_prices)
-        mu_ub = mu[(mu["direction"] == "ub")].reset_index()
-        mu_lb = mu[(mu["direction"] == "lb")].reset_index()
-        mu_ec_max = mu[(mu["direction"] == "max")].reset_index()
-        mu_ec_min = mu[(mu["direction"] == "min")].reset_index()
-        mu_ec_f = mu[(mu["direction"] == "f")].reset_index()
-        mu_ec_b = mu[(mu["direction"] == "b")].reset_index()
 
-        self.calculate_csc(obj_value, mu, mu_ub, mu_lb, mu_ec_max, mu_ec_min)
-        self.calculate_esc(obj_value, mu_ec_f, mu_ec_b)
+        self.calculate_csc(obj_value)
+        self.calculate_esc(obj_value)
         # self.validate_sensitivity_coefficients()
 
     @staticmethod
@@ -1031,7 +1024,7 @@ class PAModel(Model):
         # df_long[['rxn_id', 'direction']] = df_long['rxn_id'].str.rsplit('_', 1, expand = True).rename(columns=lambda x: 'col{}'.format(x + 1))
         return df_long
 
-    def calculate_csc(self, obj_value, mu, mu_ub, mu_lb, mu_ec_f, mu_ec_b):
+    def calculate_csc(self, obj_value:float) -> None:
         """
         Calculate the capacity sensitivity coefficient for all inequality constraints in the model.
         The sum of all capacity sensitivity coefficients should equal 1 for growth maximization.
@@ -1039,23 +1032,11 @@ class PAModel(Model):
         Capacity Sensitivity Coefficient Calculation:
         Capacity Sensitivity Coefficient = constraint_UB * shadowprice / obj_value
 
-        Parameters:
-            obj_value (float): The objective value of the model.
-            mu (DataFrame): Shadow prices for all constraints.
-            mu_ub (DataFrame): Shadow prices for the reaction upper bound (UB) constraints.
-            mu_lb (DataFrame): Shadow prices for the reaction lower bound (LB) constraints.
-            mu_ec_f (DataFrame): Shadow prices for the constraints related to enzymatic catalysis of the forward reaction.
-            mu_ec_b (DataFrame): Shadow prices for the constraints related to enzymatic catalysis of the backward reaction.
-
         Results will be saved in the self.capacity_sensitivity_coefficients attribute as a dataframe
 
         Args:
             obj_value: Float: optimal objective value, commonly maximal growth rate under specific conditions
-            mu: DataFrame: shadowprices for all constraints
-            mu_ub: DataFrame: Shadowprices for the reaction UB constraints
-            mu_lb: DataFrame: Shadowprices for the reaction LB constraints
-            mu_ec_f: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the forward reaction
-            mu_ec_b: DataFrame: Shadowprices for the constraint related to an enzymatic catalysis of the backward reaction
+
 
         """
 
@@ -1072,9 +1053,7 @@ class PAModel(Model):
                     enzyme_id = self.TOTAL_PROTEIN_CONSTRAINT_ID
                     ca_coefficient = (
                         self.constraints[enzyme_id].ub
-                        * mu[mu["rxn_id"] == self.TOTAL_PROTEIN_CONSTRAINT_ID][
-                            "shadow_prices"
-                        ].iloc[0]
+                        * self.constraints[rxn_id].dual
                         / obj_value
                     )
 
@@ -1091,7 +1070,7 @@ class PAModel(Model):
                 enzyme_id = sector.id
                 ca_coefficient = (
                     self.constraints[enzyme_id].ub
-                    * mu[mu["rxn_id"] == sector.id]["shadow_prices"].iloc[0]
+                    * self.constraints[sector.id].dual
                     / obj_value
                 )
 
@@ -1109,14 +1088,14 @@ class PAModel(Model):
             ca_coefficient_LB = (
                 -sign
                 * self.constraints[f"{rxn.id}_lb"].ub
-                * mu_lb[mu_lb["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
+                * self.constraints[f"{rxn.id}_lb"].dual
                 / obj_value
             )
 
             # UB
             ca_coefficient_UB = (
                 self.constraints[f"{rxn.id}_ub"].ub
-                * mu_ub[mu_ub["rxn_id"] == rxn.id]["shadow_prices"].iloc[0]
+                * self.constraints[f"{rxn.id}_ub"].dual
                 / obj_value
             )
 
@@ -1134,7 +1113,7 @@ class PAModel(Model):
         for enzyme in self.enzymes:
             for catalyzing_enzyme in self._get_catalyzing_enzymes_for_enzyme(enzyme):
                 ce = self.enzymes.get_by_id(catalyzing_enzyme)
-                self.calculate_enzyme_csc(ce, mu_ec_f, mu_ec_b, obj_value)
+                self.calculate_enzyme_csc(ce, obj_value)
 
     def _get_catalyzing_enzymes_for_enzyme(self, enzyme:Union[Enzyme, str])-> list:
         """ Retrieves those enzymes which are associated with a constraint
@@ -1163,7 +1142,7 @@ class PAModel(Model):
         return associated_enzymes
 
     def calculate_csc_for_molecule(self, molecule: Union[Enzyme],
-                                   mu_min:pd.DataFrame, mu_max:pd.DataFrame, obj_value:float,
+                                 obj_value:float,
                                    constraint_type:str, associated_reactions:str):
         """
         Calculate the capacity sensitivity coefficients (CSCs) for constraints related to a biomolecule,
@@ -1174,22 +1153,20 @@ class PAModel(Model):
 
         Args:
            enzyme:Enzyme: enzyme object to calculate CSC for
-           mu_min: DataFrame: Shadowprices for the constraint related to a lower bound/minimum
-           mu_max: DataFrame: Shadowprices for the constraint related to an upper bound/maximum
            obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
         """
-        # get the right row from the shadow price dataframes
-        mu_max_row = mu_max[mu_max['index'] == f'{molecule.id}_max']
-        mu_min_row = mu_min[mu_min['index'] == f'{molecule.id}_min']
+        correction= 0 if not 'enzyme' in constraint_type else 1/self.FEASIBILITY_TOLERANCE
 
-        for direction, row in zip(['min', 'max'], [mu_min_row, mu_max_row]):
+        for direction in ['min', 'max']:
             bound_direction = 'ub' if direction == 'max' else 'lb'
             if f'{molecule.id}_{direction}' in self.constraints.keys():
-                ca_coefficient = getattr(self.constraints[f'{molecule.id}_{direction}'], bound_direction) * row['shadow_prices'].iloc[0] / obj_value
+                ca_coefficient = (getattr(self.constraints[f'{molecule.id}_{direction}'], bound_direction)
+                                  * self.constraints[f'{molecule.id}_{direction}'].dual
+                                  * correction)
                 new_row = [associated_reactions, molecule.id, f'{constraint_type}_{direction}', ca_coefficient]
                 self.capacity_sensitivity_coefficients.loc[len(self.capacity_sensitivity_coefficients)] = new_row
 
-    def calculate_enzyme_csc(self, enzyme:Enzyme, mu_ec_f:pd.DataFrame, mu_ec_b:pd.DataFrame, obj_value:float):
+    def calculate_enzyme_csc(self, enzyme:Enzyme, obj_value:float):
         """
         Calculate the capacity sensitivity coefficients (CSCs) for constraints related to enzyme. These coefficients
         reflect the effect of infitesmal changes in the constraint bounds on the objective function. The coefficients
@@ -1204,9 +1181,9 @@ class PAModel(Model):
             obj_value: float: optimal objective value, commonly maximal growth rate under specific conditions
         """
         reactions = ','.join(self.get_reactions_with_enzyme_id(enzyme.id))
-        self.calculate_csc_for_molecule(enzyme, mu_ec_b, mu_ec_f, obj_value, 'enzyme', reactions)
+        self.calculate_csc_for_molecule(enzyme, obj_value, 'enzyme', reactions)
 
-    def calculate_esc(self, obj_value, mu_ec_f, mu_ec_b):
+    def calculate_esc(self, obj_value):
         """
         Calculate enzyme sensitivity coefficients for the enzyme variables using their primal values,
         the objective value, and shadow prices according to the following relations:
@@ -1214,10 +1191,8 @@ class PAModel(Model):
         Enzyme Sensitivity Coefficient Calculation:
         esc = enzyme_variable.primal * constraint.shadowprice / obj_value
 
-        Parameters:
+        Args:
             obj_value (float): The objective value from the most recent optimal solution.
-            mu_ec_f (pd.DataFrame): Shadow prices for maximizing enzyme concentrations (forward variables).
-            mu_ec_b (pd.DataFrame): Shadow prices for minimizing enzyme concentrations (reverse variables).
 
         Returns:
             None
@@ -1236,13 +1211,10 @@ class PAModel(Model):
                 # get the reactions associated with the enzyme
                 reactions = ",".join(self.get_reactions_with_enzyme_id(catalyzing_enzyme))
 
-                # get the right row from the shadow price dataframes
-                sp_ec_f = mu_ec_f[mu_ec_f["rxn_id"] == f"EC_{catalyzing_enzyme}"][
-                    "shadow_prices"
-                ].iloc[0]
-                sp_ec_b = mu_ec_b[mu_ec_b["rxn_id"] == f"EC_{catalyzing_enzyme}"][
-                    "shadow_prices"
-                ].iloc[0]
+                # get the dual and primal variables
+                sp_ec_f = self.constriants[f'EC_{catalyzing_enzyme}_max'].dual
+                sp_ec_b = self.constriants[f'EC_{catalyzing_enzyme}_min'].dual
+
                 e_fwd = self.enzyme_variables.get_by_id(catalyzing_enzyme).forward_variable.primal
                 e_rev = self.enzyme_variables.get_by_id(catalyzing_enzyme).reverse_variable.primal
 
