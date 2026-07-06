@@ -1212,8 +1212,8 @@ class PAModel(Model):
                 reactions = ",".join(self.get_reactions_with_enzyme_id(catalyzing_enzyme))
 
                 # get the dual and primal variables
-                sp_ec_f = self.constraints[f'EC_{catalyzing_enzyme}_max'].dual
-                sp_ec_b = self.constraints[f'EC_{catalyzing_enzyme}_min'].dual
+                sp_ec_f = self.constraints[f'{catalyzing_enzyme}_max'].dual
+                sp_ec_b = self.constraints[f'{catalyzing_enzyme}_min'].dual
 
                 e_fwd = self.enzyme_variables.get_by_id(catalyzing_enzyme).forward_variable.primal
                 e_rev = self.enzyme_variables.get_by_id(catalyzing_enzyme).reverse_variable.primal

@@ -1,3 +1,8 @@
+6 July 2026
+- **Functions**: PAModel.calculate_csc, PAModel.calculate_csc_for_molecule, PAModel.calculate_esc, PAModel.determine_sensitivity_coefficients
+- **Issue**: in some cases, the CSC of reactions were 0, while the duals of the constraints were non-zero. Also enzymes CSCs were too large
+- **Fix**: get dual values directly from constraints instead of the shadow price table and corrected enzyme CSCs for solver tolerance correction
+
 19 June 2026
 - **Function**: pam_generation.set_up_pam
 - **Issue**: when a pathlib Path object was passed as path to the genome-scale model file, the model was not build
