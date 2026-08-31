@@ -73,7 +73,7 @@ For example for the version used for the development of PAModelpy:
 | `id_list`          | Identifier related to protein fraction associated with the unused enzyme sector |
 | `ups_0`            | Unused enzyme fraction at zero growth rate. [g_protein/g_CDW]                   |
 | `ups_mu`           | Change in unused enzyme fraction per unit change of the associated reaction.    |
-| `mol_mass`         | Molar mass of unused enzymes.  [kDa]                                            |
+| `mol_mass`         | Molar mass of unused enzymes.  [Da] or [g/mol]                                  |
 
 ---
 
