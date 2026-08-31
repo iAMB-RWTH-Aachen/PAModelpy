@@ -65,7 +65,7 @@ For example for the version used for the development of PAModelpy:
 | `id_list`          | Identifier related to protein fraction associated with translational proteins |
 | `tps_0`            | Translational protein fraction at zero growth rate. [g_protein/g_CDW]         |
 | `tps_mu`           | Change in translational protein fraction per unit change of the associated reaction.  |
-| `mol_mass`         | Molar mass of the translational enzymes. [kDa]                                |
+| `mol_mass`         | Molar mass of the translational enzymes. [Da] or [g/mol]                               |
 
 #### UnusedEnzyme sheet
 | **Parameter**      | **Description**                                                                 |
