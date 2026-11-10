@@ -23,7 +23,7 @@ def run_simulation_pam_mcpam(models, type:str="full scale"):
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -146,7 +146,7 @@ def run_simulation_gem_pam_mcpam(models, type:str="full scale"):
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes', 'Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -175,15 +175,12 @@ def run_simulation_gem_pam_mcpam(models, type:str="full scale"):
     for model, config in zip(models, ["GEM", "PAM", "mcPAM"]):
         fluxes_list = []
 
-        # if config == "PAM":  # simulating pam
         for glc in glc_uptake_rates:
             with model:
                 # change glucose uptake rate
-                model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                 # disable pyruvate formate lyase (inhibited by oxygen)
-                model.reactions.get_by_id('PFL').upper_bound = 0
-                model.reactions.get_by_id('PFL').lower_bound = 0
+                model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                 # solve the model
                 sol_pam = model.optimize()
                 # save data
@@ -244,7 +241,7 @@ def run_simulations_pam_mcpam_w_different_areas(models, print_area:bool=False, t
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -380,7 +377,7 @@ def run_simulations_pam_mcpam_w_different_unused_membrane_slope(models, print_ar
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -435,10 +432,9 @@ def run_simulations_pam_mcpam_w_different_unused_membrane_slope(models, print_ar
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                        model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                         # disable pyruvate formate lyase (inhibited by oxygen)
-                        model.reactions.PFL.upper_bound = 0
+                        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                         # change max available membrane area
                         model.sectors.get_by_id('MembraneSector').unused_membrane_sector.change_unused_membrane_parameters(membrane_slope=ume_slope)
                         # solve the model
@@ -521,7 +517,7 @@ def run_simulations_pam_mcpam_w_different_unused_membrane_fraction(models, print
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -576,10 +572,9 @@ def run_simulations_pam_mcpam_w_different_unused_membrane_fraction(models, print
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                        model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                         # disable pyruvate formate lyase (inhibited by oxygen)
-                        model.reactions.PFL.upper_bound = 0
+                        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                         # change max available membrane area
                         model.sectors.get_by_id('MembraneSector').unused_membrane_sector.change_unused_membrane_parameters(unused_membrane_fraction=frac)
                         # solve the model
@@ -662,7 +657,7 @@ def run_simulations_pam_mcpam_w_different_ue_slope(models, print_area:bool=False
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -717,10 +712,9 @@ def run_simulations_pam_mcpam_w_different_ue_slope(models, print_area:bool=False
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                        model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                         # disable pyruvate formate lyase (inhibited by oxygen)
-                        model.reactions.PFL.upper_bound = 0
+                        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                         # change max available membrane area
                         model.change_sector_parameters(model.unused_enzymes, slope=slope, lin_rxn_id='EX_glc__D_e', print_change=True)
                         # solve the model
@@ -804,7 +798,7 @@ def run_simulations_pam_mcpam_w_different_tpcs(models, print_area:bool=False, ty
     labelsize = 15
 
     # load phenotype data from excel file
-    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xls'),
+    pt_data = pd.read_excel(os.path.join('Data', 'Ecoli_phenotypes','Ecoli_phenotypes_py_rev.xlsx'),
                             sheet_name='Yields', index_col=None)
 
     # Define the biomass name based on the used model
@@ -861,10 +855,9 @@ def run_simulations_pam_mcpam_w_different_tpcs(models, print_area:bool=False, ty
                 for glc in glc_uptake_rates:
                     with model:
                         # change glucose uptake rate
-                        model.reactions.get_by_id('EX_glc__D_e').lower_bound = -glc
-                        model.reactions.get_by_id('EX_glc__D_e').upper_bound = -glc
+                        model.change_reaction_bounds(rxn_id='EX_glc__D_e', upper_bound=-glc, lower_bound=-glc)
                         # disable pyruvate formate lyase (inhibited by oxygen)
-                        model.reactions.PFL.upper_bound = 0
+                        model.change_reaction_bounds(rxn_id='PFL', upper_bound=0)
                         # change max available membrane area
                         model.change_total_protein_constraint(tpc)
                         # solve the model
@@ -878,7 +871,7 @@ def run_simulations_pam_mcpam_w_different_tpcs(models, print_area:bool=False, ty
 
                 occupied_area, available_area = model.sectors.get_by_id(
                     'MembraneSector').calculate_occupied_membrane(model)
-                available_area_fraction = model.sectors.get_by_id('MembraneSector').max_membrane_area
+                available_area_fraction = model.sectors.get_by_id('MembraneSector').usable_area_fraction
                 print('Total protein concentration', tpc, 'g/gDW')
                 print('Percentage of maximum available area', available_area_fraction*100, '%')
                 print('Available area: ', available_area, 'um2')
