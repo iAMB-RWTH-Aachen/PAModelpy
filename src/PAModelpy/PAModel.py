@@ -1331,7 +1331,8 @@ class PAModel(Model):
             slope: Optional[float] = None,
             intercept: Optional[float] = None,
             lin_rxn_id: Optional[str] = None,
-            print_change = False
+            print_change = False,
+            change_ums = False
     ):
         if isinstance(sector, str):
             try:
@@ -1389,7 +1390,7 @@ class PAModel(Model):
         # NEW adjust UnusedMembraneSector's parameters when UnusedEnzymeSector's parameters are changed because they are connected
         membrane_sector = self.sectors.get_by_id('MembraneSector')
         
-        if isinstance(sector, UnusedEnzymeSector) and membrane_sector is not None:
+        if isinstance(sector, UnusedEnzymeSector) and membrane_sector is not None and change_ums:
             unused_membrane_sector = membrane_sector.unused_membrane_sector
 
             if unused_membrane_sector is not None:
